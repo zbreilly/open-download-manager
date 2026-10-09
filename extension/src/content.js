@@ -80,17 +80,12 @@
       e.stopPropagation();
       if (!current) return;
       const src = current.currentSrc || current.src || current.querySelector("source")?.src || "";
+      // streamed (blob:) video: the background offers the media this tab
+      // loaded, each with its own cookies, or says none was found
       const msg = /^https?:/i.test(src)
         ? { type: "odm-add", url: src, referrer: location.href }
         : { type: "odm-add-media", referrer: location.href };
-      if (msg.type === "odm-add-media") {
-        B.runtime.sendMessage({ type: "odm-status" }).then((st) => {
-          const urls = (st?.media || []).map((m) => m.url);
-          if (urls.length) B.runtime.sendMessage({ type: "odm-add", urls, referrer: location.href });
-        });
-      } else {
-        B.runtime.sendMessage(msg);
-      }
+      try { B.runtime.sendMessage(msg).catch(() => {}); } catch {}
     });
     host.addEventListener("mouseenter", () => clearTimeout(hideTimer));
     host.addEventListener("mouseleave", scheduleHide);

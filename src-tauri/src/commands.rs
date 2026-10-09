@@ -7,6 +7,7 @@ use odm_core::manager::DownloadPatch;
 use odm_core::*;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
@@ -169,9 +170,66 @@ pub async fn open_folder(app: AppHandle, st: State<'_, AppState>, id: String) ->
     }
 }
 
+/// Folders the UI may open with `open_path`: the configured download
+/// folders (default, temporary, per category), the app data folder and the
+/// bundled extension folder.
+fn open_roots(app: &AppHandle, st: &AppState) -> Vec<PathBuf> {
+    let s = st.mgr.settings();
+    let mut roots: Vec<PathBuf> = vec![PathBuf::from(&s.default_folder)];
+    if let Some(t) = s.temp_folder.as_ref().filter(|t| !t.trim().is_empty()) {
+        roots.push(PathBuf::from(t));
+    }
+    for c in &s.categories {
+        roots.push(PathBuf::from(odm_core::model::category_folder(&s, &c.id)));
+    }
+    if let Ok(d) = app.path().app_data_dir() {
+        roots.push(d);
+    }
+    roots.extend(extension_dirs(app));
+    roots
+}
+
+/// Allow opening only paths that belong to a known download (its file,
+/// partial file or folder) or lie inside one of [`open_roots`].
+fn check_open_path(app: &AppHandle, st: &AppState, path: &str) -> R<PathBuf> {
+    let p = Path::new(path);
+    if !p.is_absolute() {
+        return Err("path must be absolute".into());
+    }
+    let canon = |p: &Path| p.canonicalize().ok();
+    let target = canon(p).ok_or("the file or folder is no longer there")?;
+    for d in st.mgr.list() {
+        let f = d.final_path();
+        let part = odm_core::util::part_path(&f);
+        for cand in [f.clone(), part, PathBuf::from(&d.save_dir)] {
+            if canon(&cand).as_ref() == Some(&target) {
+                return Ok(p.to_path_buf());
+            }
+        }
+    }
+    for root in open_roots(app, st) {
+        if let Some(r) = canon(&root) {
+            if target.starts_with(&r) {
+                return Ok(p.to_path_buf());
+            }
+        }
+    }
+    Err("this path is not a download or a download folder".into())
+}
+
+fn absolute(path: &str) -> R<&Path> {
+    let p = Path::new(path);
+    if p.is_absolute() {
+        Ok(p)
+    } else {
+        Err("path must be absolute".into())
+    }
+}
+
 #[tauri::command]
-pub async fn open_path(app: AppHandle, path: String) -> R<()> {
-    app.opener().open_path(path, None::<&str>).map_err(err)
+pub async fn open_path(app: AppHandle, st: State<'_, AppState>, path: String) -> R<()> {
+    let p = check_open_path(&app, &st, &path)?;
+    app.opener().open_path(p.to_string_lossy(), None::<&str>).map_err(err)
 }
 
 #[tauri::command]
@@ -220,19 +278,52 @@ pub async fn default_settings() -> R<Settings> {
 #[tauri::command]
 pub async fn save_settings(app: AppHandle, st: State<'_, AppState>, settings: Settings) -> R<()> {
     let old = st.mgr.settings();
-    st.mgr.save_settings(settings.clone()).map_err(err)?;
-    if old.launch_at_login != settings.launch_at_login {
-        use tauri_plugin_autostart::ManagerExt;
-        let al = app.autolaunch();
-        let _ = if settings.launch_at_login { al.enable() } else { al.disable() };
+    let mut settings = settings;
+    // listen on the new port first: if it is taken nothing is saved and the
+    // old listener keeps running
+    if old.extension_port != settings.extension_port {
+        crate::bridge::start(app.clone(), settings.extension_port).await?;
     }
+    // apply launch-at-login; on failure keep the setting in line with the OS
+    let mut autostart_err = None;
+    if old.launch_at_login != settings.launch_at_login {
+        if let Err(e) = set_autostart(&app, settings.launch_at_login) {
+            settings.launch_at_login = autostart_enabled(&app).unwrap_or(old.launch_at_login);
+            autostart_err = Some(e);
+        }
+    }
+    st.mgr.save_settings(settings.clone()).map_err(err)?;
     if old.theme != settings.theme {
         windows::retheme_all(&app, &settings.theme);
     }
-    if old.extension_port != settings.extension_port {
-        crate::bridge::spawn(app.clone(), settings.extension_port);
+    match autostart_err {
+        Some(e) => Err(format!("Couldn't change launch at login: {e}")),
+        None => Ok(()),
     }
-    Ok(())
+}
+
+fn set_autostart(app: &AppHandle, on: bool) -> R<()> {
+    use tauri_plugin_autostart::ManagerExt;
+    let al = app.autolaunch();
+    if on { al.enable() } else { al.disable() }.map_err(err)
+}
+
+fn autostart_enabled(app: &AppHandle) -> Option<bool> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().is_enabled().ok()
+}
+
+/// At startup: the OS login item is the truth (the user may have removed it
+/// outside the app); store what the OS says.
+pub fn reconcile_autostart(app: &AppHandle) {
+    let Some(os) = autostart_enabled(app) else { return };
+    let st = app.state::<AppState>();
+    let mut s = st.mgr.settings();
+    if s.launch_at_login != os {
+        tracing::info!("launch at login is {os} in the OS; updating the setting");
+        s.launch_at_login = os;
+        let _ = st.mgr.save_settings(s);
+    }
 }
 
 #[tauri::command]
@@ -303,13 +394,26 @@ pub async fn take_params(st: State<'_, AppState>, token: String) -> R<Option<Val
 #[tauri::command]
 pub async fn extension_status(st: State<'_, AppState>) -> R<Value> {
     let b = st.extension_browsers();
-    Ok(json!({ "connected": !b.is_empty(), "browsers": b, "port": st.mgr.settings().extension_port }))
+    Ok(json!({
+        "connected": !b.is_empty(),
+        "browsers": b,
+        "port": st.mgr.settings().extension_port,
+        // why the bridge isn't listening (port taken), or null
+        "bridgeError": st.bridge_error.lock().clone(),
+    }))
 }
 
 #[tauri::command]
 pub async fn cancel_power_action(app: AppHandle) -> R<()> {
     crate::power::cancel(&app);
     Ok(())
+}
+
+/// The running power-action countdown (`{action, seconds, queue, token}`)
+/// or null — for windows that missed the `power_countdown` event.
+#[tauri::command]
+pub async fn get_power_countdown(app: AppHandle) -> R<Value> {
+    Ok(crate::power::current(&app))
 }
 
 #[tauri::command]
@@ -321,13 +425,13 @@ pub async fn export_list(st: State<'_, AppState>, path: String, only_unfinished:
         .filter(|d| !only_unfinished || d.status != Status::Complete)
         .map(|d| d.url)
         .collect();
-    std::fs::write(&path, list.join("\n") + "\n").map_err(err)?;
+    std::fs::write(absolute(&path)?, list.join("\n") + "\n").map_err(err)?;
     Ok(list.len())
 }
 
 #[tauri::command]
 pub async fn read_url_list(path: String) -> R<Vec<String>> {
-    let text = std::fs::read_to_string(&path).map_err(err)?;
+    let text = std::fs::read_to_string(absolute(&path)?).map_err(err)?;
     Ok(text
         .lines()
         .map(str::trim)
@@ -361,7 +465,7 @@ pub async fn kv_set(st: State<'_, AppState>, key: String, value: String) -> R<()
 
 #[tauri::command]
 pub async fn quit_app(app: AppHandle) -> R<()> {
-    crate::quit(&app);
+    crate::quit_async(&app).await;
     Ok(())
 }
 
@@ -374,15 +478,19 @@ pub async fn broadcast(app: AppHandle, event: String, payload: Value) -> R<()> {
 /// falls back to the source tree in development).
 #[tauri::command]
 pub async fn extension_dir(app: AppHandle) -> R<Option<String>> {
+    Ok(extension_dirs(&app)
+        .into_iter()
+        .find(|p| p.join("chromium").exists())
+        .map(|p| p.canonicalize().unwrap_or(p).to_string_lossy().into_owned()))
+}
+
+fn extension_dirs(app: &AppHandle) -> Vec<PathBuf> {
     let mut cands = vec![];
     if let Ok(r) = app.path().resource_dir() {
         cands.push(r.join("extension"));
     }
-    cands.push(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../extension/dist"));
-    Ok(cands
-        .into_iter()
-        .find(|p| p.join("chromium").exists())
-        .map(|p| p.canonicalize().unwrap_or(p).to_string_lossy().into_owned()))
+    cands.push(Path::new(env!("CARGO_MANIFEST_DIR")).join("../extension/dist"));
+    cands
 }
 
 #[tauri::command]

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Open Download Manager",
-  "version": "2.0.0",
+  "version": "0.2.0",
   "description": "Hand downloads, links and media to Open Download Manager for faster, resumable downloading.",
   "icons": { "16": "icons/icon-16.png", "32": "icons/icon-32.png", "48": "icons/icon-48.png", "96": "icons/icon-96.png", "128": "icons/icon-128.png" },
   "action": {

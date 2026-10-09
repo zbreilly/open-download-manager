@@ -77,8 +77,10 @@ struct MainView: View {
                     table
                         .frame(minHeight: 160)
                     if showDetails, let d = focused {
-                        DetailsPanel(download: d, onRefresh: { startRefresh($0) })
-                            .frame(minHeight: 150, idealHeight: 230, maxHeight: 360)
+                        ScrollView {
+                            DetailsPanel(download: d, onRefresh: { startRefresh($0) })
+                        }
+                        .frame(minHeight: 120, idealHeight: 250, maxHeight: 400)
                     }
                 }
                 StatusBar()

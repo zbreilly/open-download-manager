@@ -4,9 +4,11 @@
 use crate::model::{Category, GrabbedLink};
 use crate::util;
 use crate::CoreError;
+use futures_util::StreamExt;
 use reqwest::header::HeaderMap;
 use scraper::{Html, Selector};
 use std::collections::{HashSet, VecDeque};
+use std::time::Duration;
 
 pub struct GrabOptions {
     pub depth: u32,
@@ -42,30 +44,13 @@ pub async fn grab(
         if !seen_pages.insert(key) {
             continue;
         }
-        let resp = match client.get(page.clone()).headers(headers.clone()).send().await {
-            Ok(r) => r,
+        let (base, body) = match fetch_page(client, &page, &headers).await {
+            Ok(Some(p)) => p,
+            Ok(None) => continue,
             Err(e) => {
-                first_error.get_or_insert(CoreError::from_reqwest(e));
+                first_error.get_or_insert(e);
                 continue;
             }
-        };
-        if !resp.status().is_success() {
-            first_error.get_or_insert(CoreError::Http(resp.status().as_u16()));
-            continue;
-        }
-        let is_html = resp
-            .headers()
-            .get("content-type")
-            .and_then(|v| v.to_str().ok())
-            .map(|c| c.contains("html"))
-            .unwrap_or(true);
-        if !is_html {
-            continue;
-        }
-        let base = resp.url().clone();
-        let body = match resp.text().await {
-            Ok(b) => b,
-            Err(_) => continue,
         };
         let found = extract(&body, &base);
         for (u, source) in found {
@@ -100,6 +85,65 @@ pub async fn grab(
         }
     }
     Ok(out)
+}
+
+/// Largest page body read; anything beyond is ignored.
+pub const MAX_PAGE_BYTES: usize = 8 * 1024 * 1024;
+/// Time allowed for one page, body included.
+pub const PAGE_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Does a body without a Content-Type look like HTML?
+fn sniff_html(body: &[u8]) -> bool {
+    let head = &body[..body.len().min(1024)];
+    let text = String::from_utf8_lossy(head).to_ascii_lowercase();
+    let t = text.trim_start_matches('\u{feff}').trim_start();
+    t.starts_with("<!doctype html") || t.starts_with("<html") || ["<head", "<body", "<a ", "<title"].iter().any(|m| t.contains(m))
+}
+
+/// Fetch one page. `Ok(None)` = not an HTML page.
+async fn fetch_page(
+    client: &reqwest::Client,
+    page: &url::Url,
+    headers: &HeaderMap,
+) -> Result<Option<(url::Url, String)>, CoreError> {
+    let fut = async {
+        let resp = client.get(page.clone()).headers(headers.clone()).send().await.map_err(CoreError::from_reqwest)?;
+        if !resp.status().is_success() {
+            return Err(CoreError::Http(resp.status().as_u16()));
+        }
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|c| c.split(';').next().unwrap_or("").trim().to_ascii_lowercase());
+        let need_sniff = match ct.as_deref() {
+            Some("text/html") | Some("application/xhtml+xml") => false,
+            None | Some("") => true,
+            Some(_) => return Ok(None),
+        };
+        let base = resp.url().clone();
+        let mut body: Vec<u8> = Vec::new();
+        let mut stream = resp.bytes_stream();
+        while let Some(chunk) = stream.next().await {
+            let chunk = chunk.map_err(CoreError::from_reqwest)?;
+            let room = MAX_PAGE_BYTES - body.len();
+            body.extend_from_slice(&chunk[..chunk.len().min(room)]);
+            if body.len() >= MAX_PAGE_BYTES {
+                break;
+            }
+            if need_sniff && body.len() >= 1024 && !sniff_html(&body) {
+                return Ok(None);
+            }
+        }
+        if need_sniff && !sniff_html(&body) {
+            return Ok(None);
+        }
+        Ok(Some((base, String::from_utf8_lossy(&body).into_owned())))
+    };
+    match tokio::time::timeout(PAGE_TIMEOUT, fut).await {
+        Ok(r) => r,
+        Err(_) => Err(CoreError::Network("page took too long to load".into())),
+    }
 }
 
 fn strip_fragment(u: &url::Url) -> String {

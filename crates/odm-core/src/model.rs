@@ -132,6 +132,11 @@ pub struct Download {
     pub auto_dir: bool,
     #[serde(default)]
     pub restarts: u32,
+    /// The part file was not created by the engine: "file" = the user's
+    /// existing file was taken over to resume it, "part" = an existing
+    /// `.odmpart` was taken over. Such files are never deleted automatically.
+    #[serde(default)]
+    pub adopted: Option<String>,
 }
 
 fn default_when_finished() -> String {
@@ -258,13 +263,18 @@ pub struct Queue {
     /// "none" | "sleep" | "shutdown" | "exit"
     #[serde(default = "none_str")]
     pub on_finish: String,
-    /// download ids in run order
-    #[serde(default)]
+    /// download ids in run order. When saving a queue, an omitted / null /
+    /// partial order keeps the current members (see `Manager::save_queue`).
+    #[serde(default, deserialize_with = "null_as_empty")]
     pub order: Vec<String>,
     #[serde(default)]
     pub running: bool,
     #[serde(default)]
     pub next_run: Option<String>,
+}
+
+fn null_as_empty<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
+    Ok(Option::<Vec<String>>::deserialize(d)?.unwrap_or_default())
 }
 
 fn one() -> u32 {

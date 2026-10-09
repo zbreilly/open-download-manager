@@ -1,8 +1,20 @@
 //! Download manager: owns the list, starts/stops tasks, enforces
 //! simultaneous-download and queue limits, runs the scheduler, measures
 //! speed, and broadcasts events for the UI.
+//!
+//! Concurrency rules:
+//! * Every run of a download has its own [`Runtime`], tagged with the
+//!   entry's generation. Results of a run are only applied while the entry
+//!   still points at that runtime *and* has the same generation, so an
+//!   operation that invalidates a run (redownload) can't be undone by the
+//!   old run finishing late.
+//! * Files of a run (part file, placed final file) are only touched by
+//!   other operations after the run has detached ([`Runtime::detached`]).
+//! * Database writes go through [`Manager::persist`], which snapshots and
+//!   writes under one lock, so an older snapshot can never overwrite a newer
+//!   one and deletions always win.
 
-use crate::client;
+use crate::client::{self, Clients, HeaderSet};
 use crate::limiter::Limiter;
 use crate::model::*;
 use crate::store::Store;
@@ -12,14 +24,20 @@ use crate::CoreError;
 use chrono::{Datelike, Local, Timelike};
 use parking_lot::{Mutex, RwLock};
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::runtime::Handle;
 use tokio::sync::broadcast;
+use tokio_util::sync::CancellationToken;
+use tokio_util::task::TaskTracker;
 
 pub const MAIN_QUEUE: &str = "main";
 const HISTORY: usize = 60;
+/// automatic restarts (file changed on server, ranges dropped) before giving up
+const MAX_RESTARTS: u32 = 2;
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -41,6 +59,29 @@ struct Entry {
     history: VecDeque<u64>,
     last_bytes: u64,
     ema: f64,
+    /// bumped whenever results of the current run must no longer be applied
+    gen: u64,
+    /// a file operation (redownload reset) is pending; don't start
+    busy: bool,
+    /// already fell back from `final_url` to the original URL this session
+    fell_back: bool,
+}
+
+impl Entry {
+    fn new(d: Download) -> Self {
+        let last_bytes = d.received_bytes;
+        Self { d, rt: None, history: VecDeque::new(), last_bytes, ema: 0.0, gen: 0, busy: false, fell_back: false }
+    }
+
+    /// `rt` is this entry's runtime.
+    fn owns(&self, rt: &Arc<Runtime>) -> bool {
+        self.rt.as_ref().is_some_and(|r| Arc::ptr_eq(r, rt))
+    }
+
+    /// `rt` is this entry's runtime and its results still apply.
+    fn current(&self, rt: &Arc<Runtime>) -> bool {
+        self.owns(rt) && self.gen == rt.gen
+    }
 }
 
 struct State {
@@ -56,9 +97,19 @@ struct State {
 struct Inner {
     store: Store,
     state: Mutex<State>,
+    /// serializes database writes of downloads (see module docs).
+    /// Lock order: `persist` before `state`.
+    persist: Mutex<()>,
     events: broadcast::Sender<Event>,
     global: Limiter,
-    client: RwLock<reqwest::Client>,
+    clients: RwLock<Clients>,
+    handle: Mutex<Option<Handle>>,
+    shutting_down: AtomicBool,
+    background_started: AtomicBool,
+    /// stops the ticker and the scheduler
+    bg: CancellationToken,
+    /// download runs and file operations
+    tracker: TaskTracker,
 }
 
 #[derive(Clone)]
@@ -68,6 +119,15 @@ pub struct Manager {
 
 fn now_iso() -> String {
     Local::now().to_rfc3339()
+}
+
+/// Marks a runtime detached when its drive task ends (however it ends).
+struct DetachGuard(Arc<Runtime>);
+
+impl Drop for DetachGuard {
+    fn drop(&mut self) {
+        self.0.mark_detached();
+    }
 }
 
 impl Manager {
@@ -87,12 +147,8 @@ impl Manager {
         if settings.categories.is_empty() {
             settings.categories = default_categories();
         }
-        if !settings.limit_on_startup {
-            // the toolbar toggle is a session switch unless "on at startup"
-            settings.global_limit_enabled = false;
-        } else {
-            settings.global_limit_enabled = true;
-        }
+        // the toolbar toggle is a session switch unless "on at startup"
+        settings.global_limit_enabled = settings.limit_on_startup;
         let mut queues = store.load_queues();
         if !queues.iter().any(|q| q.id == MAIN_QUEUE) {
             let mut q = Queue::new(MAIN_QUEUE, "Main queue");
@@ -107,24 +163,27 @@ impl Manager {
         let mut entries = HashMap::new();
         let mut order = Vec::new();
         for mut d in store.load_downloads() {
-            if d.status.is_active() {
-                d.status = Status::Paused;
-            }
-            if d.status == Status::Queued && d.manual {
-                d.status = Status::Paused;
-                d.manual = false;
+            if d.status == Status::Assembling {
+                // completion was interrupted: finish it (re-verifies) on start
+                d.status = Status::Queued;
+                d.manual = true;
+            } else {
+                if d.status.is_active() {
+                    d.status = Status::Paused;
+                }
+                if d.status == Status::Queued && d.manual {
+                    d.status = Status::Paused;
+                    d.manual = false;
+                }
             }
             order.push(d.id.clone());
-            entries.insert(
-                d.id.clone(),
-                Entry { d, rt: None, history: VecDeque::new(), last_bytes: 0, ema: 0.0 },
-            );
+            entries.insert(d.id.clone(), Entry::new(d));
         }
         let recent: Vec<String> = store
             .get_kv("recent")
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_default();
-        let client = client::build_client(&settings)?;
+        let clients = client::build_clients(&settings)?;
         let global = Limiter::new(if settings.global_limit_enabled { settings.global_limit_bps } else { 0 });
         let (tx, _) = broadcast::channel(4096);
         Ok(Self {
@@ -139,19 +198,38 @@ impl Manager {
                     fired: HashSet::new(),
                     queue_completed: HashMap::new(),
                 }),
+                persist: Mutex::new(()),
                 events: tx,
                 global,
-                client: RwLock::new(client),
+                clients: RwLock::new(clients),
+                handle: Mutex::new(Handle::try_current().ok()),
+                shutting_down: AtomicBool::new(false),
+                background_started: AtomicBool::new(false),
+                bg: CancellationToken::new(),
+                tracker: TaskTracker::new(),
             }),
         })
     }
 
-    /// Spawn the progress ticker and the scheduler. Call inside a tokio runtime.
+    /// Spawn the progress ticker and the scheduler. Call inside a tokio
+    /// runtime; that runtime also runs every download.
     pub fn start_background(&self) {
+        if let Ok(h) = Handle::try_current() {
+            *self.inner.handle.lock() = Some(h);
+        }
+        if self.inner.background_started.swap(true, Ordering::SeqCst) {
+            return;
+        }
+        let Some(h) = self.handle() else {
+            tracing::error!("start_background called outside a tokio runtime");
+            return;
+        };
         let m = self.clone();
-        tokio::spawn(async move { m.ticker().await });
+        h.spawn(async move { m.ticker().await });
         let m = self.clone();
-        tokio::spawn(async move { m.scheduler().await });
+        h.spawn(async move { m.scheduler().await });
+        // finish completions that were interrupted by the last exit
+        self.pump();
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
@@ -162,8 +240,35 @@ impl Manager {
         let _ = self.inner.events.send(e);
     }
 
+    fn handle(&self) -> Option<Handle> {
+        self.inner.handle.lock().clone().or_else(|| Handle::try_current().ok())
+    }
+
+    /// Run `f` on the engine's runtime, tracked for shutdown. Safe to call
+    /// from any thread; returns false if no runtime is known.
+    fn spawn<F: Future<Output = ()> + Send + 'static>(&self, f: F) -> bool {
+        match self.handle() {
+            Some(h) => {
+                h.spawn(self.inner.tracker.track_future(f));
+                true
+            }
+            None => {
+                tracing::error!("no tokio runtime: call Manager::start_background inside one");
+                false
+            }
+        }
+    }
+
+    fn is_shutting_down(&self) -> bool {
+        self.inner.shutting_down.load(Ordering::SeqCst)
+    }
+
+    fn clients(&self) -> Clients {
+        self.inner.clients.read().clone()
+    }
+
     fn client(&self) -> reqwest::Client {
-        self.inner.client.read().clone()
+        self.inner.clients.read().main.clone()
     }
 
     // ------------------------------------------------------------ views
@@ -194,6 +299,23 @@ impl Manager {
         d
     }
 
+    /// What may be stored: progress of a running download only as far as
+    /// it has been synced to disk.
+    fn db_view(e: &Entry) -> Download {
+        let mut d = e.d.clone();
+        if let Some(rt) = &e.rt {
+            let segs = rt.synced_views();
+            d.received_bytes = segs.iter().map(|s| s.received).sum();
+            d.segments = segs;
+            let t = rt.total.load(Ordering::SeqCst);
+            if t != UNKNOWN {
+                d.total_bytes = Some(t);
+            }
+            d.resumable = rt.resumable.load(Ordering::SeqCst);
+        }
+        d
+    }
+
     pub fn list(&self) -> Vec<Download> {
         let st = self.inner.state.lock();
         st.order
@@ -208,10 +330,41 @@ impl Manager {
         st.entries.get(id).map(|e| Self::live_view(e, &st.queues))
     }
 
+    /// Write the current state of `ids` to the database (deleting rows of
+    /// entries that no longer exist). Never call with the state lock held.
+    fn persist(&self, ids: &[String]) {
+        let _g = self.inner.persist.lock();
+        let items: Vec<(String, Option<Download>)> = {
+            let st = self.inner.state.lock();
+            ids.iter().map(|id| (id.clone(), st.entries.get(id).map(Self::db_view))).collect()
+        };
+        self.inner.store.write_downloads(&items);
+    }
+
+    fn persist_all(&self) {
+        let _g = self.inner.persist.lock();
+        let (items, queues): (Vec<(String, Option<Download>)>, Vec<Queue>) = {
+            let st = self.inner.state.lock();
+            let items = st
+                .entries
+                .values()
+                .map(|e| {
+                    let mut d = Self::db_view(e);
+                    if e.rt.is_some() && d.status != Status::Assembling {
+                        d.status = Status::Paused;
+                    }
+                    (d.id.clone(), Some(d))
+                })
+                .collect();
+            (items, st.queues.clone())
+        };
+        self.inner.store.write_downloads(&items);
+        self.inner.store.save_queues(&queues);
+    }
+
     fn changed(&self, id: &str) {
-        let d = self.get(id);
-        if let Some(d) = d {
-            self.inner.store.save_download(&d);
+        self.persist(&[id.to_string()]);
+        if let Some(d) = self.get(id) {
             self.emit(Event::Changed(d));
         }
     }
@@ -229,8 +382,8 @@ impl Manager {
         normalize_categories(&mut s.categories);
         s.default_connections = s.default_connections.clamp(1, 32);
         s.max_simultaneous = s.max_simultaneous.clamp(1, 64);
-        let client = client::build_client(&s)?;
-        *self.inner.client.write() = client;
+        let clients = client::build_clients(&s)?;
+        *self.inner.clients.write() = clients;
         self.inner.global.set_rate(if s.global_limit_enabled { s.global_limit_bps } else { 0 });
         {
             let mut st = self.inner.state.lock();
@@ -348,7 +501,12 @@ impl Manager {
             user.as_deref(),
             pass.as_deref(),
         );
-        client::probe(&self.client(), url, h, &s.categories).await
+        let hs = HeaderSet::new(url, h);
+        let c = self.clients().probe;
+        tokio::select! {
+            _ = self.inner.bg.cancelled() => Err(CoreError::Other("shutting down".into())),
+            r = client::probe_with(&c, url, &hs, &s.categories) => r,
+        }
     }
 
     /// Default save folder for a category.
@@ -356,14 +514,19 @@ impl Manager {
         category_folder(&self.settings(), category)
     }
 
+    /// Is the name taken, on disk or by another download in the list?
     pub fn target_exists(&self, dir: &str, name: &str) -> bool {
         let p = Path::new(dir).join(name);
-        p.exists()
+        if p.exists() || util::part_path(&p).exists() {
+            return true;
+        }
+        let st = self.inner.state.lock();
+        claimed(&st, &p, None, false)
     }
 
     pub fn add(&self, req: AddRequest) -> Result<String, CoreError> {
         let url = req.url.trim().to_string();
-        let parsed = url::Url::parse(&url).map_err(|_| CoreError::BadUrl(url.clone()))?;
+        let parsed = url::Url::parse(&url).map_err(|_| CoreError::BadUrl(util::redact_url(&url)))?;
         if !matches!(parsed.scheme(), "http" | "https") {
             return Err(CoreError::BadUrl(format!("unsupported scheme: {}", parsed.scheme())));
         }
@@ -382,25 +545,41 @@ impl Manager {
             .save_dir
             .clone()
             .filter(|d| !d.trim().is_empty())
-            .unwrap_or_else(|| self.folder_for(&category));
+            .unwrap_or_else(|| category_folder(&s, &category));
 
         let mut segments = vec![];
         let mut received = 0;
         let mut resumable = req.resumable.unwrap_or(true);
+        let mut adopted: Option<String> = None;
         let policy = req.on_exists.clone().unwrap_or_else(|| "rename".into());
-        let target = Path::new(&save_dir).join(&name);
-        if target.exists() || util::part_path(&target).exists() {
-            match policy.as_str() {
-                "overwrite" => {
-                    let _ = std::fs::remove_file(util::part_path(&target));
+        let queue_id = req.queue_id.clone().filter(|q| !q.is_empty());
+        let id = uuid::Uuid::new_v4().to_string();
+        let (status, manual, queue_id) = if req.start {
+            (Status::Queued, true, queue_id)
+        } else if let Some(q) = queue_id {
+            (Status::Queued, false, Some(q))
+        } else {
+            (Status::Paused, false, None)
+        };
+
+        let mut settings_to_save = None;
+        let d = {
+            let mut st = self.inner.state.lock();
+            // the name is chosen and reserved under the state lock, so two
+            // downloads can never share a file
+            let dir = PathBuf::from(&save_dir);
+            let target = dir.join(&name);
+            let target_part = util::part_path(&target);
+            let mut placed = false;
+            if policy == "resume" && !claimed(&st, &target, None, false) && (target.exists() || target_part.exists()) {
+                // continue an existing partial file from its current size
+                if target_part.exists() {
+                    adopted = Some("part".into());
+                } else if std::fs::rename(&target, &target_part).is_ok() {
+                    adopted = Some("file".into());
                 }
-                "resume" => {
-                    // continue an existing partial file from its current size
-                    let part = util::part_path(&target);
-                    if !part.exists() && target.exists() {
-                        let _ = std::fs::rename(&target, &part);
-                    }
-                    if let Ok(m) = std::fs::metadata(&part) {
+                if adopted.is_some() {
+                    if let Ok(m) = std::fs::metadata(&target_part) {
                         received = m.len();
                         segments.push(SegmentView {
                             start: 0,
@@ -411,90 +590,77 @@ impl Manager {
                         });
                         resumable = true;
                     }
-                }
-                _ => {
-                    let p = util::unique_path(Path::new(&save_dir), &name);
-                    name = p.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(name);
+                    placed = true;
                 }
             }
-        }
-
-        let queue_id = req.queue_id.clone().filter(|q| !q.is_empty());
-        let id = uuid::Uuid::new_v4().to_string();
-        let (status, manual, queue_id) = if req.start {
-            (Status::Queued, true, queue_id)
-        } else if let Some(q) = queue_id {
-            (Status::Queued, false, Some(q))
-        } else {
-            (Status::Paused, false, None)
-        };
-        let d = Download {
-            id: id.clone(),
-            url: url.clone(),
-            final_url: None,
-            ext: util::badge_ext(&name),
-            file_name: name,
-            category: category.clone(),
-            queue_id: queue_id.clone(),
-            save_dir: save_dir.clone(),
-            total_bytes: req.total_bytes,
-            received_bytes: received,
-            speed_bps: 0,
-            eta_secs: None,
-            status,
-            scheduled_at: None,
-            resumable,
-            max_connections: req.connections.unwrap_or(s.default_connections).clamp(1, 32),
-            active_connections: 0,
-            segments,
-            speed_history: vec![],
-            error: None,
-            added_at: now_iso(),
-            completed_at: None,
-            mime: req.mime.clone(),
-            protocol: None,
-            referrer: req.referrer.clone().filter(|r| !r.is_empty()),
-            cookies: req.cookies.clone().filter(|r| !r.is_empty()),
-            user_agent: req.user_agent.clone().filter(|r| !r.is_empty()),
-            headers: req.headers.clone(),
-            username: req.username.clone().filter(|r| !r.is_empty()),
-            password: req.password.clone().filter(|r| !r.is_empty()),
-            checksum: req.checksum.clone().filter(|c| !c.expected.trim().is_empty()),
-            checksum_ok: None,
-            speed_limit_bps: None,
-            when_finished: "notify".into(),
-            manual,
-            etag: None,
-            last_modified: None,
-            retries_used: 0,
-            on_exists: Some(policy),
-            description: req.description.clone(),
-            auto_name,
-            auto_dir,
-            restarts: 0,
-        };
-        {
-            let mut st = self.inner.state.lock();
+            if !placed {
+                name = reserve_name(&st, &dir, &name, None, policy == "overwrite", true);
+            }
+            let d = Download {
+                id: id.clone(),
+                url: url.clone(),
+                final_url: None,
+                ext: util::badge_ext(&name),
+                file_name: name,
+                category: category.clone(),
+                queue_id: queue_id.clone(),
+                save_dir: save_dir.clone(),
+                total_bytes: req.total_bytes,
+                received_bytes: received,
+                speed_bps: 0,
+                eta_secs: None,
+                status,
+                scheduled_at: None,
+                resumable,
+                max_connections: req.connections.unwrap_or(s.default_connections).clamp(1, 32),
+                active_connections: 0,
+                segments,
+                speed_history: vec![],
+                error: None,
+                added_at: now_iso(),
+                completed_at: None,
+                mime: req.mime.clone(),
+                protocol: None,
+                referrer: req.referrer.clone().filter(|r| !r.is_empty()),
+                cookies: req.cookies.clone().filter(|r| !r.is_empty()),
+                user_agent: req.user_agent.clone().filter(|r| !r.is_empty()),
+                headers: req.headers.clone(),
+                username: req.username.clone().filter(|r| !r.is_empty()),
+                password: req.password.clone().filter(|r| !r.is_empty()),
+                checksum: req.checksum.clone().filter(|c| !c.expected.trim().is_empty()),
+                checksum_ok: None,
+                speed_limit_bps: None,
+                when_finished: "notify".into(),
+                manual,
+                etag: None,
+                last_modified: None,
+                retries_used: 0,
+                on_exists: Some(policy),
+                description: req.description.clone(),
+                auto_name,
+                auto_dir,
+                restarts: 0,
+                adopted,
+            };
             if let Some(q) = &queue_id {
                 if let Some(q) = st.queues.iter_mut().find(|x| &x.id == q) {
                     q.order.push(id.clone());
                 }
             }
             st.order.push(id.clone());
-            st.entries.insert(
-                id.clone(),
-                Entry { d: d.clone(), rt: None, history: VecDeque::new(), last_bytes: received, ema: 0.0 },
-            );
+            st.entries.insert(id.clone(), Entry::new(d.clone()));
             if req.remember_folder && req.save_dir.is_some() {
                 if let Some(c) = st.settings.categories.iter_mut().find(|c| c.id == category) {
                     c.folder = Some(save_dir.clone());
                 }
-                let s2 = st.settings.clone();
-                drop(st);
-                self.inner.store.save_settings(&s2);
+                settings_to_save = Some(st.settings.clone());
             }
+            d
+        };
+        if let Some(s2) = settings_to_save {
+            self.inner.store.save_settings(&s2);
         }
-        self.inner.store.save_download(&d);
+        self.persist(std::slice::from_ref(&id));
         if let Some(q) = &queue_id {
             self.persist_queue(q);
         }
@@ -556,39 +722,87 @@ impl Manager {
                 e.d.status = Status::Queued;
                 e.d.manual = true;
                 e.d.error = None;
+                e.d.restarts = 0;
+                e.fell_back = false;
             }
             self.changed(id);
         }
         self.pump();
     }
 
+    /// Start a download over from scratch. A running download is stopped
+    /// first; its files are reset only once its writers are gone.
     pub fn redownload(&self, id: &str) {
-        let rt = {
+        let (rt, gen) = {
             let mut st = self.inner.state.lock();
             let Some(e) = st.entries.get_mut(id) else { return };
-            let rt = e.rt.clone();
-            let p = e.d.final_path();
-            let _ = std::fs::remove_file(util::part_path(&p));
+            e.gen += 1;
+            e.busy = true;
+            e.d.status = Status::Queued;
+            e.d.manual = true;
+            e.d.error = None;
+            e.d.checksum_ok = None;
+            e.d.completed_at = None;
+            (e.rt.clone(), e.gen)
+        };
+        self.changed(id);
+        match rt {
+            Some(rt) => {
+                rt.cancel.cancel();
+                let m = self.clone();
+                let id2 = id.to_string();
+                let spawned = self.spawn(async move {
+                    rt.detached().await;
+                    m.finish_redownload(&id2, gen);
+                });
+                if !spawned {
+                    self.finish_redownload(id, gen);
+                }
+            }
+            None => self.finish_redownload(id, gen),
+        }
+    }
+
+    fn finish_redownload(&self, id: &str, gen: u64) {
+        {
+            let mut st = self.inner.state.lock();
+            let Some(e) = st.entries.get_mut(id) else { return };
+            if e.gen != gen || e.rt.is_some() {
+                return;
+            }
+            let fp = e.d.final_path();
+            let part = util::part_path(&fp);
+            if e.d.adopted.as_deref() == Some("file") && !fp.exists() {
+                // give the user's original file back; the new download gets a fresh name
+                let _ = std::fs::rename(&part, &fp);
+            } else if let Err(err) = std::fs::remove_file(&part) {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    tracing::warn!("cannot remove {}: {err}", part.display());
+                }
+            }
             e.d.segments.clear();
             e.d.received_bytes = 0;
+            e.d.total_bytes = None;
+            e.d.final_url = None;
+            e.d.etag = None;
+            e.d.last_modified = None;
             e.d.completed_at = None;
             e.d.error = None;
             e.d.checksum_ok = None;
-            e.d.status = Status::Queued;
-            e.d.manual = true;
             e.d.restarts = 0;
             e.d.retries_used = 0;
-            if p.exists() {
-                // keep the finished copy; new download gets a fresh name
-                let np = util::unique_path(Path::new(&e.d.save_dir), &e.d.file_name);
-                if let Some(n) = np.file_name() {
-                    e.d.file_name = n.to_string_lossy().into_owned();
-                }
+            e.d.adopted = None;
+            e.last_bytes = 0;
+            e.fell_back = false;
+            let dir = PathBuf::from(&e.d.save_dir);
+            let name = e.d.file_name.clone();
+            // keeps the name unless a finished copy (or anything else) sits there
+            let new_name = reserve_name(&st, &dir, &name, Some(id), false, true);
+            if let Some(e) = st.entries.get_mut(id) {
+                e.d.ext = util::badge_ext(&new_name);
+                e.d.file_name = new_name;
+                e.busy = false;
             }
-            rt
-        };
-        if let Some(rt) = rt {
-            rt.cancel.cancel();
         }
         self.changed(id);
         self.pump();
@@ -605,30 +819,35 @@ impl Manager {
                 st.entries.remove(id)
             };
             let Some(e) = removed else { continue };
-            self.inner.store.delete_download(id);
-            let final_path = e.d.final_path();
-            let part = util::part_path(&final_path);
-            let complete = e.d.status == Status::Complete;
-            if let Some(rt) = e.rt.clone() {
-                rt.cancel.cancel();
-                // wait for writers to stop before touching the files
-                tokio::spawn(async move {
-                    for _ in 0..100 {
-                        if rt.active.load(Ordering::SeqCst) == 0 {
-                            break;
+            self.persist(std::slice::from_ref(id));
+            let job = Cleanup {
+                final_path: e.d.final_path(),
+                adopted: e.d.adopted.clone(),
+                complete: e.d.status == Status::Complete,
+                delete_files,
+            };
+            match e.rt.clone() {
+                Some(rt) => {
+                    rt.cancel.cancel();
+                    // touch the files only after the writers are gone
+                    let spawned = self.spawn({
+                        let job = job.clone();
+                        let rt = rt.clone();
+                        async move {
+                            rt.detached().await;
+                            let placed = rt.placed.lock().clone();
+                            job.run(placed).await;
                         }
-                        tokio::time::sleep(Duration::from_millis(50)).await;
+                    });
+                    if !spawned {
+                        job.attempt(None);
                     }
-                    let _ = tokio::fs::remove_file(&part).await;
-                    if delete_files && complete {
-                        let _ = tokio::fs::remove_file(&final_path).await;
+                }
+                None => {
+                    if !job.attempt(None) {
+                        let j2 = job.clone();
+                        self.spawn(async move { j2.run(None).await });
                     }
-                });
-            } else {
-                // unfinished parts are always cleaned up; finished files only on request
-                let _ = std::fs::remove_file(&part);
-                if delete_files && complete {
-                    let _ = std::fs::remove_file(&final_path);
                 }
             }
             self.emit(Event::Removed(id.clone()));
@@ -671,20 +890,21 @@ impl Manager {
             e.d.last_modified = p.last_modified.clone();
             e.d.resumable = p.resumable;
             e.d.error = None;
+            e.fell_back = false;
             let rt = e.rt.clone();
-            if e.d.status == Status::Error {
+            if rt.is_some() {
+                // restart with the new link once the current run has stopped
+                e.d.status = Status::Queued;
+                e.d.manual = true;
+            } else if e.d.status == Status::Error {
                 e.d.status = Status::Paused;
             }
             rt
         };
-        let was_running = rt.is_some();
         if let Some(rt) = rt {
             rt.cancel.cancel();
         }
         self.changed(id);
-        if was_running {
-            self.resume(&[id.to_string()]);
-        }
         Ok(())
     }
 
@@ -693,12 +913,21 @@ impl Manager {
         for id in ids {
             {
                 let mut st = self.inner.state.lock();
-                if let Some(e) = st.entries.get_mut(id) {
-                    e.d.category = cat.to_string();
-                    // a download that hasn't started yet moves to the new category's folder
-                    if e.d.auto_dir && e.rt.is_none() && e.d.received_bytes == 0 && e.d.status != Status::Complete {
-                        e.d.save_dir = category_folder(&s, cat);
+                let mv = match st.entries.get_mut(id) {
+                    Some(e) => {
+                        e.d.category = cat.to_string();
+                        // a download that hasn't started yet moves to the new category's folder
+                        (e.d.auto_dir
+                            && e.rt.is_none()
+                            && !e.busy
+                            && e.d.received_bytes == 0
+                            && e.d.status != Status::Complete)
+                            .then(|| e.d.file_name.clone())
                     }
+                    None => None,
+                };
+                if let Some(name) = mv {
+                    relocate(&mut st, id, &category_folder(&s, cat), &name);
                 }
             }
             self.changed(id);
@@ -724,14 +953,16 @@ impl Manager {
             if let Some(c) = patch.cookies {
                 e.d.cookies = Some(c).filter(|s| !s.is_empty());
             }
-            if let Some(n) = patch.file_name {
-                if e.rt.is_none() && e.d.status != Status::Complete && !n.trim().is_empty() {
-                    let n = util::sanitize_filename(&n);
-                    let old_part = util::part_path(&e.d.final_path());
-                    e.d.file_name = n;
-                    e.d.ext = util::badge_ext(&e.d.file_name);
-                    e.d.auto_name = false;
-                    let _ = std::fs::rename(old_part, util::part_path(&e.d.final_path()));
+            let rename = patch.file_name.filter(|n| {
+                e.rt.is_none() && !e.busy && e.d.status != Status::Complete && !n.trim().is_empty()
+            });
+            if let Some(n) = rename {
+                let n = util::sanitize_filename(&n);
+                let dir = e.d.save_dir.clone();
+                if relocate(&mut st, id, &dir, &n) {
+                    if let Some(e) = st.entries.get_mut(id) {
+                        e.d.auto_name = false;
+                    }
                 }
             }
         }
@@ -750,9 +981,7 @@ impl Manager {
 
     fn emit_queues(&self) {
         let qs = self.queues();
-        for q in &qs {
-            self.inner.store.save_queue(q);
-        }
+        self.inner.store.save_queues(&qs);
         self.emit(Event::QueuesChanged(qs));
     }
 
@@ -768,6 +997,10 @@ impl Manager {
         self.emit_queues();
     }
 
+    /// Create or update a queue. `order` may be omitted (or null) to keep
+    /// the current order; a supplied order reorders the queue and may add
+    /// downloads to it, but never drops members: downloads of this queue
+    /// that the order leaves out are appended, unknown ids are ignored.
     pub fn save_queue(&self, mut q: Queue) -> Queue {
         if q.id.is_empty() {
             q.id = uuid::Uuid::new_v4().to_string();
@@ -776,10 +1009,33 @@ impl Manager {
         if q.days.len() != 7 {
             q.days = vec![true; 7];
         }
-        {
+        let members = {
             let mut st = self.inner.state.lock();
-            let known: HashSet<String> = st.entries.keys().cloned().collect();
-            q.order.retain(|id| known.contains(id));
+            let supplied = std::mem::take(&mut q.order);
+            let current = st.queues.iter().find(|x| x.id == q.id).map(|x| x.order.clone()).unwrap_or_default();
+            let mut seen = HashSet::new();
+            let mut order = vec![];
+            let in_this_queue = |st: &State, id: &String| st.entries.get(id).is_some_and(|e| e.d.queue_id.as_deref() == Some(q.id.as_str()));
+            for id in supplied {
+                if st.entries.contains_key(&id) && seen.insert(id.clone()) {
+                    order.push(id);
+                }
+            }
+            for id in current {
+                if in_this_queue(&st, &id) && seen.insert(id.clone()) {
+                    order.push(id);
+                }
+            }
+            for id in st.order.clone() {
+                if in_this_queue(&st, &id) && seen.insert(id.clone()) {
+                    order.push(id);
+                }
+            }
+            q.order = order;
+            // downloads named in the order join this queue (and leave others)
+            for other in st.queues.iter_mut().filter(|x| x.id != q.id) {
+                other.order.retain(|x| !seen.contains(x));
+            }
             match st.queues.iter_mut().find(|x| x.id == q.id) {
                 Some(existing) => {
                     q.builtin = existing.builtin;
@@ -788,17 +1044,18 @@ impl Manager {
                 }
                 None => st.queues.push(q.clone()),
             }
-            // queue membership follows the order list
-            let members: HashSet<String> = q.order.iter().cloned().collect();
-            for id in &members {
+            for id in &q.order {
                 if let Some(e) = st.entries.get_mut(id) {
                     e.d.queue_id = Some(q.id.clone());
                 }
             }
-        }
-        self.inner.store.save_queue(&q);
-        for id in &q.order {
-            self.changed(id);
+            q.order.clone()
+        };
+        self.persist(&members);
+        for id in &members {
+            if let Some(d) = self.get(id) {
+                self.emit(Event::Changed(d));
+            }
         }
         self.emit_queues();
         self.pump();
@@ -877,6 +1134,9 @@ impl Manager {
     }
 
     pub fn start_queue(&self, id: &str) {
+        if self.is_shutting_down() {
+            return;
+        }
         let members: Vec<String> = {
             let mut st = self.inner.state.lock();
             let Some(q) = st.queues.iter_mut().find(|q| q.id == id) else { return };
@@ -890,6 +1150,7 @@ impl Manager {
                         e.d.status = Status::Queued;
                         e.d.manual = false;
                         e.d.retries_used = 0;
+                        e.d.restarts = 0;
                         changed.push(did.clone());
                     }
                 }
@@ -934,6 +1195,9 @@ impl Manager {
 
     /// Start whatever may run now (simultaneous limit + running queues).
     pub fn pump(&self) {
+        if self.is_shutting_down() {
+            return;
+        }
         let to_start: Vec<String> = {
             let mut st = self.inner.state.lock();
             let max_manual = st.settings.max_simultaneous.max(1) as usize;
@@ -945,7 +1209,7 @@ impl Manager {
                     break;
                 }
                 if let Some(e) = st.entries.get(&id) {
-                    if e.d.status == Status::Queued && e.d.manual && e.rt.is_none() {
+                    if e.d.status == Status::Queued && e.d.manual && e.rt.is_none() && !e.busy {
                         start.push(id.clone());
                         free -= 1;
                     }
@@ -972,7 +1236,7 @@ impl Manager {
                         continue;
                     }
                     pending += 1;
-                    if free > 0 && !start.contains(id) {
+                    if free > 0 && !e.busy && !start.contains(id) {
                         if e.d.status == Status::Error {
                             e.d.retries_used += 1;
                         }
@@ -1010,18 +1274,22 @@ impl Manager {
     }
 
     fn launch(&self, id: &str) {
+        if self.is_shutting_down() {
+            return;
+        }
         let s = self.settings();
         let rt = {
             let mut st = self.inner.state.lock();
             let Some(e) = st.entries.get_mut(id) else { return };
-            if e.rt.is_some() {
+            if e.rt.is_some() || e.busy {
                 return;
             }
-            let rt = Runtime::new(
+            let rt = Runtime::with_gen(
                 e.d.segments.clone(),
                 e.d.total_bytes,
                 e.d.resumable,
                 per_limit(&e.d, &s),
+                e.gen,
             );
             e.rt = Some(rt.clone());
             e.d.status = Status::Connecting;
@@ -1032,22 +1300,54 @@ impl Manager {
         };
         self.changed(id);
         let m = self.clone();
-        let id = id.to_string();
-        tokio::spawn(async move { m.drive(id, rt).await });
+        let id2 = id.to_string();
+        let rt2 = rt.clone();
+        let spawned = self.spawn(async move {
+            let _guard = DetachGuard(rt2.clone());
+            m.drive(id2, rt2).await;
+        });
+        if !spawned {
+            {
+                let mut st = self.inner.state.lock();
+                if let Some(e) = st.entries.get_mut(id) {
+                    if e.owns(&rt) {
+                        e.rt = None;
+                        e.d.status = Status::Error;
+                        e.d.error = Some("download engine is not running".into());
+                    }
+                }
+            }
+            rt.mark_detached();
+            self.changed(id);
+        }
     }
 
     async fn drive(&self, id: String, rt: Arc<Runtime>) {
         let s = self.settings();
-        let Some(d) = self.get(&id) else { return };
-        let client = self.client();
-        let headers = client::headers_for(&d, &s);
+        let Some(mut d) = self.get(&id) else { return };
+        let clients = self.clients();
 
-        // probe on first start (size, ranges, server-provided name)
-        let mut d = d;
-        if d.received_bytes == 0 && (d.total_bytes.is_none() || d.final_url.is_none()) {
+        // an earlier completion was interrupted after the file was moved
+        // into place: only verification and bookkeeping are left
+        if let Some(total) = d.total_bytes {
+            let all_done = !d.segments.is_empty()
+                && d.segments.iter().all(|v| v.end != UNKNOWN && v.start.saturating_add(v.received) >= v.end);
+            let fp = d.final_path();
+            if all_done
+                && !util::part_path(&fp).exists()
+                && std::fs::metadata(&fp).map(|m| m.len() == total).unwrap_or(false)
+            {
+                self.complete(&id, &rt, total, None).await;
+                return;
+            }
+        }
+
+        // probe when the size or the direct link are unknown
+        if d.final_url.is_none() || d.total_bytes.is_none() {
+            let hs = HeaderSet::for_download(&d, &s);
             let probed = tokio::select! {
                 _ = rt.cancel.cancelled() => None,
-                p = client::probe(&client, &d.url, headers.clone(), &s.categories) => Some(p),
+                p = client::probe_with(&clients.probe, &d.url, &hs, &s.categories) => Some(p),
             };
             match probed {
                 None => {
@@ -1059,36 +1359,67 @@ impl Manager {
                     return;
                 }
                 Some(Ok(p)) => {
-                    {
+                    let applied = {
                         let mut st = self.inner.state.lock();
-                        if let Some(e) = st.entries.get_mut(&id) {
-                            e.d.total_bytes = p.total_bytes;
-                            e.d.resumable = p.resumable;
-                            e.d.final_url = Some(p.final_url.clone());
-                            e.d.mime = p.mime.clone();
-                            e.d.protocol = Some(p.protocol.clone());
-                            e.d.etag = p.etag.clone();
-                            e.d.last_modified = p.last_modified.clone();
-                            if e.d.auto_name && p.file_name != e.d.file_name {
-                                let cat = util::category_for(&p.file_name, &s.categories);
-                                if e.d.category == "general" {
-                                    e.d.category = cat;
-                                    if e.d.auto_dir {
-                                        e.d.save_dir = category_folder(&s, &e.d.category);
+                        let rename = match st.entries.get_mut(&id) {
+                            Some(e) if e.current(&rt) => {
+                                // progress from an earlier run is useless if the file changed
+                                let had_data = e.d.received_bytes > 0;
+                                let changed_file = had_data
+                                    && (matches!((e.d.total_bytes, p.total_bytes), (Some(a), Some(b)) if a != b)
+                                        || matches!((&e.d.etag, &p.etag), (Some(a), Some(b)) if strip_weak(a) != strip_weak(b)));
+                                if changed_file {
+                                    tracing::info!("{id}: file changed on server since the last run; starting over");
+                                    e.d.segments.clear();
+                                    e.d.received_bytes = 0;
+                                    rt.segs.lock().clear();
+                                }
+                                e.d.total_bytes = p.total_bytes;
+                                e.d.resumable = p.resumable;
+                                e.d.final_url = Some(p.final_url.clone());
+                                e.d.mime = p.mime.clone();
+                                e.d.protocol = Some(p.protocol.clone());
+                                e.d.etag = p.etag.clone();
+                                e.d.last_modified = p.last_modified.clone();
+                                rt.total.store(p.total_bytes.unwrap_or(UNKNOWN), Ordering::SeqCst);
+                                rt.resumable.store(p.resumable, Ordering::SeqCst);
+                                let mut rename = None;
+                                if e.d.received_bytes == 0 && e.d.adopted.is_none() {
+                                    if e.d.auto_name && p.file_name != e.d.file_name {
+                                        let cat = util::category_for(&p.file_name, &s.categories);
+                                        if e.d.category == "general" {
+                                            e.d.category = cat;
+                                        }
+                                        let dir = if e.d.auto_dir {
+                                            category_folder(&s, &e.d.category)
+                                        } else {
+                                            e.d.save_dir.clone()
+                                        };
+                                        rename = Some((dir, p.file_name.clone()));
                                     }
+                                    e.d.auto_name = false;
                                 }
-                                let dir = PathBuf::from(&e.d.save_dir);
-                                let np = util::unique_path(&dir, &p.file_name);
-                                if let Some(n) = np.file_name() {
-                                    e.d.file_name = n.to_string_lossy().into_owned();
-                                    e.d.ext = util::badge_ext(&e.d.file_name);
-                                }
-                                e.d.auto_name = false;
+                                Some(rename)
                             }
-                            rt.total.store(p.total_bytes.unwrap_or(UNKNOWN), Ordering::SeqCst);
-                            rt.resumable.store(p.resumable, Ordering::SeqCst);
-                            d = e.d.clone();
+                            _ => None,
+                        };
+                        match rename {
+                            Some(r) => {
+                                if let Some((dir, name)) = r {
+                                    // the server's name is reserved like any other
+                                    relocate(&mut st, &id, &dir, &name);
+                                }
+                                if let Some(e) = st.entries.get(&id) {
+                                    d = e.d.clone();
+                                }
+                                true
+                            }
+                            None => false,
                         }
+                    };
+                    if !applied {
+                        self.finish_run(&id, &rt, None);
+                        return;
                     }
                     self.changed(&id);
                 }
@@ -1096,10 +1427,12 @@ impl Manager {
         }
 
         let part = util::part_path(&d.final_path());
+        let url = d.final_url.clone().unwrap_or_else(|| d.url.clone());
+        let via_final = url != d.url;
         let ctx = Arc::new(TaskCtx {
-            client,
-            url: d.final_url.clone().unwrap_or_else(|| d.url.clone()),
-            headers,
+            client: clients.segment,
+            url,
+            headers: HeaderSet::for_download(&d, &s),
             part: part.clone(),
             max_conn: d.max_connections.max(1),
             min_segment: s.min_segment_kb.max(64) * 1024,
@@ -1112,44 +1445,98 @@ impl Manager {
         });
 
         match task::run(ctx).await {
-            Ok(out) => self.complete(&id, &rt, out.total, &part).await,
+            Ok(out) => self.complete(&id, &rt, out.total, Some(part)).await,
             Err(TaskError::Cancelled) => self.finish_run(&id, &rt, None),
-            Err(TaskError::Restart { resumable, reason }) => {
-                let again = {
-                    let mut st = self.inner.state.lock();
-                    match st.entries.get_mut(&id) {
-                        Some(e) if e.rt.as_ref().map(|r| Arc::ptr_eq(r, &rt)).unwrap_or(false) => {
-                            e.d.restarts += 1;
-                            e.d.resumable = resumable;
-                            e.d.segments.clear();
-                            e.d.received_bytes = 0;
-                            if !resumable {
-                                e.d.etag = None;
-                                e.d.last_modified = None;
-                            }
-                            e.rt = None;
-                            if e.d.restarts <= 2 {
-                                e.d.status = Status::Queued;
-                                true
-                            } else {
-                                e.d.status = Status::Error;
-                                e.d.error = Some(reason.clone());
-                                false
-                            }
-                        }
-                        _ => false,
-                    }
-                };
-                let _ = std::fs::remove_file(&part);
-                tracing::warn!("restarting {id}: {reason}");
+            Err(TaskError::Restart { resumable, reason }) => self.restart(&id, &rt, resumable, &reason, &part),
+            Err(TaskError::Http(code)) if via_final && matches!(code, 401 | 403 | 404 | 410) && self.fall_back(&id, &rt) => {
+                tracing::info!("{id}: direct link answered HTTP {code}; trying the original URL");
                 self.changed(&id);
-                if again {
-                    self.launch(&id);
-                } else {
-                    self.pump();
-                }
+                self.launch(&id);
             }
+            Err(TaskError::Http(code)) => self.fail(&id, &rt, client::status_message(code)),
             Err(TaskError::Fatal(msg)) => self.fail(&id, &rt, msg),
+        }
+    }
+
+    /// The direct link stopped working: forget it so the next run probes the
+    /// original URL again (once per session). Returns true to relaunch.
+    fn fall_back(&self, id: &str, rt: &Arc<Runtime>) -> bool {
+        let mut st = self.inner.state.lock();
+        let Some(e) = st.entries.get_mut(id) else { return false };
+        if !e.current(rt) || e.fell_back || rt.cancel.is_cancelled() {
+            return false;
+        }
+        e.fell_back = true;
+        e.d.final_url = None;
+        e.d.segments = rt.views();
+        e.d.received_bytes = rt.received();
+        e.rt = None;
+        e.ema = 0.0;
+        e.d.status = Status::Queued;
+        true
+    }
+
+    /// The task asked to start over (file changed, or ranges unusable).
+    fn restart(&self, id: &str, rt: &Arc<Runtime>, resumable: bool, reason: &str, part: &Path) {
+        let mut failed = false;
+        let again = {
+            let mut st = self.inner.state.lock();
+            match st.entries.get_mut(id) {
+                Some(e) if e.owns(rt) => {
+                    e.rt = None;
+                    e.ema = 0.0;
+                    if e.gen != rt.gen {
+                        false
+                    } else {
+                        e.d.restarts += 1;
+                        e.d.segments.clear();
+                        e.d.received_bytes = 0;
+                        e.d.etag = None;
+                        e.d.last_modified = None;
+                        if resumable {
+                            // the file changed: learn its new size and validators
+                            e.d.total_bytes = None;
+                            e.d.final_url = None;
+                        } else {
+                            e.d.resumable = false;
+                        }
+                        // the old bytes are of no use (this run's writers have stopped)
+                        if let Ok(f) = std::fs::OpenOptions::new().write(true).open(part) {
+                            let _ = f.set_len(0);
+                        }
+                        e.d.adopted = None;
+                        if rt.cancel.is_cancelled() {
+                            // paused / stopped meanwhile: keep the user's choice
+                            if e.d.status.is_active() {
+                                e.d.status = Status::Paused;
+                            }
+                            false
+                        } else if e.d.restarts <= MAX_RESTARTS {
+                            e.d.status = Status::Queued;
+                            true
+                        } else {
+                            e.d.status = Status::Error;
+                            e.d.error = Some(util::redact_urls(reason));
+                            e.d.manual = false;
+                            failed = true;
+                            false
+                        }
+                    }
+                }
+                _ => false,
+            }
+        };
+        tracing::warn!("restarting {id}: {}", util::redact_urls(reason));
+        self.changed(id);
+        if failed {
+            if let Some(d) = self.get(id) {
+                self.emit(Event::Failed(d));
+            }
+        }
+        if again {
+            self.launch(id);
+        } else {
+            self.pump();
         }
     }
 
@@ -1158,25 +1545,28 @@ impl Manager {
         {
             let mut st = self.inner.state.lock();
             if let Some(e) = st.entries.get_mut(id) {
-                if e.rt.as_ref().map(|r| Arc::ptr_eq(r, rt)).unwrap_or(false) {
-                    e.d.segments = rt.views();
-                    e.d.received_bytes = rt.received();
-                    let t = rt.total.load(Ordering::SeqCst);
-                    if t != UNKNOWN {
-                        e.d.total_bytes = Some(t);
-                    }
-                    e.d.resumable = rt.resumable.load(Ordering::SeqCst);
+                if e.owns(rt) {
                     e.rt = None;
                     e.ema = 0.0;
-                    if let Some(s) = status {
-                        e.d.status = s;
-                    } else if e.d.status.is_active() {
-                        e.d.status = Status::Paused;
-                    }
-                    for sv in e.d.segments.iter_mut() {
-                        sv.speed_bps = 0;
-                        if sv.state != SegState::Done {
-                            sv.state = SegState::Idle;
+                    if e.gen == rt.gen {
+                        // writers have stopped and synced: `written` is on disk
+                        e.d.segments = rt.views();
+                        e.d.received_bytes = rt.received();
+                        let t = rt.total.load(Ordering::SeqCst);
+                        if t != UNKNOWN {
+                            e.d.total_bytes = Some(t);
+                        }
+                        e.d.resumable = rt.resumable.load(Ordering::SeqCst);
+                        if let Some(s) = status {
+                            e.d.status = s;
+                        } else if e.d.status.is_active() {
+                            e.d.status = Status::Paused;
+                        }
+                        for sv in e.d.segments.iter_mut() {
+                            sv.speed_bps = 0;
+                            if sv.state != SegState::Done {
+                                sv.state = SegState::Idle;
+                            }
                         }
                     }
                 }
@@ -1187,10 +1577,11 @@ impl Manager {
     }
 
     fn fail(&self, id: &str, rt: &Arc<Runtime>, msg: String) {
+        let msg = util::redact_urls(&msg);
         {
             let mut st = self.inner.state.lock();
             if let Some(e) = st.entries.get_mut(id) {
-                if e.rt.as_ref().map(|r| Arc::ptr_eq(r, rt)).unwrap_or(false) {
+                if e.current(rt) {
                     e.d.error = Some(msg);
                     e.d.manual = false;
                 }
@@ -1204,31 +1595,78 @@ impl Manager {
         }
     }
 
-    async fn complete(&self, id: &str, rt: &Arc<Runtime>, total: u64, part: &Path) {
+    /// Move the finished part file into place, verify it and mark the
+    /// download complete. `part` is None when the file was already moved by
+    /// an interrupted earlier completion.
+    async fn complete(&self, id: &str, rt: &Arc<Runtime>, total: u64, part: Option<PathBuf>) {
         rt.phase.store(2, Ordering::SeqCst);
-        let (final_path, checksum, policy) = {
+        let info = {
             let mut st = self.inner.state.lock();
-            let Some(e) = st.entries.get_mut(id) else { return };
-            e.d.status = Status::Assembling;
-            (e.d.final_path(), e.d.checksum.clone(), e.d.on_exists.clone())
+            match st.entries.get_mut(id) {
+                Some(e) if e.current(rt) => {
+                    e.d.status = Status::Assembling;
+                    Some((
+                        e.d.final_path(),
+                        e.d.checksum.clone(),
+                        e.d.on_exists.clone(),
+                        // the file at the final path is our own earlier, corrupt result
+                        e.d.checksum_ok == Some(false),
+                        e.d.url.clone(),
+                        e.d.referrer.clone(),
+                    ))
+                }
+                _ => None,
+            }
+        };
+        let Some((final_path, checksum, policy, prior_bad, url, referrer)) = info else {
+            self.finish_run(id, rt, None);
+            return;
         };
         self.changed(id);
 
-        // place the file
-        let mut dest = final_path.clone();
-        if dest.exists() {
-            if policy.as_deref() == Some("overwrite") || policy.as_deref() == Some("resume") {
-                let _ = std::fs::remove_file(&dest);
-            } else {
-                let dir = dest.parent().map(Path::to_path_buf).unwrap_or_default();
-                let name = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                dest = util::unique_path(&dir, &name);
+        let dest = match part {
+            Some(part) => {
+                let mut dest = final_path.clone();
+                if dest.exists() {
+                    let replace = prior_bad || matches!(policy.as_deref(), Some("overwrite") | Some("resume"));
+                    if replace {
+                        if let Err(e) = std::fs::remove_file(&dest) {
+                            self.fail(id, rt, format!("could not replace {}: {e}", dest.display()));
+                            return;
+                        }
+                    } else {
+                        let dir = dest.parent().map(Path::to_path_buf).unwrap_or_default();
+                        let name = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                        let st = self.inner.state.lock();
+                        dest = dir.join(reserve_name(&st, &dir, &name, Some(id), false, false));
+                    }
+                }
+                if let Err(e) = std::fs::rename(&part, &dest) {
+                    self.fail(id, rt, format!("could not move finished file into place: {e}"));
+                    return;
+                }
+                *rt.placed.lock() = Some(dest.clone());
+                // record the move at once: if we're interrupted from here on,
+                // the next start only re-verifies
+                {
+                    let mut st = self.inner.state.lock();
+                    if let Some(e) = st.entries.get_mut(id) {
+                        if e.current(rt) {
+                            if let Some(n) = dest.file_name() {
+                                e.d.file_name = n.to_string_lossy().into_owned();
+                                e.d.ext = util::badge_ext(&e.d.file_name);
+                            }
+                            e.d.total_bytes = Some(total);
+                            e.d.received_bytes = total;
+                            e.d.segments = done_segments(rt, total);
+                        }
+                    }
+                }
+                self.changed(id);
+                dest
             }
-        }
-        if let Err(e) = std::fs::rename(part, &dest) {
-            self.fail(id, rt, format!("could not move finished file into place: {e}"));
-            return;
-        }
+            None => final_path,
+        };
 
         let mut checksum_ok = None;
         if let Some(c) = checksum {
@@ -1237,33 +1675,48 @@ impl Manager {
             let got = tokio::task::spawn_blocking(move || util::hash_file(&p, &algo)).await;
             checksum_ok = Some(matches!(got, Ok(Ok(ref h)) if h.eq_ignore_ascii_case(c.expected.trim())));
         }
+        // before anyone can open it
+        util::mark_downloaded(&dest, &url, referrer.as_deref());
 
-        let (completed, queue_id) = {
+        let outcome = {
             let mut st = self.inner.state.lock();
-            let Some(e) = st.entries.get_mut(id) else { return };
-            e.d.file_name = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(e.d.file_name.clone());
-            e.d.ext = util::badge_ext(&e.d.file_name);
-            e.d.total_bytes = Some(total);
-            e.d.received_bytes = total;
-            e.d.segments = rt.views();
-            for s in e.d.segments.iter_mut() {
-                s.state = SegState::Done;
-                s.speed_bps = 0;
+            match st.entries.get_mut(id) {
+                Some(e) if e.current(rt) => {
+                    e.d.file_name = dest.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or(e.d.file_name.clone());
+                    e.d.ext = util::badge_ext(&e.d.file_name);
+                    e.d.total_bytes = Some(total);
+                    e.d.checksum_ok = checksum_ok;
+                    e.rt = None;
+                    e.ema = 0.0;
+                    e.fell_back = false;
+                    if checksum_ok == Some(false) {
+                        e.d.status = Status::Error;
+                        e.d.error = Some("checksum mismatch — the file may be corrupt".into());
+                        // the corrupt file stays for inspection; a retry
+                        // downloads everything again
+                        e.d.segments.clear();
+                        e.d.received_bytes = 0;
+                        e.d.final_url = None;
+                        e.d.etag = None;
+                        e.d.last_modified = None;
+                    } else {
+                        e.d.received_bytes = total;
+                        e.d.segments = done_segments(rt, total);
+                        e.d.completed_at = Some(now_iso());
+                        e.d.status = Status::Complete;
+                        e.d.error = None;
+                    }
+                    let q = e.d.queue_id.clone().filter(|_| !e.d.manual);
+                    e.d.manual = false;
+                    Some((e.d.status == Status::Complete, q))
+                }
+                _ => None,
             }
-            e.d.completed_at = Some(now_iso());
-            e.d.checksum_ok = checksum_ok;
-            e.rt = None;
-            e.ema = 0.0;
-            if checksum_ok == Some(false) {
-                e.d.status = Status::Error;
-                e.d.error = Some("checksum mismatch — the file may be corrupt".into());
-            } else {
-                e.d.status = Status::Complete;
-                e.d.error = None;
-            }
-            let q = e.d.queue_id.clone().filter(|_| !e.d.manual);
-            e.d.manual = false;
-            (e.d.status == Status::Complete, q)
+        };
+        let Some((completed, queue_id)) = outcome else {
+            // deleted or reset while verifying; whoever did that handles the files
+            self.finish_run(id, rt, None);
+            return;
         };
         if let Some(q) = queue_id {
             *self.inner.state.lock().queue_completed.entry(q).or_insert(0) += 1;
@@ -1287,10 +1740,13 @@ impl Manager {
         let mut n: u64 = 0;
         let alpha = 1.0 - (-0.25f64).exp(); // 1 s EMA at 4 Hz
         loop {
-            iv.tick().await;
+            tokio::select! {
+                _ = self.inner.bg.cancelled() => return,
+                _ = iv.tick() => {}
+            }
             n += 1;
-            let second = n % 4 == 0;
-            let persist = n % 8 == 0;
+            let second = n.is_multiple_of(4);
+            let persist = n.is_multiple_of(8);
             let mut batch = vec![];
             let mut status_changes = vec![];
             let mut to_save = vec![];
@@ -1341,9 +1797,7 @@ impl Manager {
                         status: e.d.status,
                     });
                     if persist {
-                        e.d.segments = rt.views();
-                        e.d.received_bytes = received;
-                        to_save.push(e.d.clone());
+                        to_save.push(e.d.id.clone());
                     }
                 }
             }
@@ -1353,8 +1807,9 @@ impl Manager {
             if !batch.is_empty() {
                 self.emit(Event::Progress(batch));
             }
-            for d in to_save {
-                self.inner.store.save_download(&d);
+            // snapshots are taken inside persist(), never stale
+            if !to_save.is_empty() {
+                self.persist(&to_save);
             }
             if second {
                 self.emit(Event::Totals(self.totals()));
@@ -1399,13 +1854,19 @@ impl Manager {
     async fn scheduler(&self) {
         let mut iv = tokio::time::interval(Duration::from_secs(5));
         loop {
-            iv.tick().await;
+            tokio::select! {
+                _ = self.inner.bg.cancelled() => return,
+                _ = iv.tick() => {}
+            }
             self.scheduler_tick(Local::now().naive_local());
         }
     }
 
     /// One scheduler pass at local time `now` (public for tests).
     pub fn scheduler_tick(&self, now: chrono::NaiveDateTime) {
+        if self.is_shutting_down() {
+            return;
+        }
         let hm = format!("{:02}:{:02}", now.hour(), now.minute());
         let wd = now.weekday().num_days_from_monday() as usize;
         let date = now.date().to_string();
@@ -1445,28 +1906,36 @@ impl Manager {
         }
     }
 
-    /// Persist everything (call on exit).
-    pub fn shutdown(&self) {
-        let rts: Vec<(String, Arc<Runtime>)> = {
-            let st = self.inner.state.lock();
-            st.entries
-                .values()
-                .filter_map(|e| e.rt.clone().map(|r| (e.d.id.clone(), r)))
-                .collect()
-        };
-        for (_, rt) in &rts {
+    /// Stop starting things and ask every running download to stop.
+    fn begin_shutdown(&self) {
+        self.inner.shutting_down.store(true, Ordering::SeqCst);
+        self.inner.bg.cancel();
+        let rts: Vec<Arc<Runtime>> = self.inner.state.lock().entries.values().filter_map(|e| e.rt.clone()).collect();
+        for rt in rts {
             rt.cancel.cancel();
         }
-        let st = self.inner.state.lock();
-        for e in st.entries.values() {
-            let mut d = e.d.clone();
-            if let Some(rt) = &e.rt {
-                d.segments = rt.views();
-                d.received_bytes = rt.received();
-                d.status = Status::Paused;
-            }
-            self.inner.store.save_download(&d);
+    }
+
+    /// Best-effort synchronous shutdown: stop everything and persist what
+    /// is known to be on disk. Prefer [`shutdown_wait`](Self::shutdown_wait).
+    pub fn shutdown(&self) {
+        self.begin_shutdown();
+        self.persist_all();
+        self.inner.store.checkpoint();
+    }
+
+    /// Orderly shutdown: stop the scheduler and every download, wait (up to
+    /// `timeout`) for writers to flush and sync and for in-progress
+    /// completions to finish, then persist everything and checkpoint the
+    /// database. Nothing starts afterwards.
+    pub async fn shutdown_wait(&self, timeout: Duration) {
+        self.begin_shutdown();
+        self.inner.tracker.close();
+        if tokio::time::timeout(timeout, self.inner.tracker.wait()).await.is_err() {
+            tracing::warn!("shutdown: some downloads did not stop within {timeout:?}");
         }
+        self.persist_all();
+        self.inner.store.checkpoint();
     }
 
     /// Stop all downloads, wait (up to `timeout`) for their writers to
@@ -1480,6 +1949,199 @@ impl Manager {
 
     pub fn grab_client(&self) -> (reqwest::Client, Settings) {
         (self.client(), self.settings())
+    }
+}
+
+/// Segment views of a finished run, all marked done.
+fn done_segments(rt: &Runtime, total: u64) -> Vec<SegmentView> {
+    let mut v = rt.views();
+    if v.is_empty() {
+        v.push(SegmentView { start: 0, end: total, received: total, state: SegState::Done, speed_bps: 0 });
+    }
+    for s in v.iter_mut() {
+        s.state = SegState::Done;
+        s.speed_bps = 0;
+    }
+    v
+}
+
+fn strip_weak(etag: &str) -> &str {
+    let e = etag.trim();
+    e.strip_prefix("W/").unwrap_or(e)
+}
+
+/// Comparable form of a path (case-insensitive where the usual file
+/// systems are).
+fn path_key(p: &Path) -> String {
+    let s = p.to_string_lossy();
+    if cfg!(any(windows, target_os = "macos")) {
+        s.to_lowercase()
+    } else {
+        s.into_owned()
+    }
+}
+
+/// Is `final_path` (or its part file) used by a download other than
+/// `except`? `ignore_complete`: finished downloads don't count.
+fn claimed(st: &State, final_path: &Path, except: Option<&str>, ignore_complete: bool) -> bool {
+    let k_final = path_key(final_path);
+    let k_part = path_key(&util::part_path(final_path));
+    st.entries.values().any(|e| {
+        if Some(e.d.id.as_str()) == except || (ignore_complete && e.d.status == Status::Complete) {
+            return false;
+        }
+        let f = e.d.final_path();
+        let kf = path_key(&f);
+        kf == k_final || kf == k_part || path_key(&util::part_path(&f)) == k_final
+    })
+}
+
+fn split_name(name: &str) -> (&str, &str) {
+    match name.rfind('.') {
+        Some(i) if i > 0 => (&name[..i], &name[i..]),
+        _ => (name, ""),
+    }
+}
+
+/// Pick `name`, or `name (1)`, `name (2)`, ... in `dir`: the first that no
+/// other download uses and that doesn't exist on disk. With `create_part`
+/// its empty `.odmpart` is created (`create_new`) so the name stays taken.
+/// `overwrite`: `name` itself may replace an existing finished file.
+/// Call with the state lock held.
+fn reserve_name(st: &State, dir: &Path, name: &str, except: Option<&str>, overwrite: bool, create_part: bool) -> String {
+    if create_part {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let (stem, ext) = split_name(name);
+    // the name `except` holds already is free for it (unless a finished file sits there)
+    let own = except.and_then(|id| st.entries.get(id)).map(|e| path_key(&e.d.final_path()));
+    for n in 0..10_000u32 {
+        let cand = if n == 0 { name.to_string() } else { format!("{stem} ({n}){ext}") };
+        let fp = dir.join(&cand);
+        if own.as_deref() == Some(path_key(&fp).as_str()) && !fp.exists() {
+            let pp = util::part_path(&fp);
+            if create_part && !pp.exists() {
+                let _ = std::fs::OpenOptions::new().write(true).create_new(true).open(&pp);
+            }
+            return cand;
+        }
+        let replace = overwrite && n == 0;
+        if claimed(st, &fp, except, replace) || (fp.exists() && !replace) {
+            continue;
+        }
+        let pp = util::part_path(&fp);
+        if replace && pp.exists() {
+            // leftover of an earlier attempt nobody owns
+            let _ = std::fs::remove_file(&pp);
+        }
+        if !create_part {
+            if pp.exists() {
+                continue;
+            }
+            return cand;
+        }
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&pp) {
+            Ok(_) => return cand,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => {
+                // e.g. the folder isn't writable yet; the run reports it
+                tracing::warn!("cannot reserve {}: {e}", pp.display());
+                return cand;
+            }
+        }
+    }
+    name.to_string()
+}
+
+/// Re-home a download that is not running to `dir`/`name` (or a free
+/// variant of it), carrying its part file along. Returns false (nothing
+/// changed) if the part file could not be moved.
+fn relocate(st: &mut State, id: &str, dir: &str, name: &str) -> bool {
+    let Some(e) = st.entries.get(id) else { return false };
+    let old_final = e.d.final_path();
+    let keep_data = e.d.received_bytes > 0 || e.d.adopted.is_some();
+    let new_dir = PathBuf::from(dir);
+    if path_key(&old_final) == path_key(&new_dir.join(name)) {
+        return true;
+    }
+    let new_name = reserve_name(st, &new_dir, name, Some(id), false, true);
+    let old_part = util::part_path(&old_final);
+    let new_part = util::part_path(&new_dir.join(&new_name));
+    if path_key(&old_part) != path_key(&new_part) && old_part.exists() {
+        let has_bytes = std::fs::metadata(&old_part).map(|m| m.len() > 0).unwrap_or(true);
+        if keep_data || has_bytes {
+            if let Err(err) = std::fs::rename(&old_part, &new_part) {
+                tracing::warn!("cannot move {} to {}: {err}", old_part.display(), new_part.display());
+                let _ = std::fs::remove_file(&new_part);
+                return false;
+            }
+        } else {
+            // our own empty placeholder
+            let _ = std::fs::remove_file(&old_part);
+        }
+    }
+    if let Some(e) = st.entries.get_mut(id) {
+        e.d.save_dir = dir.to_string();
+        e.d.ext = util::badge_ext(&new_name);
+        e.d.file_name = new_name;
+    }
+    true
+}
+
+/// File clean-up after a download was removed from the list.
+#[derive(Clone)]
+struct Cleanup {
+    final_path: PathBuf,
+    adopted: Option<String>,
+    complete: bool,
+    delete_files: bool,
+}
+
+impl Cleanup {
+    /// One pass; true if nothing is left to do.
+    fn attempt(&self, placed: Option<&Path>) -> bool {
+        let mut ok = true;
+        let mut remove = |p: &Path| {
+            if let Err(e) = std::fs::remove_file(p) {
+                if e.kind() != std::io::ErrorKind::NotFound {
+                    tracing::debug!("cannot remove {}: {e}", p.display());
+                    ok = false;
+                }
+            }
+        };
+        let part = util::part_path(&self.final_path);
+        match self.adopted.as_deref() {
+            // the user's own file was taken over: give it back
+            Some("file") => {
+                if part.exists() && !self.final_path.exists() {
+                    let _ = std::fs::rename(&part, &self.final_path);
+                }
+            }
+            // a part file the engine didn't create stays
+            Some(_) => {}
+            None => remove(&part),
+        }
+        if self.delete_files {
+            if self.complete {
+                remove(&self.final_path);
+            }
+            if let Some(p) = placed {
+                remove(p);
+            }
+        }
+        ok
+    }
+
+    /// Retry for a while (files may still be held open, e.g. by a virus
+    /// scanner on Windows).
+    async fn run(self, placed: Option<PathBuf>) {
+        for _ in 0..20 {
+            if self.attempt(placed.as_deref()) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(250)).await;
+        }
+        tracing::warn!("could not remove all files of {}", self.final_path.display());
     }
 }
 

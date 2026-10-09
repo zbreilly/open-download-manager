@@ -1,21 +1,24 @@
-//! HTTP client construction (proxy, TLS, timeouts) and request headers.
+//! HTTP client construction (proxy, TLS, timeouts), request headers and
+//! redirect handling.
 
 use crate::model::{Download, Settings};
 use crate::util;
 use crate::{CoreError, ProbeResult};
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue, LOCATION};
 use std::time::Duration;
+
+/// Most redirects followed for one request.
+pub const MAX_REDIRECTS: usize = 15;
 
 pub fn install_crypto() {
     let _ = rustls::crypto::ring::default_provider().install_default();
 }
 
-pub fn build_client(s: &Settings) -> Result<reqwest::Client, CoreError> {
+fn base_builder(s: &Settings) -> Result<reqwest::ClientBuilder, CoreError> {
     install_crypto();
     let mut b = reqwest::Client::builder()
         .connect_timeout(Duration::from_secs(s.timeout_secs.max(5)))
         .read_timeout(Duration::from_secs(s.timeout_secs.max(5)))
-        .redirect(reqwest::redirect::Policy::limited(15))
         .pool_max_idle_per_host(32)
         .tcp_nodelay(true);
     if !s.verify_tls {
@@ -34,7 +37,37 @@ pub fn build_client(s: &Settings) -> Result<reqwest::Client, CoreError> {
         }
         _ => {} // "system": reqwest reads the OS / environment proxy config
     }
+    Ok(b)
+}
+
+fn finish(b: reqwest::ClientBuilder) -> Result<reqwest::Client, CoreError> {
     b.build().map_err(|e| CoreError::Other(format!("http client: {e}")))
+}
+
+/// General-purpose client (follows redirects itself; used by the grabber).
+pub fn build_client(s: &Settings) -> Result<reqwest::Client, CoreError> {
+    finish(base_builder(s)?.redirect(reqwest::redirect::Policy::limited(MAX_REDIRECTS)))
+}
+
+/// The clients the engine uses.
+#[derive(Clone)]
+pub struct Clients {
+    /// follows redirects automatically (grabber, misc)
+    pub main: reqwest::Client,
+    /// probing: redirects are followed by [`send`], which drops credentials
+    /// when the origin changes
+    pub probe: reqwest::Client,
+    /// segment transfers: HTTP/1.1 only, so every connection is a real TCP
+    /// connection (HTTP/2 would multiplex all segments over one)
+    pub segment: reqwest::Client,
+}
+
+pub fn build_clients(s: &Settings) -> Result<Clients, CoreError> {
+    Ok(Clients {
+        main: build_client(s)?,
+        probe: finish(base_builder(s)?.redirect(reqwest::redirect::Policy::none()))?,
+        segment: finish(base_builder(s)?.redirect(reqwest::redirect::Policy::none()).http1_only())?,
+    })
 }
 
 /// Headers sent with every request for a download.
@@ -85,6 +118,109 @@ pub fn headers_for(d: &Download, s: &Settings) -> HeaderMap {
     )
 }
 
+/// Request headers split by sensitivity. Cookies, credentials and the
+/// user's custom headers were given for one origin and are only sent there.
+#[derive(Clone, Debug, Default)]
+pub struct HeaderSet {
+    common: HeaderMap,
+    private: HeaderMap,
+    origin: Option<url::Url>,
+}
+
+/// Headers that are safe to send to any host.
+const COMMON_HEADERS: [&str; 4] = ["user-agent", "accept", "accept-encoding", "referer"];
+
+impl HeaderSet {
+    /// `origin`: the URL the headers were provided for.
+    pub fn new(origin: &str, all: HeaderMap) -> Self {
+        let mut common = HeaderMap::new();
+        let mut private = HeaderMap::new();
+        for (k, v) in all.iter() {
+            if COMMON_HEADERS.contains(&k.as_str()) {
+                common.insert(k.clone(), v.clone());
+            } else {
+                private.append(k.clone(), v.clone());
+            }
+        }
+        Self { common, private, origin: url::Url::parse(origin.trim()).ok() }
+    }
+
+    pub fn for_download(d: &Download, s: &Settings) -> Self {
+        Self::new(&d.url, headers_for(d, s))
+    }
+
+    /// Headers for a request to `target`.
+    pub fn for_url(&self, target: &url::Url) -> HeaderMap {
+        let mut h = self.common.clone();
+        if self.origin.as_ref().is_some_and(|o| credentials_allowed(o, target)) {
+            for k in self.private.keys() {
+                h.remove(k);
+            }
+            for (k, v) in self.private.iter() {
+                h.append(k.clone(), v.clone());
+            }
+        }
+        h
+    }
+}
+
+/// May credentials given for `origin` be sent to `target`? Same scheme,
+/// host and port; or an upgrade from http to https on the same host with
+/// default ports. Never across hosts and never from https down to http.
+pub fn credentials_allowed(origin: &url::Url, target: &url::Url) -> bool {
+    if origin.host_str().map(str::to_ascii_lowercase) != target.host_str().map(str::to_ascii_lowercase) {
+        return false;
+    }
+    match (origin.scheme(), target.scheme()) {
+        (a, b) if a == b => origin.port_or_known_default() == target.port_or_known_default(),
+        ("http", "https") => origin.port_or_known_default() == Some(80) && target.port_or_known_default() == Some(443),
+        _ => false,
+    }
+}
+
+/// GET `url`, following redirects (up to [`MAX_REDIRECTS`]) with the
+/// headers each hop is allowed to receive. `extra` headers (Range, If-Range)
+/// go to every hop.
+pub async fn send(
+    client: &reqwest::Client,
+    url: &str,
+    hs: &HeaderSet,
+    extra: &[(&'static str, String)],
+    timeout: Option<Duration>,
+) -> Result<reqwest::Response, CoreError> {
+    let mut cur = url::Url::parse(url.trim()).map_err(|_| CoreError::BadUrl(util::redact_url(url)))?;
+    for _ in 0..=MAX_REDIRECTS {
+        if !matches!(cur.scheme(), "http" | "https") {
+            return Err(CoreError::BadUrl(format!("unsupported scheme: {}", cur.scheme())));
+        }
+        let mut h = hs.for_url(&cur);
+        for (k, v) in extra {
+            if let Ok(v) = HeaderValue::from_str(v) {
+                h.insert(*k, v);
+            }
+        }
+        let mut rb = client.get(cur.clone()).headers(h);
+        if let Some(t) = timeout {
+            rb = rb.timeout(t);
+        }
+        let resp = rb.send().await.map_err(CoreError::from_reqwest)?;
+        let st = resp.status();
+        if st.is_redirection() && st != reqwest::StatusCode::NOT_MODIFIED {
+            let next = resp
+                .headers()
+                .get(LOCATION)
+                .map(|v| util::header_text(v.as_bytes()))
+                .and_then(|loc| cur.join(loc.trim()).ok());
+            if let Some(next) = next {
+                cur = next;
+                continue;
+            }
+        }
+        return Ok(resp);
+    }
+    Err(CoreError::Network("too many redirects".into()))
+}
+
 pub fn b64(data: &[u8]) -> String {
     const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::new();
@@ -124,48 +260,81 @@ pub fn status_message(code: u16) -> String {
         410 => "link expired; use Refresh link",
         416 => "requested range not satisfiable",
         429 => "server is rate-limiting requests",
+        503 => "server is busy",
         500..=599 => "server error",
         _ => "request failed",
     };
     format!("HTTP {code}: {why}")
 }
 
+/// A parsed `Content-Range` header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ContentRange {
+    /// first and last byte (inclusive); None for `bytes */N`
+    pub range: Option<(u64, u64)>,
+    /// complete length; None for `/*`
+    pub total: Option<u64>,
+}
+
+pub fn parse_content_range(v: &str) -> Option<ContentRange> {
+    let rest = v.trim().strip_prefix("bytes")?.trim();
+    let (r, t) = rest.split_once('/')?;
+    let total = match t.trim() {
+        "*" => None,
+        t => Some(t.parse().ok()?),
+    };
+    let range = match r.trim() {
+        "*" => None,
+        r => {
+            let (a, b) = r.split_once('-')?;
+            Some((a.trim().parse().ok()?, b.trim().parse().ok()?))
+        }
+    };
+    Some(ContentRange { range, total })
+}
+
 /// Probe a URL: size, range support, name, type. Uses a 1-byte range GET
-/// (HEAD is unreliable on many CDNs).
+/// (HEAD is unreliable on many CDNs). All headers are treated as belonging
+/// to `url`'s origin.
 pub async fn probe(
     client: &reqwest::Client,
     url: &str,
     headers: HeaderMap,
     cats: &[crate::model::Category],
 ) -> Result<ProbeResult, CoreError> {
-    let parsed = url::Url::parse(url.trim()).map_err(|_| CoreError::BadUrl(url.to_string()))?;
+    probe_with(client, url, &HeaderSet::new(url, headers), cats).await
+}
+
+pub async fn probe_with(
+    client: &reqwest::Client,
+    url: &str,
+    hs: &HeaderSet,
+    cats: &[crate::model::Category],
+) -> Result<ProbeResult, CoreError> {
+    let parsed = url::Url::parse(url.trim()).map_err(|_| CoreError::BadUrl(util::redact_url(url)))?;
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err(CoreError::BadUrl(format!("unsupported scheme: {}", parsed.scheme())));
     }
-    let resp = client
-        .get(parsed.clone())
-        .headers(headers)
-        .header("range", "bytes=0-0")
-        .send()
-        .await
-        .map_err(CoreError::from_reqwest)?;
+    let resp = send(client, parsed.as_str(), hs, &[("range", "bytes=0-0".into())], None).await?;
     let status = resp.status().as_u16();
-    if !(200..300).contains(&status) {
-        return Err(CoreError::Http(status));
-    }
     let h = resp.headers();
-    let get = |k: &str| h.get(k).and_then(|v| v.to_str().ok()).map(|s| s.to_string());
-    let final_url = resp.url().to_string();
-    let (total, resumable) = if status == 206 {
-        let total = get("content-range")
-            .and_then(|cr| cr.rsplit('/').next().map(|t| t.trim().to_string()))
-            .and_then(|t| t.parse::<u64>().ok());
-        (total, total.is_some())
-    } else {
-        (get("content-length").and_then(|v| v.trim().parse().ok()), false)
+    let get = |k: &str| h.get(k).and_then(|v| v.to_str().ok()).map(|s| s.trim().to_string());
+    let content_range = get("content-range").and_then(|cr| parse_content_range(&cr));
+    let (total, resumable) = match status {
+        206 => match content_range {
+            Some(ContentRange { range: Some((0, _)), total: Some(t) }) => (Some(t), true),
+            _ => (None, false),
+        },
+        200..=299 => (get("content-length").and_then(|v| v.parse().ok()), false),
+        // an empty file: no byte 0 to send
+        416 if matches!(content_range, Some(ContentRange { range: None, total: Some(0) })) => (Some(0), false),
+        _ => return Err(CoreError::Http(status)),
     };
+    let final_url = resp.url().to_string();
     let mime = get("content-type").map(|m| m.split(';').next().unwrap_or("").trim().to_string());
-    let mut name = get("content-disposition")
+    let mut name = h
+        .get("content-disposition")
+        .map(|v| util::header_text(v.as_bytes()))
         .and_then(|cd| util::filename_from_disposition(&cd))
         .or_else(|| util::filename_from_url(&final_url))
         .or_else(|| util::filename_from_url(url))
@@ -190,4 +359,45 @@ pub async fn probe(
         etag,
         last_modified,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn u(s: &str) -> url::Url {
+        url::Url::parse(s).unwrap()
+    }
+
+    #[test]
+    fn credential_scope() {
+        assert!(credentials_allowed(&u("https://a.example/x"), &u("https://a.example:443/y")));
+        assert!(credentials_allowed(&u("http://a.example/x"), &u("https://a.example/y")));
+        assert!(!credentials_allowed(&u("https://a.example/x"), &u("http://a.example/y")));
+        assert!(!credentials_allowed(&u("https://a.example/x"), &u("https://cdn.example/y")));
+        assert!(!credentials_allowed(&u("http://127.0.0.1:1000/x"), &u("http://127.0.0.1:1001/y")));
+    }
+
+    #[test]
+    fn header_split() {
+        let all = request_headers("ua", Some("https://ref/"), Some("s=1"), &[("X-Key".into(), "k".into())], Some("u"), Some("p"));
+        let hs = HeaderSet::new("https://a.example/f", all);
+        let same = hs.for_url(&u("https://a.example/g"));
+        assert!(same.contains_key("cookie") && same.contains_key("authorization") && same.contains_key("x-key"));
+        let other = hs.for_url(&u("https://b.example/g"));
+        assert!(!other.contains_key("cookie") && !other.contains_key("authorization") && !other.contains_key("x-key"));
+        assert_eq!(other.get("user-agent").unwrap(), "ua");
+        assert!(other.contains_key("referer"));
+    }
+
+    #[test]
+    fn content_range() {
+        assert_eq!(
+            parse_content_range("bytes 0-0/10"),
+            Some(ContentRange { range: Some((0, 0)), total: Some(10) })
+        );
+        assert_eq!(parse_content_range("bytes */0"), Some(ContentRange { range: None, total: Some(0) }));
+        assert_eq!(parse_content_range("bytes 5-9/*"), Some(ContentRange { range: Some((5, 9)), total: None }));
+        assert_eq!(parse_content_range("items 1-2/3"), None);
+    }
 }

@@ -37,6 +37,8 @@ impl CoreError {
         if let Some(s) = e.status() {
             return CoreError::Http(s.as_u16());
         }
+        // URLs may carry tokens or credentials: never put them in messages
+        let e = e.without_url();
         let msg = if e.is_timeout() {
             "connection timed out".to_string()
         } else if e.is_connect() {
@@ -66,7 +68,7 @@ impl CoreError {
             }
             m
         };
-        CoreError::Network(msg)
+        CoreError::Network(util::redact_urls(&msg))
     }
 }
 

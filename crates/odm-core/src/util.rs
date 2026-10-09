@@ -5,40 +5,158 @@ use percent_encoding::percent_decode_str;
 use std::path::{Path, PathBuf};
 
 /// File name from a `Content-Disposition` header (RFC 6266 / 5987).
+/// `filename*` (charset'lang'percent-encoded) wins over `filename`.
 pub fn filename_from_disposition(cd: &str) -> Option<String> {
-    // prefer filename*=UTF-8''...
-    for part in cd.split(';') {
-        let p = part.trim();
-        let lower = p.to_ascii_lowercase();
-        if let Some(v) = lower.strip_prefix("filename*=").map(|_| &p[10..]) {
-            let v = v.trim().trim_matches('"');
-            let enc_val = match v.find("''") {
-                Some(i) => &v[i + 2..],
-                None => v,
-            };
-            let s = percent_decode_str(enc_val).decode_utf8_lossy().into_owned();
-            if !s.trim().is_empty() {
-                return Some(sanitize_filename(&s));
-            }
+    let params = disposition_params(cd);
+    if let Some((_, v)) = params.iter().find(|(k, _)| k == "filename*") {
+        if let Some(s) = decode_ext_value(v).filter(|s| !s.trim().is_empty()) {
+            return Some(sanitize_filename(&s));
         }
     }
-    for part in cd.split(';') {
-        let p = part.trim();
-        if p.len() > 9 && p[..9].eq_ignore_ascii_case("filename=") {
-            let v = p[9..].trim().trim_matches('"');
-            let s = percent_decode_str(v).decode_utf8_lossy().into_owned();
-            if !s.trim().is_empty() {
-                return Some(sanitize_filename(&s));
-            }
+    if let Some((_, v)) = params.iter().find(|(k, _)| k == "filename") {
+        // some servers percent-encode plain `filename`; decode only when that
+        // yields valid UTF-8
+        let s = if v.contains('%') {
+            percent_decode_str(v).decode_utf8().map(|c| c.into_owned()).unwrap_or_else(|_| v.clone())
+        } else {
+            v.clone()
+        };
+        if !s.trim().is_empty() {
+            return Some(sanitize_filename(&s));
         }
     }
     None
 }
 
+/// Header bytes as text: UTF-8 when valid, otherwise ISO-8859-1.
+pub fn header_text(raw: &[u8]) -> String {
+    match std::str::from_utf8(raw) {
+        Ok(s) => s.to_string(),
+        Err(_) => latin1(raw),
+    }
+}
+
+fn latin1(b: &[u8]) -> String {
+    b.iter().map(|&c| c as char).collect()
+}
+
+/// `type; k=v; k2="quoted \"v\""` -> [(k, v), (k2, quoted "v")], keys lowercase.
+fn disposition_params(cd: &str) -> Vec<(String, String)> {
+    let mut out = vec![];
+    let b: Vec<char> = cd.chars().collect();
+    let mut i = 0;
+    // skip the disposition type
+    while i < b.len() && b[i] != ';' {
+        i += 1;
+    }
+    while i < b.len() {
+        while i < b.len() && (b[i] == ';' || b[i].is_whitespace()) {
+            i += 1;
+        }
+        let ks = i;
+        while i < b.len() && b[i] != '=' && b[i] != ';' {
+            i += 1;
+        }
+        let key = b[ks..i].iter().collect::<String>().trim().to_ascii_lowercase();
+        if i >= b.len() || b[i] == ';' {
+            continue;
+        }
+        i += 1; // '='
+        while i < b.len() && b[i].is_whitespace() {
+            i += 1;
+        }
+        let mut val = String::new();
+        if i < b.len() && b[i] == '"' {
+            i += 1;
+            while i < b.len() && b[i] != '"' {
+                if b[i] == '\\' && i + 1 < b.len() {
+                    i += 1;
+                }
+                val.push(b[i]);
+                i += 1;
+            }
+            // skip the closing quote and anything up to the next ';'
+            while i < b.len() && b[i] != ';' {
+                i += 1;
+            }
+        } else {
+            while i < b.len() && b[i] != ';' {
+                val.push(b[i]);
+                i += 1;
+            }
+            val = val.trim().to_string();
+        }
+        if !key.is_empty() {
+            out.push((key, val));
+        }
+    }
+    out
+}
+
+/// RFC 5987 `charset'lang'value` with percent-encoded bytes.
+fn decode_ext_value(v: &str) -> Option<String> {
+    let v = v.trim().trim_matches('"');
+    let (charset, enc) = match v.split_once('\'') {
+        Some((cs, rest)) => (cs.trim().to_ascii_lowercase(), rest.split_once('\'').map(|(_, e)| e).unwrap_or(rest)),
+        None => ("utf-8".to_string(), v),
+    };
+    let bytes: Vec<u8> = percent_decode_str(enc).collect();
+    Some(match charset.as_str() {
+        "iso-8859-1" | "latin1" | "latin-1" => latin1(&bytes),
+        _ => String::from_utf8(bytes.clone()).unwrap_or_else(|_| latin1(&bytes)),
+    })
+}
+
+/// A URL without user info, query and fragment (safe to show and store).
+pub fn redact_url(u: &str) -> String {
+    match url::Url::parse(u) {
+        Ok(mut p) => {
+            let _ = p.set_username("");
+            let _ = p.set_password(None);
+            p.set_query(None);
+            p.set_fragment(None);
+            p.to_string()
+        }
+        Err(_) => u.split(['?', '#']).next().unwrap_or("").to_string(),
+    }
+}
+
+/// A URL without user info (query kept).
+pub fn strip_userinfo(u: &str) -> String {
+    match url::Url::parse(u) {
+        Ok(mut p) => {
+            let _ = p.set_username("");
+            let _ = p.set_password(None);
+            p.to_string()
+        }
+        Err(_) => u.to_string(),
+    }
+}
+
+/// Replace every http(s) URL inside `text` with its redacted form.
+pub fn redact_urls(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    loop {
+        let at = [rest.find("http://"), rest.find("https://")].into_iter().flatten().min();
+        let Some(at) = at else {
+            out.push_str(rest);
+            return out;
+        };
+        out.push_str(&rest[..at]);
+        let tail = &rest[at..];
+        let end = tail
+            .find(|c: char| c.is_whitespace() || matches!(c, ')' | '"' | '\'' | '<' | '>' | ','))
+            .unwrap_or(tail.len());
+        out.push_str(&redact_url(&tail[..end]));
+        rest = &tail[end..];
+    }
+}
+
 /// Last path segment of a URL, percent-decoded.
 pub fn filename_from_url(u: &str) -> Option<String> {
     let parsed = url::Url::parse(u).ok()?;
-    let seg = parsed.path_segments()?.filter(|s| !s.is_empty()).next_back()?.to_string();
+    let seg = parsed.path_segments()?.rfind(|s| !s.is_empty())?.to_string();
     let s = percent_decode_str(&seg).decode_utf8_lossy().into_owned();
     if s.trim().is_empty() {
         None
@@ -79,43 +197,59 @@ pub fn ext_for_mime(mime: &str) -> Option<&'static str> {
     })
 }
 
-/// Remove characters that are illegal on any of Windows/macOS/Linux.
+/// Invisible or control characters that never belong in a file name:
+/// C0/C1 controls, DEL, and bidirectional overrides (RTLO spoofing).
+fn is_stripped_char(c: char) -> bool {
+    let u = c as u32;
+    u < 0x20
+        || (0x7f..=0x9f).contains(&u)
+        || matches!(
+            c,
+            '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}' | '\u{feff}'
+        )
+}
+
+/// Longest file name we produce, in bytes.
+pub const MAX_NAME_BYTES: usize = 200;
+
+/// Remove characters that are illegal or deceptive on any of
+/// Windows/macOS/Linux and keep the name within [`MAX_NAME_BYTES`].
 pub fn sanitize_filename(s: &str) -> String {
-    let mut out: String = s
+    let cleaned: String = s
         .chars()
+        .filter(|&c| !is_stripped_char(c))
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
-            c if (c as u32) < 32 => '_',
             c => c,
         })
         .collect();
-    out = out.trim().trim_end_matches(['.', ' ']).to_string();
+    let mut out = trim_name(&cleaned);
     if out.is_empty() || out == "." || out == ".." {
         out = "download".into();
     }
-    // Windows reserved device names
-    let stem = out.split('.').next().unwrap_or("").to_ascii_uppercase();
-    const RESERVED: [&str; 22] = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7",
-        "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    ];
-    if RESERVED.contains(&stem.as_str()) {
+    // Windows reserved device names (on every platform: files travel)
+    let stem = out.split('.').next().unwrap_or("").trim_end().to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$")
+        || ((stem.starts_with("COM") || stem.starts_with("LPT")) && stem.len() == 4 && stem.as_bytes()[3].is_ascii_digit());
+    if reserved {
         out = format!("_{out}");
     }
-    if out.len() > 240 {
+    if out.len() > MAX_NAME_BYTES {
         let ext = extension(&out);
-        let keep = 240 - ext.len().min(20) - 1;
-        let mut cut = keep;
+        // keep the extension as spelled
+        let suffix = if ext.is_empty() { String::new() } else { out[out.len() - ext.len() - 1..].to_string() };
+        let mut cut = MAX_NAME_BYTES - suffix.len();
         while !out.is_char_boundary(cut) {
             cut -= 1;
         }
-        out = if ext.is_empty() {
-            out[..cut].to_string()
-        } else {
-            format!("{}.{}", &out[..cut], ext.to_ascii_lowercase())
-        };
+        let stem = trim_name(&out[..cut]);
+        out = if stem.is_empty() { format!("download{suffix}") } else { format!("{stem}{suffix}") };
     }
     out
+}
+
+fn trim_name(s: &str) -> String {
+    s.trim().trim_end_matches(['.', ' ']).trim().to_string()
 }
 
 /// Lowercase extension without the dot ("" if none).
@@ -185,6 +319,67 @@ pub fn part_path(final_path: &Path) -> PathBuf {
     let mut s = final_path.as_os_str().to_os_string();
     s.push(".odmpart");
     PathBuf::from(s)
+}
+
+/// Mark a finished download as coming from the internet so the OS applies
+/// its usual checks when it is opened: the `Zone.Identifier` stream
+/// (Mark-of-the-Web) on Windows, the `com.apple.quarantine` attribute on
+/// macOS. Failures (e.g. FAT/exFAT volumes) are ignored.
+pub fn mark_downloaded(path: &Path, url: &str, referrer: Option<&str>) {
+    #[cfg(windows)]
+    {
+        let mut ads = path.as_os_str().to_os_string();
+        ads.push(":Zone.Identifier");
+        if let Err(e) = std::fs::write(&ads, zone_identifier(url, referrer)) {
+            tracing::debug!("zone identifier not written for {}: {e}", path.display());
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let _ = (url, referrer);
+        set_quarantine(path);
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        let _ = (path, url, referrer);
+    }
+}
+
+/// Contents of the Windows `Zone.Identifier` stream for a download.
+pub fn zone_identifier(url: &str, referrer: Option<&str>) -> String {
+    let mut s = String::from("[ZoneTransfer]\r\nZoneId=3\r\n");
+    if let Some(r) = referrer.map(str::trim).filter(|r| !r.is_empty()) {
+        s.push_str(&format!("ReferrerUrl={}\r\n", redact_url(r)));
+    }
+    s.push_str(&format!("HostUrl={}\r\n", strip_userinfo(url)));
+    s
+}
+
+/// Value of the macOS `com.apple.quarantine` attribute.
+pub fn quarantine_value(unix_secs: u64) -> String {
+    format!(
+        "0081;{unix_secs:x};Open Download Manager;{}",
+        uuid::Uuid::new_v4().to_string().to_ascii_uppercase()
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn set_quarantine(path: &Path) {
+    use std::os::unix::ffi::OsStrExt;
+    let Ok(cpath) = std::ffi::CString::new(path.as_os_str().as_bytes()) else { return };
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let value = quarantine_value(secs);
+    let name = c"com.apple.quarantine";
+    // SAFETY: path and name are NUL-terminated C strings; value is valid for value.len() bytes.
+    let rc = unsafe {
+        libc::setxattr(cpath.as_ptr(), name.as_ptr(), value.as_ptr() as *const libc::c_void, value.len(), 0, 0)
+    };
+    if rc != 0 {
+        tracing::debug!("quarantine attribute not set for {}: {}", path.display(), std::io::Error::last_os_error());
+    }
 }
 
 /// Expand IDM-style batch patterns: `file[001-120].jpg`, `img[a-z].png`.
@@ -314,6 +509,69 @@ mod tests {
         assert_eq!(sanitize_filename("a/b:c?.txt"), "a_b_c_.txt");
         assert_eq!(sanitize_filename("CON.txt"), "_CON.txt");
         assert_eq!(sanitize_filename("..."), "download");
+        assert_eq!(sanitize_filename("COM0.txt"), "_COM0.txt");
+        assert_eq!(sanitize_filename("lpt9"), "_lpt9");
+        assert_eq!(sanitize_filename("conin$.log"), "_conin$.log");
+        assert_eq!(sanitize_filename("CONOUT$"), "_CONOUT$");
+        assert_eq!(sanitize_filename("COM10.txt"), "COM10.txt");
+        assert_eq!(sanitize_filename("name. . "), "name");
+        // RTLO spoofing: would display as "invoiceexe.pdf"
+        assert_eq!(sanitize_filename("invoice\u{202e}fdp.exe"), "invoicefdp.exe");
+        assert_eq!(sanitize_filename("a\u{2066}b\u{200f}c\u{7f}d\u{85}e\u{1}f\tg"), "abcdefg");
+        let long = format!("{}.tar.gz", "x".repeat(400));
+        let s = sanitize_filename(&long);
+        assert!(s.len() <= MAX_NAME_BYTES, "{}", s.len());
+        assert!(s.ends_with("x.gz"), "{s}");
+        let long = format!("{}.MKV", "é".repeat(300));
+        let s = sanitize_filename(&long);
+        assert!(s.len() <= MAX_NAME_BYTES && s.ends_with(".MKV"), "{s}");
+        let s = sanitize_filename(&"y".repeat(500));
+        assert_eq!(s.len(), MAX_NAME_BYTES);
+    }
+
+    #[test]
+    fn disposition_variants() {
+        assert_eq!(
+            filename_from_disposition("attachment; filename*=UTF-8''%E2%82%AC%20rates.pdf").as_deref(),
+            Some("€ rates.pdf")
+        );
+        assert_eq!(
+            filename_from_disposition("attachment; filename*=iso-8859-1'en'%A3%20rates.pdf").as_deref(),
+            Some("£ rates.pdf")
+        );
+        assert_eq!(
+            filename_from_disposition(r#"attachment; filename="a;b \"q\".zip"; size=3"#).as_deref(),
+            Some("a;b _q_.zip")
+        );
+        // raw UTF-8 bytes in the header
+        let raw = "attachment; filename=\"r\u{e9}sum\u{e9}.pdf\"".as_bytes();
+        assert_eq!(filename_from_disposition(&header_text(raw)).as_deref(), Some("résumé.pdf"));
+        // raw latin-1 bytes
+        let raw = b"attachment; filename=\"caf\xe9.txt\"";
+        assert_eq!(filename_from_disposition(&header_text(raw)).as_deref(), Some("café.txt"));
+        assert_eq!(filename_from_disposition("inline"), None);
+    }
+
+    #[test]
+    fn redaction() {
+        assert_eq!(redact_url("https://u:p@h.example/a/b.zip?token=1#x"), "https://h.example/a/b.zip");
+        assert_eq!(
+            redact_urls("error sending request for url (https://h/x.bin?sig=SECRET): reset"),
+            "error sending request for url (https://h/x.bin): reset"
+        );
+        assert_eq!(strip_userinfo("https://u:p@h/x?y=1"), "https://h/x?y=1");
+    }
+
+    #[test]
+    fn web_marks() {
+        let z = zone_identifier("https://u:p@cdn.example/f.exe?x=1", Some("https://site.example/page?q=2"));
+        assert_eq!(
+            z,
+            "[ZoneTransfer]\r\nZoneId=3\r\nReferrerUrl=https://site.example/page\r\nHostUrl=https://cdn.example/f.exe?x=1\r\n"
+        );
+        let q = quarantine_value(0x5f00_0000);
+        assert!(q.starts_with("0081;5f000000;Open Download Manager;"), "{q}");
+        assert_eq!(q.len(), "0081;5f000000;Open Download Manager;".len() + 36);
     }
 
     #[test]

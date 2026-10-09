@@ -157,9 +157,9 @@ jobs:
           mkdir -p ci-out
           if [ "${{ matrix.distro }}" = debian ]; then
             apt-get update
-            apt-get install -y ./pkg/deb/*.deb xvfb xauth imagemagick dbus-x11 2>&1 | tee ci-out/install.log
+            apt-get install -y ./pkg/deb/*.deb xvfb xauth imagemagick dbus-x11 procps 2>&1 | tee ci-out/install.log
           else
-            dnf install -y ./pkg/rpm/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-x11 2>&1 | tee ci-out/install.log
+            dnf install -y ./pkg/rpm/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-x11 procps-ng 2>&1 | tee ci-out/install.log
           fi
           command -v open-download-manager | tee -a ci-out/install.log
       - name: Launch and screenshot

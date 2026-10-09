@@ -67,12 +67,14 @@
     "linux": {
       "deb": {
         "depends": [
-          "libayatana-appindicator3-1"
+          "libayatana-appindicator3-1",
+          "desktop-file-utils"
         ]
       },
       "rpm": {
         "depends": [
-          "libayatana-appindicator-gtk3"
+          "libayatana-appindicator-gtk3",
+          "desktop-file-utils"
         ]
       }
     }

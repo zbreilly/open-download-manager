@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"/><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"/><path d="M12 7v8.5"/><path d="M8.6 12.1L12 15.5l3.4-3.4"/></svg></span>
+    <b>Open Download Manager</b>
+  </header>
+  <div class="status"><span class="dot" id="dot"></span><span id="status">Checking…</span></div>
+
+  <section id="capture-box" hidden>
+    <div class="row">
+      <div class="t"><div>Capture downloads</div><div class="d" id="capture-desc"></div></div>
+      <button id="pause" class="sec">Pause 10 min</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="label">Add a link</div>
+    <div class="row"><input id="url" placeholder="https://" spellcheck="false"><button id="add">Add</button></div>
+  </section>
+
+  <section id="media-box" hidden>
+    <div class="label">Media on this page</div>
+    <ul id="media"></ul>
+  </section>
+
+  <details>
+    <summary>Connection</summary>
+    <div class="row"><input id="port" inputmode="numeric" style="width:90px;flex:none"><button id="save" class="sec">Save port</button></div>
+    <div class="d">Must match Settings → Advanced → Extension port in the app.</div>
+  </details>
+  <script src="popup.js"></script>
+</body>
+</html>

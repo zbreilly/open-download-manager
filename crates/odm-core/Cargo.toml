@@ -1,0 +1,33 @@
+[package]
+name = "odm-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Open Download Manager download engine: segmented HTTP(S) with dynamic splitting, resume, queues and scheduling"
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "process"] }
+tokio-util = "0.7"
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "http2", "system-proxy", "socks", "stream", "charset"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+futures-util = "0.3"
+rusqlite = { version = "0.40", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+parking_lot = "0.12"
+thiserror = "2"
+sha2 = "0.11"
+md-5 = "0.11"
+sha1 = "0.11"
+percent-encoding = "2"
+url = "2"
+fs4 = "1"
+scraper = "0.27"
+dirs = "6"
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full", "test-util"] }
+tempfile = "3"

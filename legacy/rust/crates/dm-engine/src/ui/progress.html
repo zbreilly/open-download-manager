@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<title>Download progress</title>
+<link rel="stylesheet" href="/tokens.css">
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px; font: var(--fs-md)/var(--lh) var(--font-ui);
+         color: var(--text); background: var(--bg); }
+  .hero { display:flex; align-items:baseline; gap:16px; }
+  .pct { font-family: var(--font-mono); font-size: var(--fs-hero); font-weight:500; }
+  .pct small { font-size:22px; color:var(--text-muted); }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+  .stats div span { display:block; font-size:11px; text-transform:uppercase;
+                    letter-spacing:.06em; color:var(--text-muted); }
+  .stats div b { font-family:var(--font-mono); font-weight:500; }
+  h3 { font-size: var(--fs-lg); margin: 16px 0 8px; }
+  .segmap { display:flex; gap:3px; height:30px; }
+  .segmap div { flex:1; border-radius:4px; background: var(--track); position:relative; overflow:hidden; }
+  .segmap div > i { position:absolute; inset:0; background: var(--accent); }
+  .segmap div.done > i { opacity:.55; }
+  table { width:100%; border-collapse:collapse; margin-top:8px; }
+  td,th { border-bottom:1px solid var(--border-subtle); padding:6px 10px;
+          font-size:var(--fs-sm); text-align:left; }
+  td.mono { font-family:var(--font-mono); }
+  .actions { display:flex; gap:8px; margin-top:16px; justify-content:flex-end; }
+  button { height:var(--input-h); padding:0 14px; border-radius:var(--r-md);
+           border:1px solid var(--border); background:var(--surface);
+           color:var(--text); font:inherit; cursor:pointer; }
+  button.primary { background:var(--accent); color:var(--on-accent); border-color:var(--accent); }
+  button.danger { color:var(--danger); }
+  .muted { color: var(--text-muted); }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:2px 8px;
+          border:1px solid var(--border); border-radius:999px; font-size:var(--fs-sm); }
+  .pill i { width:7px; height:7px; border-radius:50%; background:var(--accent); }
+
+/* button press feedback (spec 2.5 motion token) */
+button, .btn { transition: transform var(--motion), filter var(--motion), background var(--motion); }
+button:active:not(:disabled), .btn:active:not(:disabled) { transform: scale(0.96); filter: brightness(0.88); }
+.primary:active, button.primary:active { transform: scale(0.96); filter: brightness(0.85); }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <span class="pct" id="pct">0<small>%</small></span>
+    <div>
+      <div id="name" style="font-weight:600">—</div>
+      <div class="muted" id="host" style="font-family:var(--font-mono); font-size:var(--fs-sm)">—</div>
+    </div>
+    <span class="pill"><i></i><span id="state">Connecting</span></span>
+  </div>
+  <div class="stats" style="margin-top:12px">
+    <div><span>Downloaded</span><b id="st-done">—</b></div>
+    <div><span>Speed</span><b id="st-speed" style="color:var(--accent)">—</b></div>
+    <div><span>Time left</span><b id="st-eta">—</b></div>
+    <div><span>Resume</span><b>Supported</b></div>
+  </div>
+  <h3>Segment map · <span id="seg-n" class="muted">1</span> connections</h3>
+  <div class="segmap" id="segmap"></div>
+  <h3>Connections</h3>
+  <table>
+    <thead><tr><th>#</th><th>Received</th><th>State</th><th class="mono">Range</th></tr></thead>
+    <tbody id="conn"></tbody>
+  </table>
+  <div class="actions">
+    <button onclick="window.close()">Hide</button>
+    <button class="danger" id="btn-cancel">Cancel download</button>
+    <button class="primary" id="btn-pause">Pause</button>
+  </div>
+<script>
+const id = new URLSearchParams(location.search).get('id');
+const odmFetch = (u, o) => {
+  o = o || {};
+  o.headers = Object.assign({}, o.headers, { "X-ODM-Token": window.ODM_TOKEN || "" });
+  return fetch(u, o);
+};
+const fmtB = n => n == null ? '—' : n < 1024 ? n + ' B'
+  : n < 1048576 ? (n/1024).toFixed(1) + ' KB'
+  : n < 1073741824 ? (n/1048576).toFixed(1) + ' MB'
+  : (n/1073741824).toFixed(2) + ' GB';
+async function tick() {
+  const [jr, sr] = await Promise.all([
+    odmFetch('/api/jobs').then(r => r.json()),
+    odmFetch('/api/segments?id=' + id).then(r => r.json()).catch(() => null),
+  ]);
+  const j = jr.jobs.find(x => x.id == id);
+  if (!j) return;
+  document.getElementById('name').textContent = j.fileName;
+  document.getElementById('host').textContent = new URL(j.url).host + ' · ' + j.out;
+  document.getElementById('state').textContent = j.status;
+  const pct = j.totalBytes ? Math.floor(100 * j.receivedBytes / j.totalBytes) : 0;
+  document.getElementById('pct').innerHTML = pct + '<small>%</small>';
+  document.getElementById('st-done').textContent = fmtB(j.receivedBytes) + ' of ' + fmtB(j.totalBytes);
+  document.getElementById('st-speed').textContent = j.speedBps ? fmtB(j.speedBps) + '/s' : '—';
+  document.getElementById('st-eta').textContent =
+    j.etaSecs ? (j.etaSecs > 3600 ? Math.floor(j.etaSecs/3600)+'h '+String(Math.floor(j.etaSecs%3600/60)).padStart(2,'0')+'m'
+    : j.etaSecs > 60 ? Math.floor(j.etaSecs/60)+'m '+String(j.etaSecs%60).padStart(2,'0')+'s' : j.etaSecs+'s') : '—';
+  if (sr && sr.segments.length) {
+    document.getElementById('seg-n').textContent = sr.segments.length;
+    document.getElementById('segmap').innerHTML = sr.segments.map(s => {
+      const size = s.end - s.start + 1;
+      const f = Math.min(100, 100 * s.received / size);
+      return `<div class="${s.state==='done'?'done':''}"><i style="width:${f}%"></i></div>`;
+    }).join('');
+    document.getElementById('conn').innerHTML = sr.segments.map((s, i) => {
+      const size = s.end - s.start + 1;
+      return `<tr><td class="mono">${String(i+1).padStart(2,'0')}</td>
+        <td class="mono">${fmtB(s.received)} / ${fmtB(size)}</td>
+        <td>${s.state === 'done' ? 'Done' : s.state === 'reconnecting' ? 'Reconnecting' : s.state === 'connecting' ? 'Connecting' : 'Receiving'}</td>
+        <td class="mono">${s.start}–${s.end}</td></tr>`;
+    }).join('');
+  }
+}
+document.getElementById('btn-pause').addEventListener('click', () => {
+  odmFetch('/api/pause?id=' + id, { method: 'POST' }).then(() => setTimeout(tick, 300));
+});
+document.getElementById('btn-cancel').addEventListener('click', () => {
+  if (!confirm('Cancel this download? Progress is kept and the job moves to paused.'))
+    return;
+  odmFetch('/api/pause?id=' + id, { method: 'POST' }).then(() => window.close());
+});
+tick();
+setInterval(tick, 400);
+</script>
+</body>
+</html>

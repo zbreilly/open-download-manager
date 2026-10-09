@@ -1,0 +1,530 @@
+[
+  {
+    "id": "add-url",
+    "label": "Add URL",
+    "group": "toolbar",
+    "idm": "Add URL"
+  },
+  {
+    "id": "resume",
+    "label": "Resume",
+    "group": "toolbar",
+    "idm": "Resume"
+  },
+  {
+    "id": "pause",
+    "label": "Pause",
+    "group": "toolbar",
+    "idm": "Stop"
+  },
+  {
+    "id": "stop",
+    "label": "Stop",
+    "group": "toolbar",
+    "idm": "Stop"
+  },
+  {
+    "id": "pause-all",
+    "label": "Pause all",
+    "group": "toolbar",
+    "idm": "Stop All"
+  },
+  {
+    "id": "delete",
+    "label": "Delete",
+    "group": "toolbar",
+    "idm": "Delete"
+  },
+  {
+    "id": "delete-completed",
+    "label": "Delete completed",
+    "group": "toolbar",
+    "idm": "Delete Completed"
+  },
+  {
+    "id": "options",
+    "label": "Options",
+    "group": "toolbar",
+    "idm": "Options"
+  },
+  {
+    "id": "scheduler",
+    "label": "Scheduler",
+    "group": "toolbar",
+    "idm": "Scheduler"
+  },
+  {
+    "id": "start-queue",
+    "label": "Start queue",
+    "group": "toolbar",
+    "idm": "Start Queue"
+  },
+  {
+    "id": "stop-queue",
+    "label": "Stop queue",
+    "group": "toolbar",
+    "idm": "Stop Queue"
+  },
+  {
+    "id": "site-grabber",
+    "label": "Site grabber",
+    "group": "toolbar",
+    "idm": "Grabber"
+  },
+  {
+    "id": "speed-limit",
+    "label": "Speed limiter",
+    "group": "toolbar",
+    "idm": "Speed Limiter"
+  },
+  {
+    "id": "share",
+    "label": "Tell a friend",
+    "group": "toolbar",
+    "idm": "Tell a Friend"
+  },
+  {
+    "id": "search",
+    "label": "Search",
+    "group": "toolbar",
+    "idm": "\u2014"
+  },
+  {
+    "id": "download",
+    "label": "Download",
+    "group": "actions",
+    "idm": "Download now"
+  },
+  {
+    "id": "batch-download",
+    "label": "Add batch download",
+    "group": "actions",
+    "idm": "Add batch download"
+  },
+  {
+    "id": "add-from-clipboard",
+    "label": "Add from clipboard",
+    "group": "actions",
+    "idm": "Add batch from clipboard"
+  },
+  {
+    "id": "add-to-queue",
+    "label": "Add to queue",
+    "group": "actions",
+    "idm": "Add to Queue"
+  },
+  {
+    "id": "remove-from-queue",
+    "label": "Remove from queue",
+    "group": "actions",
+    "idm": "Delete from Queue"
+  },
+  {
+    "id": "refresh-link",
+    "label": "Refresh download address",
+    "group": "actions",
+    "idm": "Refresh download address"
+  },
+  {
+    "id": "redownload",
+    "label": "Redownload",
+    "group": "actions",
+    "idm": "Redownload"
+  },
+  {
+    "id": "open-file",
+    "label": "Open",
+    "group": "actions",
+    "idm": "Open"
+  },
+  {
+    "id": "open-folder",
+    "label": "Open folder",
+    "group": "actions",
+    "idm": "Open folder"
+  },
+  {
+    "id": "move-file",
+    "label": "Move / rename",
+    "group": "actions",
+    "idm": "Move/Rename"
+  },
+  {
+    "id": "copy-link",
+    "label": "Copy link",
+    "group": "actions",
+    "idm": "Copy address"
+  },
+  {
+    "id": "properties",
+    "label": "Properties",
+    "group": "actions",
+    "idm": "Properties"
+  },
+  {
+    "id": "import",
+    "label": "Import",
+    "group": "actions",
+    "idm": "Import"
+  },
+  {
+    "id": "export",
+    "label": "Export",
+    "group": "actions",
+    "idm": "Export"
+  },
+  {
+    "id": "browser-integration",
+    "label": "Browser integration",
+    "group": "actions",
+    "idm": "Browser integration"
+  },
+  {
+    "id": "clipboard-monitor",
+    "label": "Clipboard monitoring",
+    "group": "actions",
+    "idm": "Monitor clipboard"
+  },
+  {
+    "id": "verify",
+    "label": "Verify checksum",
+    "group": "actions",
+    "idm": "\u2014"
+  },
+  {
+    "id": "credentials",
+    "label": "Authentication",
+    "group": "actions",
+    "idm": "Login / password"
+  },
+  {
+    "id": "proxy",
+    "label": "Proxy / network",
+    "group": "actions",
+    "idm": "Proxy / Socks"
+  },
+  {
+    "id": "file-types",
+    "label": "File types",
+    "group": "actions",
+    "idm": "File types"
+  },
+  {
+    "id": "segments",
+    "label": "Connections / segments",
+    "group": "actions",
+    "idm": "Max connections"
+  },
+  {
+    "id": "notifications",
+    "label": "Notifications",
+    "group": "actions",
+    "idm": "Download complete dialog"
+  },
+  {
+    "id": "check-updates",
+    "label": "Check for updates",
+    "group": "actions",
+    "idm": "Check for updates"
+  },
+  {
+    "id": "help",
+    "label": "Help",
+    "group": "actions",
+    "idm": "Help"
+  },
+  {
+    "id": "shutdown",
+    "label": "Shut down when done",
+    "group": "actions",
+    "idm": "Turn off computer when done"
+  },
+  {
+    "id": "sleep",
+    "label": "Sleep when done",
+    "group": "actions",
+    "idm": "Hang up / standby"
+  },
+  {
+    "id": "exit",
+    "label": "Exit",
+    "group": "actions",
+    "idm": "Exit"
+  },
+  {
+    "id": "theme-dark",
+    "label": "Dark theme",
+    "group": "actions",
+    "idm": "Dark Mode support"
+  },
+  {
+    "id": "theme-light",
+    "label": "Light theme",
+    "group": "actions",
+    "idm": "\u2014"
+  },
+  {
+    "id": "cat-all",
+    "label": "All downloads",
+    "group": "categories",
+    "idm": "All Downloads"
+  },
+  {
+    "id": "cat-active",
+    "label": "Active",
+    "group": "categories",
+    "idm": "\u2014"
+  },
+  {
+    "id": "cat-unfinished",
+    "label": "Unfinished",
+    "group": "categories",
+    "idm": "Unfinished"
+  },
+  {
+    "id": "cat-finished",
+    "label": "Finished",
+    "group": "categories",
+    "idm": "Finished"
+  },
+  {
+    "id": "cat-compressed",
+    "label": "Compressed",
+    "group": "categories",
+    "idm": "Compressed"
+  },
+  {
+    "id": "cat-documents",
+    "label": "Documents",
+    "group": "categories",
+    "idm": "Documents"
+  },
+  {
+    "id": "cat-music",
+    "label": "Music",
+    "group": "categories",
+    "idm": "Music"
+  },
+  {
+    "id": "cat-programs",
+    "label": "Programs",
+    "group": "categories",
+    "idm": "Programs"
+  },
+  {
+    "id": "cat-video",
+    "label": "Video",
+    "group": "categories",
+    "idm": "Video"
+  },
+  {
+    "id": "cat-images",
+    "label": "Images",
+    "group": "categories",
+    "idm": "\u2014"
+  },
+  {
+    "id": "cat-general",
+    "label": "General",
+    "group": "categories",
+    "idm": "General"
+  },
+  {
+    "id": "cat-queues",
+    "label": "Queues",
+    "group": "categories",
+    "idm": "Queues"
+  },
+  {
+    "id": "cat-grabber",
+    "label": "Grabber projects",
+    "group": "categories",
+    "idm": "Grabber projects"
+  },
+  {
+    "id": "st-downloading",
+    "label": "Downloading",
+    "group": "status",
+    "idm": "Receiving data"
+  },
+  {
+    "id": "st-connecting",
+    "label": "Connecting",
+    "group": "status",
+    "idm": "Connecting"
+  },
+  {
+    "id": "st-paused",
+    "label": "Paused",
+    "group": "status",
+    "idm": "Stopped"
+  },
+  {
+    "id": "st-queued",
+    "label": "Queued",
+    "group": "status",
+    "idm": "In queue"
+  },
+  {
+    "id": "st-scheduled",
+    "label": "Scheduled",
+    "group": "status",
+    "idm": "Scheduled"
+  },
+  {
+    "id": "st-error",
+    "label": "Failed",
+    "group": "status",
+    "idm": "Error"
+  },
+  {
+    "id": "st-complete",
+    "label": "Complete",
+    "group": "status",
+    "idm": "Complete"
+  },
+  {
+    "id": "st-no-resume",
+    "label": "Resume unsupported",
+    "group": "status",
+    "idm": "Resume capability: No"
+  },
+  {
+    "id": "q-main",
+    "label": "Main download queue",
+    "group": "status",
+    "idm": "Main queue (yellow)"
+  },
+  {
+    "id": "q-sync",
+    "label": "Synchronization queue",
+    "group": "status",
+    "idm": "Synchronization queue (green)"
+  },
+  {
+    "id": "file-generic",
+    "label": "Generic file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-video",
+    "label": "Video file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-audio",
+    "label": "Audio file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-image",
+    "label": "Image file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-archive",
+    "label": "Archive file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-document",
+    "label": "Document file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-executable",
+    "label": "Program file",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "file-disc",
+    "label": "Disc image",
+    "group": "files",
+    "idm": ""
+  },
+  {
+    "id": "close",
+    "label": "Close",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "minimize",
+    "label": "Minimize to tray",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "chevron-right",
+    "label": "Expand",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "chevron-down",
+    "label": "Collapse",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "sort-asc",
+    "label": "Sort ascending",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "sort-desc",
+    "label": "Sort descending",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "more",
+    "label": "More",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "drag-handle",
+    "label": "Drag handle",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "check",
+    "label": "Check",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "plus",
+    "label": "Add",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "minus",
+    "label": "Remove",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "warning",
+    "label": "Warning",
+    "group": "ui",
+    "idm": ""
+  },
+  {
+    "id": "external",
+    "label": "Open in browser",
+    "group": "ui",
+    "idm": ""
+  }
+]

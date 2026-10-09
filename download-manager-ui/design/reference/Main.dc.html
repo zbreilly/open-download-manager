@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Downloads main window</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.4; color: {{c.text}}; background: {{c.bg}}; min-height: 860px; display: flex; flex-direction: column">
+
+<header style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 10px 16px; background: {{c.surface}}; border-bottom: 1px solid {{c.border}}">
+<div style="display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; letter-spacing: 0.01em">
+<span style="width: 26px; height: 26px; border-radius: 7px; background: {{c.accent}}; color: {{c.onAccent}}; display: flex; align-items: center; justify-content: center">
+<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg>
+</span>
+<span>Open Download Manager</span>
+</div>
+<label style="flex: 1 1 280px; max-width: 460px; display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 8px; background: {{c.surface2}}; border: 1px solid {{c.border}}; color: {{c.muted}}">
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+<span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search downloads</span>
+<input type="search" placeholder="Search downloads, URLs, folders" style="flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: {{c.text}}; font: inherit">
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid {{c.border}}">Ctrl K</span>
+</label>
+<div style="margin-left: auto; display: flex; align-items: center; gap: 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px">
+<span style="color: {{c.muted}}">Total</span>
+<span style="display: flex; align-items: center; gap: 6px; color: {{c.accent}}; font-weight: 500"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>{{totalSpeed}}</span>
+</div>
+</header>
+
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-items: stretch">
+
+<aside style="flex: 1 1 220px; max-width: 100%; background: {{c.surface}}; border-right: 1px solid {{c.border}}; padding: 14px 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+<sc-for list="{{sections}}" as="sec" hint-placeholder-count="3">
+<nav style="display: flex; flex-direction: column; gap: 2px">
+<div style="{{sec.headStyle}}">{{sec.title}}</div>
+<sc-for list="{{sec.items}}" as="it" hint-placeholder-count="4">
+<button type="button" onClick="{{it.pick}}" style="{{it.style}}">
+<svg width="16" height="16" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="{{it.iconStyle}}"><sc-for list="{{it.els}}" as="e" hint-placeholder-count="3"><path d="{{e.d}}" fill="{{e.fill}}" stroke="{{e.stroke}}" stroke-width="2"></path></sc-for></svg>
+<span style="flex: 1">{{it.label}}</span>
+<span style="{{it.countStyle}}">{{it.count}}</span>
+</button>
+</sc-for>
+</nav>
+</sc-for>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 16px; box-sizing: border-box">
+
+<div role="toolbar" aria-label="Download actions" style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px">
+<button type="button" style="display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 8px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font: inherit; font-weight: 600; cursor: pointer">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-8-8"></path><path d="M4 12h12"></path><path d="M12 4c-2.2 2.3-3.4 5-3.4 8s1.2 5.7 3.4 8c2.2-2.3 3.4-5 3.4-8"></path><path d="M19 1.5v6M16 4.5h6"></path></svg>Add URL</button>
+<span style="width: 1px; height: 22px; background: {{c.border}}; margin: 0 4px"></span>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 5.2v13.6L18.5 12z"></path></svg>Resume</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v14M15 5v14"></path></svg>Pause</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h12v12"></path><path d="M4 8h12v12H4z"></path><path d="M8.5 11.5v5M11.5 11.5v5"></path></svg>Pause all</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v5.5M14 11v5.5"></path></svg>Delete</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path><path d="M9 13.5l2.2 2.2L15 11.8"></path></svg>Delete completed</button>
+<span style="width: 1px; height: 22px; background: {{c.border}}; margin: 0 4px"></span>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 11h9M4 16h5"></path><path d="M14 13.2v7.6l6-3.8z"></path></svg>Start queue</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 11h9M4 16h5"></path><path d="M14 14h6v6h-6z"></path></svg>Stop queue</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13a8 8 0 1 0 16 0a8 8 0 1 0-16 0z"></path><path d="M12 9v4l2.8 1.8M9.5 2.5h5M19 5l1.5 1.5"></path></svg>Scheduler</button>
+<button type="button" style="{{tb}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3zM3 9h18M12 11.5v5.5M9.5 14.5L12 17l2.5-2.5"></path></svg>Grabber</button>
+<button type="button" onClick="{{toggleLimit}}" aria-pressed="{{limOn}}" style="{{limStyle}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17a8 8 0 1 1 16 0M12 17l3.5-4.5M7 20h10"></path></svg>{{limLabel}}</button>
+<button type="button" aria-label="Options" style="{{tbIcon}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"></path><path d="M13 7a2 2 0 1 0 4 0a2 2 0 1 0-4 0zM7 17a2 2 0 1 0 4 0a2 2 0 1 0-4 0z"></path></svg></button>
+</div>
+
+<div style="overflow-x: auto; border: 1px solid {{c.border}}; border-radius: 10px; background: {{c.surface}}">
+<table style="width: 100%; min-width: 980px; border-collapse: collapse; font-size: 13px">
+<thead>
+<tr style="text-align: left; color: {{c.muted}}; font-size: 12px">
+<th style="{{th}}">Name</th>
+<th style="{{th}}">Size</th>
+<th style="{{th}}">Progress</th>
+<th style="{{thR}}">Speed</th>
+<th style="{{thR}}">ETA</th>
+<th style="{{th}}">Status</th>
+<th style="{{th}}">Queue</th>
+<th style="{{th}}">Added</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr onClick="{{r.pick}}" style="{{r.rowStyle}}">
+<td style="{{r.cell}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="{{r.badgeStyle}}">{{r.ext}}</span>
+<button type="button" onClick="{{r.pick}}" style="{{r.nameStyle}}">{{r.name}}</button>
+</div>
+</td>
+<td style="{{r.cellMono}}">{{r.sizeStr}}</td>
+<td style="{{r.cell}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="{{r.trackStyle}}"><div style="{{r.fillStyle}}"></div></div>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 12px; width: 38px; text-align: right">{{r.pctStr}}</span>
+</div>
+</td>
+<td style="{{r.cellMonoR}}">{{r.speedStr}}</td>
+<td style="{{r.cellMonoR}}">{{r.etaStr}}</td>
+<td style="{{r.cell}}"><span style="{{r.pillStyle}}"><span style="{{r.pillDot}}"></span>{{r.statusLabel}}</span></td>
+<td style="{{r.cellMuted}}">{{r.queue}}</td>
+<td style="{{r.cellMuted}}">{{r.added}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+
+<section aria-label="Selected download" style="border: 1px solid {{c.border}}; border-radius: 10px; background: {{c.surface}}; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+<span style="{{d.badgeStyle}}">{{d.ext}}</span>
+<div style="flex: 1 1 260px; min-width: 0">
+<div style="font-weight: 600; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.name}}</div>
+<div style="color: {{c.muted}}; font-size: 12px; font-family: 'JetBrains Mono', monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{d.url}}</div>
+</div>
+<span style="{{d.pillStyle}}"><span style="{{d.pillDot}}"></span>{{d.statusLabel}}</span>
+<button type="button" style="{{tb}}">{{d.primaryAction}}</button>
+<button type="button" style="{{tb}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>Open folder</button>
+<button type="button" style="{{tb}}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1"></path><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"></path></svg>Copy link</button>
+</div>
+
+<sc-if value="{{d.isError}}" hint-placeholder-val="{{ false }}">
+<div style="padding: 9px 12px; border-radius: 8px; background: {{c.redSoft}}; color: {{c.red}}; font-size: 12px; font-family: 'JetBrains Mono', monospace">{{d.err}}</div>
+</sc-if>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px">
+<dl style="flex: 1 1 260px; margin: 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); row-gap: 7px; column-gap: 12px; font-size: 12px">
+<dt style="color: {{c.muted}}">Downloaded</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">{{d.doneStr}} of {{d.sizeStr}}</dd>
+<dt style="color: {{c.muted}}">Speed</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">{{d.speedStr}}</dd>
+<dt style="color: {{c.muted}}">Time left</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">{{d.etaStr}}</dd>
+<dt style="color: {{c.muted}}">Connections</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace">{{d.connStr}}</dd>
+<dt style="color: {{c.muted}}">Resume</dt><dd style="margin: 0">{{d.resumeStr}}</dd>
+<dt style="color: {{c.muted}}">Save to</dt><dd style="margin: 0; font-family: 'JetBrains Mono', monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{d.dir}}</dd>
+</dl>
+<div style="flex: 2 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.muted}}; margin-bottom: 6px"><span>Segments</span><span style="font-family: 'JetBrains Mono', monospace">{{d.pctStr}}</span></div>
+<div style="display: flex; gap: 3px">
+<sc-for list="{{d.segs}}" as="sg" hint-placeholder-count="16">
+<div style="{{sg.track}}"><div style="{{sg.fill}}"></div></div>
+</sc-for>
+</div>
+</div>
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: {{c.muted}}; margin-bottom: 6px"><span>Speed, last 60 s</span><span style="font-family: 'JetBrains Mono', monospace">peak {{d.peakStr}}</span></div>
+<svg viewBox="0 0 400 64" preserveAspectRatio="none" style="width: 100%; height: 64px; display: block; border-radius: 6px; background: {{c.surface2}}">
+<polygon points="{{d.area}}" fill="{{c.accentSoft}}"></polygon>
+<polyline points="{{d.line}}" fill="none" stroke="{{d.lineColor}}" stroke-width="1.8" vector-effect="non-scaling-stroke"></polyline>
+</svg>
+</div>
+</div>
+</div>
+</section>
+</main>
+</div>
+
+<footer style="display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; padding: 7px 16px; background: {{c.surface}}; border-top: 1px solid {{c.border}}; color: {{c.muted}}; font-size: 12px">
+<span>{{summary}}</span>
+<span style="font-family: 'JetBrains Mono', monospace">↓ {{totalSpeed}}</span>
+<span>Speed limit: {{limFooter}}</span>
+<span style="display: flex; align-items: center; gap: 6px"><span style="width: 7px; height: 7px; border-radius: 50%; background: {{c.green}}"></span>Browser extension connected</span>
+<span style="margin-left: auto; font-family: 'JetBrains Mono', monospace">412 GB free</span>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var P = {
+      dark: { bg: '#0D0F12', surface: '#14171C', surface2: '#1A1E24', raised: '#222831', border: '#262C35', text: '#E7E9EC', muted: '#98A1AD', accent: '#5B9DFF', onAccent: '#0A1426', accentSoft: 'rgba(91,157,255,0.16)', selBg: 'rgba(91,157,255,0.10)', green: '#4CC38A', orange: '#F0A04B', red: '#F26B75', redSoft: 'rgba(242,107,117,0.12)', track: '#232933' },
+      light: { bg: '#F3F4F6', surface: '#FFFFFF', surface2: '#F6F7F9', raised: '#ECEEF1', border: '#DADEE4', text: '#14171C', muted: '#555E6B', accent: '#2563EB', onAccent: '#FFFFFF', accentSoft: 'rgba(37,99,235,0.12)', selBg: 'rgba(37,99,235,0.07)', green: '#15803D', orange: '#B45309', red: '#C2353F', redSoft: 'rgba(194,53,63,0.08)', track: '#E3E6EA' }
+    };
+    var self = this;
+    var theme = this.props.theme || 'dark';
+    var c = P[theme] || P.dark;
+    var s = this.state || {};
+    var cat = s.cat || 'all';
+    var limOn = !!s.lim;
+
+    var D = [
+      { id: 1, name: 'ubuntu-26.04-desktop-amd64.iso', ext: 'ISO', cat: 'programs', mb: 6350, pct: 64, speed: 48.7, eta: '47s', status: 'downloading', queue: 'Main', added: 'Today 14:02', url: 'https://releases.ubuntu.com/26.04/ubuntu-26.04-desktop-amd64.iso', dir: 'D:\\Downloads\\Programs', conns: 16, res: true },
+      { id: 2, name: 'qwen3-14b-instruct-q4_k_m.gguf', ext: 'GGUF', cat: 'general', mb: 9216, pct: 31, speed: 22.1, eta: '4m 52s', status: 'downloading', queue: 'Main', added: 'Today 13:48', url: 'https://huggingface.co/[org]/[repo]/resolve/main/qwen3-14b-instruct-q4_k_m.gguf', dir: 'D:\\Models', conns: 16, res: true },
+      { id: 3, name: 'lecture-07-consensus-protocols.mp4', ext: 'MP4', cat: 'video', mb: 1434, pct: 88, speed: 9.6, eta: '18s', status: 'downloading', queue: 'Main', added: 'Today 13:30', url: 'https://media.example.edu/cs-dist/lecture-07.mp4', dir: 'D:\\Downloads\\Video', conns: 8, res: true },
+      { id: 4, name: 'dataset-shard-0042.tar.zst', ext: 'ZST', cat: 'compressed', mb: 4915, pct: 52, speed: 0, eta: '—', status: 'paused', queue: 'Main', added: 'Today 11:15', url: 'https://data.example.org/shards/dataset-shard-0042.tar.zst', dir: 'D:\\Downloads\\Compressed', conns: 16, res: true },
+      { id: 5, name: 'field-recordings-vol2.zip', ext: 'ZIP', cat: 'music', mb: 2150, pct: 0, speed: 0, eta: '—', status: 'queued', label: 'Starts 01:00', queue: 'Overnight', added: 'Today 10:02', url: 'https://cdn.example.net/audio/field-recordings-vol2.zip', dir: 'D:\\Downloads\\Music', conns: 8, res: true },
+      { id: 6, name: 'firmware-r7800-v1.0.2.img', ext: 'IMG', cat: 'general', mb: 45.2, pct: 12, speed: 0, eta: '—', status: 'error', queue: 'Main', added: 'Yesterday 22:41', url: 'https://downloads.example.com/fw/r7800/v1.0.2.img', dir: 'D:\\Downloads', conns: 1, res: false, err: 'HTTP 403 Forbidden after 3 retries. Link may have expired. Use Refresh link to supply a new URL.' },
+      { id: 7, name: 'node-v24.9.0-x64.msi', ext: 'MSI', cat: 'programs', mb: 31.2, pct: 100, speed: 0, eta: '—', status: 'complete', queue: '—', added: 'Yesterday 18:20', url: 'https://nodejs.org/dist/v24.9.0/node-v24.9.0-x64.msi', dir: 'D:\\Downloads\\Programs', conns: 8, res: true },
+      { id: 8, name: 'annual-report-2025.pdf', ext: 'PDF', cat: 'documents', mb: 12.7, pct: 100, speed: 0, eta: '—', status: 'complete', queue: '—', added: 'Oct 6', url: 'https://example.com/ir/annual-report-2025.pdf', dir: 'D:\\Downloads\\Documents', conns: 4, res: true }
+    ];
+
+    var META = {
+      downloading: { label: 'Downloading', col: c.accent },
+      paused: { label: 'Paused', col: c.orange },
+      queued: { label: 'Scheduled', col: c.muted },
+      error: { label: 'Failed', col: c.red },
+      complete: { label: 'Complete', col: c.green }
+    };
+    function fmt(mb) { return mb >= 1024 ? (mb / 1024).toFixed(2) + ' GB' : mb.toFixed(1) + ' MB'; }
+    function match(d, k) {
+      if (k === 'all') return true;
+      if (k === 'active') return d.status === 'downloading';
+      if (k === 'unfinished') return d.pct < 100;
+      if (k === 'finished') return d.status === 'complete';
+      if (k.indexOf('q:') === 0) return d.queue === k.slice(2);
+      return d.cat === k;
+    }
+    var mono = "font-family: 'JetBrains Mono', monospace; font-size: 12px;";
+    var cellBase = 'padding: 9px 14px; border-bottom: 1px solid ' + c.border + '; white-space: nowrap; vertical-align: middle;';
+    function badge(ext, big) {
+      return 'flex: none; display: inline-flex; align-items: center; justify-content: center; width: ' + (big ? 40 : 34) + 'px; height: ' + (big ? 40 : 22) + 'px; border-radius: ' + (big ? 9 : 5) + 'px; background: ' + c.raised + '; color: ' + c.muted + '; font-family: \'JetBrains Mono\', monospace; font-size: ' + (big ? 11 : 10) + 'px; font-weight: 500; letter-spacing: 0.02em';
+    }
+    function pill(col) {
+      return 'display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 999px; border: 1px solid ' + c.border + '; font-size: 12px; white-space: nowrap; color: ' + c.text;
+    }
+    function dot(col) { return 'width: 7px; height: 7px; border-radius: 50%; background: ' + col; }
+
+    var filtered = D.filter(function (d) { return match(d, cat); });
+    var selId = s.sel;
+    var hasSel = filtered.some(function (d) { return d.id === selId; });
+    if (!hasSel) selId = filtered.length ? filtered[0].id : D[0].id;
+
+    var rows = filtered.map(function (d) {
+      var m = META[d.status];
+      var sel = d.id === selId;
+      return {
+        name: d.name, ext: d.ext, queue: d.queue, added: d.added,
+        sizeStr: fmt(d.mb), pctStr: d.pct + '%',
+        speedStr: d.speed ? d.speed.toFixed(1) + ' MB/s' : '—',
+        etaStr: d.eta, statusLabel: d.label || m.label,
+        pick: function () { self.setState({ sel: d.id }); },
+        rowStyle: 'cursor: pointer; background: ' + (sel ? c.selBg : 'transparent') + '; box-shadow: ' + (sel ? 'inset 3px 0 0 ' + c.accent : 'none'),
+        cell: cellBase,
+        cellMono: cellBase + mono + ' color: ' + c.text,
+        cellMonoR: cellBase + mono + ' text-align: right; color: ' + c.text,
+        cellMuted: cellBase + ' color: ' + c.muted + '; font-size: 12px',
+        badgeStyle: badge(d.ext, false),
+        nameStyle: 'background: none; border: 0; padding: 0; font: inherit; font-weight: 500; color: ' + c.text + '; cursor: pointer; text-align: left; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap',
+        trackStyle: 'width: 120px; height: 6px; border-radius: 3px; background: ' + c.track + '; overflow: hidden',
+        fillStyle: 'height: 100%; width: ' + d.pct + '%; border-radius: 3px; background: ' + m.col,
+        pillStyle: pill(m.col), pillDot: dot(m.col)
+      };
+    });
+
+    var JIT = [12, -8, 20, -15, 5, 25, -20, 0, 15, -5, 30, -25, 8, -12, 18, -30];
+    var dd = D.filter(function (d) { return d.id === selId; })[0];
+    var dm = META[dd.status];
+    var n = Math.max(dd.conns, 1);
+    var segs = [];
+    for (var i = 0; i < n; i++) {
+      var f = dd.pct >= 100 ? 100 : dd.pct === 0 ? 0 : Math.max(0, Math.min(100, dd.pct + JIT[i % 16]));
+      segs.push({
+        track: 'flex: 1; height: 22px; border-radius: 4px; background: ' + c.track + '; overflow: hidden',
+        fill: 'height: 100%; width: ' + f + '%; background: ' + dm.col + '; opacity: ' + (f >= 100 ? 0.55 : 1)
+      });
+    }
+    var pts = [];
+    var peak = 0;
+    for (var j = 0; j < 30; j++) {
+      var v = dd.status === 'downloading' ? dd.speed * (0.78 + 0.16 * Math.sin(j * 0.7 + dd.id) + 0.06 * Math.cos(j * 2.1)) : 0;
+      if (v > peak) peak = v;
+      pts.push(v);
+    }
+    var mx = Math.max(peak * 1.15, 1);
+    var line = pts.map(function (v, k) { return (k * 400 / 29).toFixed(1) + ',' + (60 - v / mx * 54).toFixed(1); }).join(' ');
+    var d = {
+      name: dd.name, ext: dd.ext, url: dd.url, dir: dd.dir,
+      badgeStyle: badge(dd.ext, true), pillStyle: pill(dm.col), pillDot: dot(dm.col),
+      statusLabel: dd.label || dm.label,
+      doneStr: fmt(dd.mb * dd.pct / 100), sizeStr: fmt(dd.mb), pctStr: dd.pct + '%',
+      speedStr: dd.speed ? dd.speed.toFixed(1) + ' MB/s' : '—', etaStr: dd.eta,
+      connStr: dd.status === 'downloading' ? dd.conns + ' active / ' + dd.conns + ' max' : '0 active / ' + dd.conns + ' max',
+      resumeStr: dd.res ? 'Supported (byte ranges)' : 'Not supported by server',
+      primaryAction: dd.status === 'downloading' ? 'Pause' : dd.status === 'complete' ? 'Open file' : dd.status === 'error' ? 'Refresh link' : 'Resume',
+      isError: dd.status === 'error', err: dd.err || '',
+      segs: segs, line: line, area: '0,64 ' + line + ' 400,64',
+      lineColor: c.accent, peakStr: peak ? peak.toFixed(1) + ' MB/s' : '—'
+    };
+
+    var ICN = {
+      'all': ['M4 13.5h4l2 3h4l2-3h4', 'M4 13.5L6.5 5h11l2.5 8.5V19H4z'],
+      'active': ['M3 12h4l2.5-6.5 5 13 2.5-6.5h4'],
+      'unfinished': ['O 12 12 8.5', 'F M12 6a6 6 0 0 1 0 12z'],
+      'finished': ['O 12 12 8.5', 'M8 12.4l2.8 2.8L16.2 9.6'],
+      'video': ['M3 6h13v12H3z', 'M16 10l5-3v10l-5-3'],
+      'music': ['M9 18V5.5l11-2V16', 'O 6.5 18 2.5', 'O 17.5 16 2.5'],
+      'documents': ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M9 12h6', 'M9 16h6'],
+      'compressed': ['M3 4h18v4H3z', 'M4.5 8v12h15V8', 'M10 12h4'],
+      'programs': ['M3 5h18v14H3z', 'M3 9h18', 'M7 12.5l2.5 2.25L7 17', 'M11.5 17h5'],
+      'general': ['M6 3h8l4 4v14H6z', 'M14 3v4h4'],
+      'q:Main': ['M10 3h7l3 3v10', 'M5 7h8l3 3v11H5z', 'M8 14h5', 'M8 17.5h5'],
+      'q:Overnight': ['O 12 12 8.5', 'M12 7.5V12l3 2']
+    };
+    function els(shapes) {
+      return shapes.map(function (s) {
+        if (s.indexOf('O ') === 0) {
+          var p = s.slice(2).split(' ').map(Number);
+          return { d: 'M' + (p[0] - p[2]) + ' ' + p[1] + 'a' + p[2] + ' ' + p[2] + ' 0 1 0 ' + 2 * p[2] + ' 0a' + p[2] + ' ' + p[2] + ' 0 1 0 ' + (-2 * p[2]) + ' 0z', fill: 'none', stroke: 'currentColor' };
+        }
+        if (s.indexOf('F ') === 0) return { d: s.slice(2), fill: 'currentColor', stroke: 'none' };
+        return { d: s, fill: 'none', stroke: 'currentColor' };
+      });
+    }
+    function sec(title, items) {
+      return {
+        title: title,
+        headStyle: 'padding: 0 10px 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: ' + c.muted,
+        items: items.map(function (it) {
+          var on = it.k === cat;
+          return {
+            label: it.l,
+            count: D.filter(function (x) { return match(x, it.k); }).length,
+            pick: function () { self.setState({ cat: it.k }); },
+            style: 'display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border: 0; border-radius: 7px; font: inherit; text-align: left; cursor: pointer; background: ' + (on ? c.accentSoft : 'transparent') + '; color: ' + (on ? c.text : c.muted) + '; font-weight: ' + (on ? 600 : 400),
+            els: els(ICN[it.k] || ICN.general),
+            iconStyle: 'flex: none; color: ' + (on ? c.accent : c.muted),
+            countStyle: "font-family: 'JetBrains Mono', monospace; font-size: 11px; color: " + c.muted
+          };
+        })
+      };
+    }
+    var sections = [
+      sec('Library', [{ k: 'all', l: 'All downloads' }, { k: 'active', l: 'Active' }, { k: 'unfinished', l: 'Unfinished' }, { k: 'finished', l: 'Finished' }]),
+      sec('Categories', [{ k: 'video', l: 'Video' }, { k: 'music', l: 'Music' }, { k: 'documents', l: 'Documents' }, { k: 'compressed', l: 'Compressed' }, { k: 'programs', l: 'Programs' }, { k: 'general', l: 'General' }]),
+      sec('Queues', [{ k: 'q:Main', l: 'Main queue' }, { k: 'q:Overnight', l: 'Overnight' }])
+    ];
+
+    var total = D.reduce(function (a, x) { return a + x.speed; }, 0);
+    var tbBase = 'display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 8px; font: inherit; cursor: pointer; ';
+    return {
+      c: c, rows: rows, d: d, sections: sections,
+      totalSpeed: total.toFixed(1) + ' MB/s',
+      summary: '3 active · 1 paused · 1 scheduled · 1 failed',
+      tb: tbBase + 'border: 1px solid ' + c.border + '; background: ' + c.surface + '; color: ' + c.text,
+      tbIcon: 'display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; margin-left: auto; border: 1px solid ' + c.border + '; background: ' + c.surface + '; color: ' + c.text,
+      th: 'padding: 10px 14px; font-weight: 500; border-bottom: 1px solid ' + c.border + '; white-space: nowrap',
+      thR: 'padding: 10px 14px; font-weight: 500; text-align: right; border-bottom: 1px solid ' + c.border + '; white-space: nowrap',
+      limOn: limOn ? 'true' : 'false',
+      limLabel: limOn ? 'Limit 25 MB/s' : 'No limit',
+      limFooter: limOn ? '25 MB/s total' : 'off',
+      limStyle: tbBase + 'border: 1px solid ' + (limOn ? c.orange : c.border) + '; background: ' + c.surface + '; color: ' + (limOn ? c.orange : c.text),
+      toggleLimit: function () { self.setState({ lim: !limOn }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

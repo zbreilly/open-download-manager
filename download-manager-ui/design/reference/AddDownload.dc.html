@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add download dialog</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 560px; height: 680px; box-sizing: border-box; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.4; color: #E7E9EC; background: #14171C; border: 1px solid #262C35; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden">
+
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #262C35">
+<h1 style="margin: 0; font-size: 15px; font-weight: 600">Add download</h1>
+<button type="button" aria-label="Close" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 7px; border: 0; background: transparent; color: #98A1AD; cursor: pointer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+<div style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 18px 20px; overflow: auto">
+
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">URL</span>
+<input type="url" value="https://releases.ubuntu.com/26.04/ubuntu-26.04-desktop-amd64.iso" style="height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #5B9DFF; background: #0D0F12; color: #E7E9EC; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none">
+</label>
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 10px; background: #1A1E24; border: 1px solid #262C35">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 9px; background: #222831; color: #98A1AD; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500">ISO</span>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #E7E9EC">6.20 GB · application/x-iso9660-image</div>
+<div style="display: flex; gap: 14px; font-size: 12px; color: #98A1AD">
+<span style="display: flex; align-items: center; gap: 5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4CC38A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Resumable</span>
+<span style="display: flex; align-items: center; gap: 5px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4CC38A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"></path></svg>Byte ranges</span>
+<span>HTTP/2 · TLS 1.3</span>
+</div>
+</div>
+</div>
+
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">File name</span>
+<input type="text" value="ubuntu-26.04-desktop-amd64.iso" style="height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #262C35; background: #0D0F12; color: #E7E9EC; font: inherit; outline: none">
+</label>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">Category</span>
+<select style="height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid #262C35; background: #0D0F12; color: #E7E9EC; font: inherit"><option>Programs</option><option>Video</option><option>Music</option><option>Documents</option><option>Compressed</option><option>General</option></select>
+</label>
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">Queue</span>
+<select style="height: 36px; padding: 0 10px; border-radius: 8px; border: 1px solid #262C35; background: #0D0F12; color: #E7E9EC; font: inherit"><option>Main queue</option><option>Overnight</option><option>None (start manually)</option></select>
+</label>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">Save to</span>
+<div style="display: flex; gap: 8px">
+<input type="text" value="{{folder}}" style="flex: 1; min-width: 0; height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #262C35; background: #0D0F12; color: #E7E9EC; font-family: 'JetBrains Mono', monospace; font-size: 12px; outline: none">
+<button type="button" style="height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #262C35; background: #1A1E24; color: #E7E9EC; font: inherit; cursor: pointer">Browse</button>
+</div>
+</label>
+<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center">
+<span style="font-size: 12px; color: #98A1AD; margin-right: 2px">Recent</span>
+<sc-for list="{{recents}}" as="r" hint-placeholder-count="4">
+<button type="button" onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">Connections</span>
+<div role="radiogroup" aria-label="Connections" style="display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: #0D0F12; border: 1px solid #262C35; width: fit-content">
+<sc-for list="{{conns}}" as="k" hint-placeholder-count="5">
+<button type="button" role="radio" aria-checked="{{k.on}}" onClick="{{k.pick}}" style="{{k.style}}">{{k.label}}</button>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label style="display: flex; align-items: center; gap: 9px; cursor: pointer"><input type="checkbox" checked style="width: 16px; height: 16px; accent-color: #5B9DFF; margin: 0">Remember this folder for Programs</label>
+<label style="display: flex; align-items: center; gap: 9px; cursor: pointer"><input type="checkbox" style="width: 16px; height: 16px; accent-color: #5B9DFF; margin: 0">Verify checksum after download</label>
+</div>
+<button type="button" style="align-self: flex-start; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: none; color: #5B9DFF; font: inherit; cursor: pointer"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg>Advanced: authentication, referrer, cookies, headers</button>
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid #262C35; background: #1A1E24">
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #262C35; background: transparent; color: #E7E9EC; font: inherit; cursor: pointer">Add to queue</button>
+<span style="flex: 1"></span>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #262C35; background: transparent; color: #E7E9EC; font: inherit; cursor: pointer">Cancel</button>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 8px; border: 0; background: #5B9DFF; color: #0A1426; font: inherit; font-weight: 600; cursor: pointer">Start download</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":560,"height":680}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var self = this;
+    var s = this.state || {};
+    var conn = s.conn || 16;
+    var R = ['D:\\Downloads\\Programs', 'D:\\ISOs', 'D:\\Models', 'E:\\Archive'];
+    var folder = s.folder || R[0];
+    var chip = function (on) {
+      return 'height: 28px; padding: 0 10px; border-radius: 7px; font-family: \'JetBrains Mono\', monospace; font-size: 11px; cursor: pointer; border: 1px solid ' + (on ? '#5B9DFF' : '#262C35') + '; background: ' + (on ? 'rgba(91,157,255,0.14)' : 'transparent') + '; color: ' + (on ? '#E7E9EC' : '#98A1AD');
+    };
+    return {
+      folder: folder,
+      recents: R.map(function (p) { return { label: p, style: chip(p === folder), pick: function () { self.setState({ folder: p }); } }; }),
+      conns: [1, 4, 8, 16, 32].map(function (n) {
+        var on = n === conn;
+        return {
+          label: String(n), on: on ? 'true' : 'false',
+          pick: function () { self.setState({ conn: n }); },
+          style: 'min-width: 44px; height: 30px; border-radius: 6px; border: 0; font-family: \'JetBrains Mono\', monospace; font-size: 12px; cursor: pointer; background: ' + (on ? '#5B9DFF' : 'transparent') + '; color: ' + (on ? '#0A1426' : '#98A1AD') + '; font-weight: ' + (on ? 600 : 400)
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

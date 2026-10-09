@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Download progress window</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 760px; height: 680px; box-sizing: border-box; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.4; color: #E7E9EC; background: #14171C; border: 1px solid #262C35; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden">
+
+<div style="display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #262C35">
+<span style="flex: none; width: 40px; height: 40px; border-radius: 9px; background: #222831; color: #98A1AD; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500">ISO</span>
+<div style="flex: 1; min-width: 0">
+<h1 style="margin: 0; font-size: 15px; font-weight: 600">ubuntu-26.04-desktop-amd64.iso</h1>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #98A1AD; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">releases.ubuntu.com · D:\Downloads\Programs</div>
+</div>
+<span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px 2px 7px; border-radius: 999px; border: 1px solid #262C35; font-size: 12px"><span style="width: 7px; height: 7px; border-radius: 50%; background: #5B9DFF"></span>Downloading</span>
+</div>
+
+<div style="flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 18px 20px; overflow: hidden">
+
+<div style="display: flex; align-items: flex-end; gap: 20px">
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 40px; font-weight: 500; line-height: 1; letter-spacing: -0.02em">64<span style="font-size: 22px; color: #98A1AD">%</span></div>
+<div style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px">
+<div><div style="font-size: 11px; color: #98A1AD; text-transform: uppercase; letter-spacing: 0.06em">Downloaded</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 14px">3.97 / 6.20 GB</div></div>
+<div><div style="font-size: 11px; color: #98A1AD; text-transform: uppercase; letter-spacing: 0.06em">Speed</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #5B9DFF">48.7 MB/s</div></div>
+<div><div style="font-size: 11px; color: #98A1AD; text-transform: uppercase; letter-spacing: 0.06em">Time left</div><div style="font-family: 'JetBrains Mono', monospace; font-size: 14px">47s</div></div>
+<div><div style="font-size: 11px; color: #98A1AD; text-transform: uppercase; letter-spacing: 0.06em">Resume</div><div style="font-size: 14px">Supported</div></div>
+</div>
+</div>
+
+<div>
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #98A1AD; margin-bottom: 6px"><span>Segment map · 16 connections</span><span>Faded = segment done · light edge = active write head</span></div>
+<div style="display: flex; gap: 3px">
+<sc-for list="{{segs}}" as="sg" hint-placeholder-count="16">
+<div style="flex: 1; height: 30px; border-radius: 4px; background: #232933; overflow: hidden"><div style="{{sg.fill}}"></div></div>
+</sc-for>
+</div>
+</div>
+
+<div style="display: flex; gap: 16px; min-height: 0; flex: 1">
+<div style="flex: 1.25; min-width: 0; display: flex; flex-direction: column; border: 1px solid #262C35; border-radius: 10px; overflow: hidden">
+<div style="display: grid; grid-template-columns: 34px 1fr 1fr 90px; gap: 8px; padding: 8px 12px; font-size: 11px; color: #98A1AD; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid #262C35; background: #1A1E24">
+<span>#</span><span>Received</span><span>State</span><span style="text-align: right">Speed</span>
+</div>
+<div style="overflow: auto; flex: 1">
+<sc-for list="{{conns}}" as="k" hint-placeholder-count="10">
+<div style="display: grid; grid-template-columns: 34px 1fr 1fr 90px; gap: 8px; padding: 6px 12px; font-family: 'JetBrains Mono', monospace; font-size: 12px; border-bottom: 1px solid #1F242B">
+<span style="color: #98A1AD">{{k.n}}</span><span>{{k.recv}}</span><span style="{{k.stateStyle}}">{{k.state}}</span><span style="text-align: right">{{k.speed}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div>
+<div style="font-size: 12px; color: #98A1AD; margin-bottom: 6px">Speed, last 60 s</div>
+<svg viewBox="0 0 300 90" preserveAspectRatio="none" style="width: 100%; height: 90px; display: block; border-radius: 8px; background: #1A1E24">
+<polygon points="{{area}}" fill="rgba(91,157,255,0.16)"></polygon>
+<polyline points="{{line}}" fill="none" stroke="#5B9DFF" stroke-width="1.8" vector-effect="non-scaling-stroke"></polyline>
+</svg>
+</div>
+<label style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #1A1E24; border: 1px solid #262C35">
+<span style="display: flex; flex-direction: column"><span>Limit this download</span><span style="font-size: 12px; color: #98A1AD">Overrides the global limit</span></span>
+<input type="checkbox" style="width: 16px; height: 16px; accent-color: #5B9DFF; margin: 0">
+</label>
+<label style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #98A1AD">When finished</span>
+<select style="height: 34px; padding: 0 10px; border-radius: 8px; border: 1px solid #262C35; background: #0D0F12; color: #E7E9EC; font: inherit"><option>Show notification</option><option>Open file</option><option>Open folder</option><option>Do nothing</option></select>
+</label>
+</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid #262C35; background: #1A1E24">
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #262C35; background: transparent; color: #E7E9EC; font: inherit; cursor: pointer">Hide</button>
+<span style="flex: 1"></span>
+<button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #262C35; background: transparent; color: #F26B75; font: inherit; cursor: pointer">Cancel download</button>
+<button type="button" style="height: 36px; padding: 0 16px; border-radius: 8px; border: 0; background: #5B9DFF; color: #0A1426; font: inherit; font-weight: 600; cursor: pointer">Pause</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":760,"height":680}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var JIT = [36, 28, 44, 21, 29, 49, 4, 24, 39, 19, 54, -1, 32, 12, 42, -6];
+    var segMB = 6350 / 16;
+    var segs = [];
+    var conns = [];
+    for (var i = 0; i < 16; i++) {
+      var f = Math.max(0, Math.min(100, 64 + JIT[i]));
+      var done = f >= 100;
+      segs.push({ fill: 'height: 100%; width: ' + f + '%; background: ' + (done ? 'rgba(91,157,255,0.55)' : 'repeating-linear-gradient(90deg, #5B9DFF 0 calc(100% - 10px), rgba(91,157,255,0.4) calc(100% - 10px) 100%)') });
+      var sp = done ? 0 : (48.7 / 14) * (0.7 + 0.6 * ((i * 37) % 10) / 10);
+      conns.push({
+        n: String(i + 1).padStart(2, '0'),
+        recv: (segMB * f / 100).toFixed(0) + ' / ' + segMB.toFixed(0) + ' MB',
+        state: done ? 'Done' : (i === 6 ? 'Reconnecting' : 'Receiving'),
+        stateStyle: 'color: ' + (done ? '#4CC38A' : i === 6 ? '#F0A04B' : '#E7E9EC'),
+        speed: done ? '—' : (i === 6 ? '0.0' : sp.toFixed(1)) + (done ? '' : ' MB/s')
+      });
+    }
+    var pts = [];
+    for (var j = 0; j < 30; j++) {
+      var v = 48.7 * (0.78 + 0.16 * Math.sin(j * 0.7 + 1) + 0.06 * Math.cos(j * 2.1));
+      pts.push((j * 300 / 29).toFixed(1) + ',' + (86 - v / 62 * 80).toFixed(1));
+    }
+    var line = pts.join(' ');
+    return { segs: segs, conns: conns, line: line, area: '0,90 ' + line + ' 300,90' };
+  }
+}
+</script>
+</body>
+</html>

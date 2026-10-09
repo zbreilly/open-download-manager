@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Queues & scheduler</title>
+<link rel="stylesheet" href="/tokens.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font:var(--fs-md)/var(--lh) var(--font-ui);color:var(--text);background:var(--bg)}
+.wrap{display:flex;gap:16px;min-height:70vh}
+.rail{width:210px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px}
+.rail button{display:flex;justify-content:space-between;width:100%;padding:8px 10px;border-radius:7px;border:0;
+  background:transparent;color:var(--text-muted);font:inherit;text-align:left;cursor:pointer}
+.rail button.sel{background:var(--accent-soft);color:var(--text);font-weight:600}
+.rail button.new{border:1px dashed var(--border);margin-top:8px;justify-content:center}
+.pane{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px}
+.card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:12px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0}
+.muted{color:var(--text-muted)} .mono{font-family:var(--font-mono)}
+h2{margin:0 0 12px;font-size:var(--fs-xl)}
+input[type=time],input[type=number],select{height:var(--input-h);border-radius:var(--r-md);
+  border:1px solid var(--border);background:var(--surface-sunken);color:var(--text);
+  font-family:var(--font-mono);padding:0 10px}
+.days{display:flex;gap:6px}
+.days button{width:52px;height:34px;border-radius:var(--r-md);border:1px solid var(--border);
+  background:var(--surface);color:var(--text-muted);font:inherit;cursor:pointer}
+.days button[aria-pressed=true]{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+button{height:var(--input-h);padding:0 14px;border-radius:var(--r-md);border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font:inherit;cursor:pointer}
+
+/* button press feedback (spec 2.5 motion token) */
+button, .btn { transition: transform var(--motion), filter var(--motion), background var(--motion); }
+button:active:not(:disabled), .btn:active:not(:disabled) { transform: scale(0.96); filter: brightness(0.88); }
+.primary:active, button.primary:active { transform: scale(0.96); filter: brightness(0.85); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="rail" id="rail"></div>
+  <div class="pane">
+    <h2 id="qname">Queue</h2>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button onclick="qstart()" class="primary">Start now</button>
+      <button onclick="qstop()">Stop</button>
+    </div>
+    <div class="card"><div class="row"><b>Start at</b>
+      <label class="muted"><input type="checkbox" id="startEnabled"> enabled</label>
+      <input type="time" id="startAt" value="01:00"></div></div>
+    <div class="card"><div class="row"><b>Stop at</b>
+      <label class="muted"><input type="checkbox" id="stopEnabled"> enabled</label>
+      <input type="time" id="stopAt" value="07:00"></div></div>
+    <div class="card"><b>Repeat on</b>
+      <div class="days" id="days" style="margin-top:8px"></div></div>
+    <div class="card"><div class="row"><b>Files at the same time</b>
+      <span><button onclick="stepper(-1)">−</button>
+      <span class="mono" id="maxParallel" style="padding:0 10px">2</span>
+      <button onclick="stepper(1)">+</button></span></div>
+      <div class="row"><b>Retry failed downloads</b>
+      <select id="retryFailed"><option>yes</option><option>no</option></select></div></div>
+    <div class="card"><b>When the queue finishes</b>
+      <div class="row"><select id="whenDone">
+        <option>Do nothing</option><option>Notify only</option>
+        <option>Put computer to sleep</option><option>Shut down computer</option>
+      </select>
+      <span class="muted">sleep/shutdown actions are wired as no-ops in this build</span></div></div>
+    <div class="actions">
+      <span class="muted" id="summary"></span>
+      <button onclick="load()">Cancel</button>
+      <button class="primary" onclick="save()">Save schedule</button>
+    </div>
+  </div>
+</div>
+<script>
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const odmFetch = (u, o) => {
+  o = o || {};
+  o.headers = Object.assign({}, o.headers, { "X-ODM-Token": window.ODM_TOKEN || "" });
+  return fetch(u, o);
+};
+const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+let queues = [], sel = 0;
+const $ = id => document.getElementById(id);
+async function load() {
+  queues = (await odmFetch('/api/queues').then(r => r.json())).queues;
+  sel = Math.min(sel, queues.length - 1);
+  if (sel < 0) { queues = [{id:'main', name:'Main queue', maxParallel:'2'}]; sel = 0; }
+  $('rail').innerHTML = queues.map((q,i) =>
+    `<button class="${i===sel?'sel':''}" onclick="selq(${i})">${esc(q.name || q.id)}</button>`).join('')
+    + `<button class="new" onclick="newq()">+ New queue</button>`;
+  const q = queues[sel];
+  $('qname').textContent = q.name || q.id;
+  $('startEnabled').checked = q.startEnabled === '1';
+  $('startAt').value = q.startAt || '01:00';
+  $('stopEnabled').checked = q.stopEnabled === '1';
+  $('stopAt').value = q.stopAt || '07:00';
+  $('maxParallel').textContent = q.maxParallel || '2';
+  $('retryFailed').value = q.retryFailed || 'yes';
+  $('whenDone').value = q.whenDone || 'Do nothing';
+  const days = (q.days || '1111100').split('');
+  $('days').innerHTML = DAYS.map((d,i) =>
+    `<button aria-pressed="${days[i]==='1'}" onclick="toggleDay(this,'${i}')">${d}</button>`).join('');
+  $('summary').textContent = `Queue: ${queues.length} job slots · saved per queue`;
+}
+function selq(i){ sel=i; load(); }
+function newq(){
+  const name = prompt('Queue name'); if (!name) return;
+  queues.push({id:'q'+Date.now(), name, maxParallel:'2', days:'1111100'});
+  sel = queues.length-1; save().then(load);
+}
+function toggleDay(btn,i){ const q=queues[sel]; const d=(q.days||'1111100').split('');
+  d[i]=d[i]==='1'?'0':'1'; q.days=d.join(''); btn.setAttribute('aria-pressed', d[i]==='1'); }
+function stepper(d){ const el=$('maxParallel'); el.textContent = Math.max(1, (+el.textContent||1)+d); }
+async function save(){
+  const q = queues[sel];
+  q.startEnabled = $('startEnabled').checked ? '1' : '0';
+  q.startAt = $('startAt').value;
+  q.stopEnabled = $('stopEnabled').checked ? '1' : '0';
+  q.stopAt = $('stopAt').value;
+  q.maxParallel = $('maxParallel').textContent;
+  q.retryFailed = $('retryFailed').value;
+  q.whenDone = $('whenDone').value;
+  const p = new URLSearchParams(); for (const [k,v] of Object.entries(q)) p.set(k,v);
+  await odmFetch('/api/queues?'+p.toString(), {method:'POST'});
+}
+function qstart(){ odmFetch('/api/run?max=' + ($('maxParallel').textContent||'2'), {method:'POST'}); }
+function qstop(){ odmFetch('/api/jobs').then(r=>r.json()).then(d =>
+  d.jobs.filter(j=>j.status==='downloading').forEach(j =>
+    odmFetch('/api/pause?id='+j.id, {method:'POST'}))); }
+load();
+</script>
+</body>
+</html>

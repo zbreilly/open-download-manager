@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="/tokens.css">
+<style>
+*{box-sizing:border-box}
+body{margin:0;padding:16px;font:var(--fs-md)/var(--lh) var(--font-ui);color:var(--text);background:var(--bg)}
+.wrap{display:flex;gap:16px}
+.nav{width:220px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:10px}
+.nav button{display:block;width:100%;text-align:left;padding:8px 10px;border:0;border-radius:7px;
+  background:transparent;color:var(--text-muted);font:inherit;cursor:pointer}
+.nav button.sel{background:var(--accent-soft);color:var(--text);font-weight:600}
+.pane{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px}
+.card{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px 16px;margin-bottom:12px}
+.card .row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:6px 0;border-bottom:1px solid var(--border-subtle)}
+.card .row:last-child{border-bottom:0}
+.row b{font-weight:500} .desc{font-size:var(--fs-sm);color:var(--text-muted)}
+input[type=number],input[type=text],select{height:var(--input-h);border-radius:var(--r-md);
+  border:1px solid var(--border);background:var(--surface-sunken);color:var(--text);
+  font-family:var(--font-mono);padding:0 10px}
+input[disabled]{opacity:.45}
+.seg{display:flex;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden}
+.seg button{border:0;background:var(--surface-sunken);color:var(--text-muted);
+  padding:8px 14px;font:inherit;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.switch{position:relative;width:40px;height:22px;border-radius:11px;background:var(--switch-off);
+  border:0;cursor:pointer}
+.switch::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;
+  border-radius:50%;background:var(--text-muted);transition:left var(--motion)}
+.switch[aria-checked=true]{background:var(--accent)}
+.switch[aria-checked=true]::after{left:21px;background:var(--on-accent)}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+button{height:var(--input-h);padding:0 14px;border-radius:var(--r-md);border:1px solid var(--border);
+  background:var(--surface);color:var(--text);font:inherit;cursor:pointer}
+.muted{color:var(--text-muted)}
+h2{margin:0 0 12px;font-size:var(--fs-xl)}
+input.k{width:9em} input.v{width:22em}
+
+/* button press feedback (spec 2.5 motion token) */
+button, .btn { transition: transform var(--motion), filter var(--motion), background var(--motion); }
+button:active:not(:disabled), .btn:active:not(:disabled) { transform: scale(0.96); filter: brightness(0.88); }
+.primary:active, button.primary:active { transform: scale(0.96); filter: brightness(0.85); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav" id="nav"></div>
+  <div class="pane"><h2 id="ptitle">General</h2><div id="pages"></div>
+    <div class="actions">
+      <button class="muted" onclick="defaults()">Restore defaults</button>
+      <button class="primary" onclick="save()">Save</button>
+    </div>
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const esc = (v) => String(v).replace(/[&<>"']/g, (c) => ({
+  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const odmFetch = (u, o) => {
+  o = o || {};
+  o.headers = Object.assign({}, o.headers, { "X-ODM-Token": window.ODM_TOKEN || "" });
+  return fetch(u, o);
+};
+let settings = {};
+const PAGES = {
+  'General': [
+    ['launchAtLogin','Launch at login','switch','Register a login item (not wired in this build)'],
+    ['minimizeToTray','Minimize to tray on close','switch','Keep downloads running in the background'],
+    ['clipboardMonitor','Monitor clipboard for URLs','switch','Offer downloads when a URL is copied'],
+    ['confirmDelete','Confirm before delete','switch','Ask before removing downloads'],
+  ],
+  'Connection & speed': [
+    ['defaultParts','Default connections per download','number',null,'Range 1–32'],
+    ['simultaneous','Simultaneous downloads','number',null,'Outside of queues'],
+    ['globalLimit','Global speed limit (MB/s, 0 = off)','number',null,'Caps combined speed'],
+    ['perDownloadLimit','Per-download speed limit (MB/s, 0 = off)','number',null,'Applies to each download'],
+  ],
+  'Appearance': [
+    ['theme','Theme','seg','Dark / Light / System'],
+    ['density','List density','seg','Comfortable / Compact'],
+  ],
+  'File types & categories': [
+    ['categoriesTable','Categories','catTable','Each category (except General) gets its own folder under the download dir; downloads route there by file type'],
+  ],
+  'Proxy': [
+    ['proxyMode','Proxy','select','none|system|HTTP|SOCKS5'],
+    ['proxyHost','Host','text',null,'e.g. 127.0.0.1'],
+    ['proxyPort','Port','number',null,'e.g. 8080'],
+  ],
+  'Notifications': [
+    ['notifyComplete','On complete','switch','Show a notification when a download finishes'],
+    ['notifyFailed','On failure','switch','Show a notification when a download fails'],
+  ],
+  'Advanced': [
+    ['userAgent','User agent','text',null,'Sent with every request'],
+    ['retryCount','Retry count','number',null,'Per segment'],
+    ['timeoutSecs','Timeout (seconds)','number',null,'Per connection'],
+    ['apiTokenNote','API token (for browser extension)','token','Extension pairing token'],
+  ],
+};
+const CONTROLS = {};
+function render(page) {
+  document.querySelectorAll('.nav button').forEach(b =>
+    b.classList.toggle('sel', b.textContent === page));
+  $('ptitle').textContent = page;
+  const defs = PAGES[page] || [];
+  $('pages').innerHTML = `<div class="card">` + defs.map(([key, title, kind, note, desc]) => {
+    const val = settings[key] != null ? settings[key] : '';
+    let ctl = '';
+    CONTROLS[key] = kind;
+    if (kind === 'catTable') {
+      ctl = `<div id="cat-editor" style="width:100%">loading…</div>`;
+    } else if (kind === 'token') {
+      ctl = `<input type="text" readonly value="${esc(window.ODM_TOKEN || '')}" onclick="this.select()" style="width:16em">`;
+    } else if (kind === 'switch') {
+      ctl = `<button class="switch" role="switch" aria-checked="${val==='1'}" data-key="${key}"></button>`;
+    } else if (kind === 'number') {
+      ctl = `<input type="number" data-key="${key}" value="${esc(val)}" ${note?`title="${note}"`:''}>`;
+    } else if (kind === 'text') {
+      ctl = `<input type="text" data-key="${key}" value="${esc(val)}">`;
+    } else if (kind === 'seg') {
+      const opts = String(note).split(' / ');
+      ctl = `<span class="seg">${opts.map(o =>
+        `<button aria-pressed="${val===o || (key==='theme' && val==='system' && o==='System')}"
+           data-key="${key}" data-val="${o}">${o}</button>`).join('')}</span>`;
+    } else if (kind === 'select') {
+      ctl = `<select data-key="${key}">${String(note).split('|').map(o =>
+        `<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+    }
+    return `<div class="row"><div><b>${title}</b>${note && kind!=='seg' && kind!=='select'
+      ? `<div class="desc">${desc || ''}</div>` : ''}</div>${ctl}</div>`;
+  }).join('') + `</div>`;
+  // wire controls
+  document.querySelectorAll('#pages [data-key]').forEach(el => {
+    const key = el.dataset.key;
+    if (el.classList.contains('switch')) {
+      el.addEventListener('click', () =>
+        el.setAttribute('aria-checked', el.getAttribute('aria-checked') === 'true' ? 'false' : 'true'));
+    } else if (el.tagName === 'BUTTON') {
+      el.addEventListener('click', () => {
+        el.parentElement.querySelectorAll('button').forEach(b =>
+          b.setAttribute('aria-pressed', 'false'));
+        el.setAttribute('aria-pressed', 'true');
+      });
+    }
+  });
+  // category editor loads AFTER its container exists
+  if (page === 'File types & categories') loadCatEditor();
+}
+async function loadCatEditor() {
+  const el = document.getElementById('cat-editor');
+  if (!el) return;
+  try {
+    const d = await odmFetch('/api/categories').then(r => r.json());
+    el.innerHTML = d.categories.map((c, i) => `
+      <div class="cat-row" style="display:flex;gap:8px;align-items:center;margin:6px 0">
+        <input data-i="${i}" data-f="name" value="${esc(c.name)}" style="width:7em"
+               ${c.name === 'General' ? 'readonly title="catch-all"' : ''}>
+        <input data-i="${i}" data-f="folder" value="${esc(c.folder || '')}"
+               placeholder="(root)" style="width:8em"
+               ${c.name === 'General' ? 'readonly' : ''}>
+        <input data-i="${i}" data-f="ext" value="${esc((c.extensions||[]).join(','))}"
+               placeholder="extensions, comma separated" style="flex:1">
+      </div>`).join('') +
+      `<div class="muted" style="font-size:11px">General = everything unmatched, saved in the download root. Empty folder = root.</div>`;
+    el.dataset.loaded = '1';
+  } catch (e) { el.textContent = 'failed to load categories'; }
+}
+async function saveCategories() {
+  const rows = [...document.querySelectorAll('#cat-editor .cat-row')];
+  if (!rows.length) return; // editor not loaded: nothing to save
+  const cats = rows.map((r) => {
+    const g = (f) => r.querySelector(`[data-f="${f}"]`).value.trim();
+    return { name: g('name'), folder: g('folder') || null,
+             extensions: g('ext').split(',').map(x => x.trim()).filter(Boolean) };
+  });
+  const r = await odmFetch('/api/categories', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ categories: cats }),
+  });
+  if (!r.ok) throw new Error('categories save failed: ' + r.status);
+}
+function collect() {
+  const out = {};
+  document.querySelectorAll('#pages [data-key]').forEach(el => {
+    if (el.classList.contains('switch')) {
+      out[el.dataset.key] = el.getAttribute('aria-checked') === 'true' ? '1' : '0';
+    } else if (el.tagName === 'BUTTON') {
+      out[el.dataset.key] = el.dataset.val;
+    } else {
+      out[el.dataset.key] = el.value;
+    }
+  });
+  return out;
+}
+async function load() {
+  settings = await odmFetch('/api/settings').then(r => r.json());
+  const page = Object.keys(PAGES)[0];
+  render(page);
+}
+async function save() {
+  const btn = document.querySelector('.actions .primary');
+  const flash = (msg, ok) => {
+    const el = document.getElementById('save-flash') || (() => {
+      const d = document.createElement('span');
+      d.id = 'save-flash';
+      d.style.cssText = 'margin-right:auto;font-size:12px';
+      btn.parentElement.prepend(d);
+      return d;
+    })();
+    el.textContent = msg;
+    el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+    setTimeout(() => { el.textContent = ''; }, 2500);
+  };
+  try {
+    if (document.getElementById('cat-editor')) await saveCategories();
+    const data = collect();
+    const p = new URLSearchParams(data);
+    if ([...p.keys()].length) {
+      const r = await odmFetch('/api/settings?' + p.toString(), { method: 'POST' });
+      if (!r.ok) throw new Error('settings ' + r.status);
+    }
+    if (data.theme) applyTheme(data.theme);
+    flash('Saved', true);
+  } catch (e) {
+    flash('Save failed: ' + e.message, false);
+  }
+}
+function defaults() { render(Object.keys(PAGES)[0]); }
+function applyTheme(t) {
+  document.documentElement.dataset.theme =
+    t === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : t;
+}
+// nav
+$('nav').innerHTML = Object.keys(PAGES).map((p, i) =>
+  `<button class="${i===0?'sel':''}">${p}</button>`).join('');
+document.querySelectorAll('.nav button').forEach(b =>
+  b.addEventListener('click', () => render(b.textContent)));
+applyTheme('dark');
+load().then(() => {
+  if (settings.theme) applyTheme(settings.theme);
+});
+</script>
+</body>
+</html>

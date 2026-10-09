@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Open Download Manager brand</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div style="width: 1280px; height: 1180px; box-sizing: border-box; padding: 40px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13px; line-height: 1.4; color: #E7E9EC; background: #0D0F12; display: flex; flex-direction: column; gap: 28px">
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px">
+<div style="height: 200px; border-radius: 14px; background: #14171C; border: 1px solid #262C35; display: flex; align-items: center; justify-content: center; gap: 18px">
+<div style="width: 72px; height: 72px; border-radius: 16px; background: #5B9DFF; color: #0A1426; display: flex; align-items: center; justify-content: center">
+<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg>
+</div>
+<div style="font-size: 40px; font-weight: 600; letter-spacing: -0.01em">Open Download Manager</div>
+</div>
+<div style="height: 200px; border-radius: 14px; background: #F3F4F6; color: #14171C; display: flex; align-items: center; justify-content: center; gap: 18px">
+<div style="width: 72px; height: 72px; border-radius: 16px; background: #5B9DFF; color: #0A1426; display: flex; align-items: center; justify-content: center">
+<svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg>
+</div>
+<div style="font-size: 40px; font-weight: 600; letter-spacing: -0.01em">Open Download Manager</div>
+</div>
+</div>
+
+<div style="display: flex; gap: 20px">
+<section style="flex: 1.6; border-radius: 14px; background: #14171C; border: 1px solid #262C35; padding: 22px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #98A1AD">App icon · Windows, Linux, extension</h2>
+<div style="display: flex; align-items: flex-end; gap: 22px; flex: 1">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="7">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="{{t.box}}">
+<svg viewBox="0 0 24 24" fill="none" stroke="#0A1426" stroke-width="{{t.sw}}" stroke-linecap="round" stroke-linejoin="round" style="{{t.svg}}" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="#0A1426" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg>
+</div>
+<span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #98A1AD">{{t.label}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+<section style="flex: 1; border-radius: 14px; background: #14171C; border: 1px solid #262C35; padding: 22px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #98A1AD">macOS icon (padded, shadowed)</h2>
+<div style="flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: #2A2F37">
+<img src="/_blob/93be54d56830266690d38f223a2248a3" alt="macOS app icon" style="width: 210px; height: 210px">
+</div>
+</section>
+</div>
+
+<section style="border-radius: 14px; background: #14171C; border: 1px solid #262C35; padding: 22px; display: flex; flex-direction: column; gap: 16px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #98A1AD">Tray icon states</h2>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; color: #98A1AD">Windows / Linux (color)</span>
+<div style="display: flex; gap: 14px; align-items: center; height: 64px; padding: 0 16px; border-radius: 10px; background: #1F232A">
+<sc-for list="{{tray}}" as="s" hint-placeholder-count="6">
+<svg width="32" height="32" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{{s.label}}">
+<rect width="24" height="24" rx="5.3" fill="#5B9DFF"></rect>
+<g transform="translate(3.12 3.12) scale(0.74)" fill="none" stroke="#0A1426" stroke-width="2.7"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="#0A1426" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></g>
+<sc-if value="{{s.badge}}" hint-placeholder-val="{{ true }}">
+<circle cx="18.5" cy="18.5" r="5.2" fill="{{s.color}}" stroke="#1F232A" stroke-width="1.6"></circle>
+<sc-for list="{{s.glyph}}" as="g" hint-placeholder-count="2"><path d="{{g.d}}" fill="{{g.fill}}" stroke="{{g.stroke}}" stroke-width="1.7"></path></sc-for>
+</sc-if>
+</svg>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; color: #98A1AD">macOS menu bar, light (template image)</span>
+<div style="display: flex; gap: 14px; align-items: center; height: 64px; padding: 0 16px; border-radius: 10px; background: #E9EAEC; color: #1A1A1A">
+<sc-for list="{{trayT}}" as="s" hint-placeholder-count="6">
+<svg width="30" height="30" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{{s.label}}">
+<g fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></g>
+<sc-if value="{{s.badge}}" hint-placeholder-val="{{ true }}">
+<circle cx="18.5" cy="18.5" r="5.2" fill="currentColor" stroke="#E9EAEC" stroke-width="2.6"></circle>
+<sc-for list="{{s.glyphL}}" as="g" hint-placeholder-count="2"><path d="{{g.d}}" fill="{{g.fill}}" stroke="{{g.stroke}}" stroke-width="1.7"></path></sc-for>
+</sc-if>
+</svg>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 12px; color: #98A1AD">macOS menu bar, dark (same template, tinted by the OS)</span>
+<div style="display: flex; gap: 14px; align-items: center; height: 64px; padding: 0 16px; border-radius: 10px; background: #2A2C30; color: #F2F2F2">
+<sc-for list="{{trayT}}" as="s" hint-placeholder-count="6">
+<svg width="30" height="30" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="{{s.label}}">
+<g fill="none" stroke="currentColor" stroke-width="2.6"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></g>
+<sc-if value="{{s.badge}}" hint-placeholder-val="{{ true }}">
+<circle cx="18.5" cy="18.5" r="5.2" fill="currentColor" stroke="#2A2C30" stroke-width="2.6"></circle>
+<sc-for list="{{s.glyphD}}" as="g" hint-placeholder-count="2"><path d="{{g.d}}" fill="{{g.fill}}" stroke="{{g.stroke}}" stroke-width="1.7"></path></sc-for>
+</sc-if>
+</svg>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="display: flex; gap: 14px; font-size: 12px; color: #98A1AD; font-family: 'JetBrains Mono', monospace">
+<span>idle</span><span>·</span><span>downloading</span><span>·</span><span>paused</span><span>·</span><span>error</span><span>·</span><span>complete</span><span>·</span><span>speed limit on</span>
+</div>
+</section>
+
+<div style="display: flex; gap: 20px">
+<section style="flex: 1.25; border-radius: 14px; background: #14171C; border: 1px solid #262C35; padding: 22px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #98A1AD">Browser integration</h2>
+<div style="display: flex; gap: 16px">
+<div style="flex: 1.4; height: 168px; border-radius: 10px; background: #2A2F37; position: relative; display: flex; align-items: center; justify-content: center; color: #6B7480">
+<span style="font-size: 12px">[Video playing on a web page]</span>
+<button type="button" style="position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 9px; border-radius: 9px; border: 0; background: #5B9DFF; color: #0A1426; font: inherit; font-weight: 600; cursor: pointer">
+<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="currentColor" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg>
+Download with ODM
+<span style="width: 1px; height: 16px; background: rgba(10,20,38,0.35)"></span>
+<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+</button>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 6px; border-radius: 10px; background: #1F232A; border: 1px solid #333A45; height: fit-content">
+<div style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 6px; background: rgba(91,157,255,0.16)">
+<span style="width: 16px; height: 16px; border-radius: 4px; background: #5B9DFF; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0A1426" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg></span>Download with ODM</div>
+<div style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 6px"><span style="width: 16px; height: 16px; border-radius: 4px; background: #5B9DFF; display: flex; align-items: center; justify-content: center"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0A1426" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg></span>Download all links with ODM</div>
+<div style="display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 6px; color: #98A1AD"><span style="width: 16px; height: 16px; border-radius: 4px; background: #5C6470"></span>Pause capture for 10 minutes</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 18px; font-size: 12px; color: #98A1AD">
+<span>Extension toolbar icon:</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 24px; height: 24px; border-radius: 6px; background: #5B9DFF; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A1426" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg></span>capturing</span>
+<span style="display: flex; align-items: center; gap: 8px"><span style="width: 24px; height: 24px; border-radius: 6px; background: #5C6470; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0A1426" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg></span>capture paused</span>
+</div>
+</section>
+
+<section style="flex: 1; border-radius: 14px; background: #14171C; border: 1px solid #262C35; padding: 22px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #98A1AD">Download complete notification</h2>
+<div style="display: flex; gap: 12px; padding: 14px; border-radius: 12px; background: #1F232A; border: 1px solid #333A45">
+<div style="flex: none; width: 40px; height: 40px; border-radius: 9px; background: #5B9DFF; display: flex; align-items: center; justify-content: center"><svg width="27" height="27" viewBox="0 0 24 24" fill="none" stroke="#0A1426" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.21 14.2A8.5 8.5 0 1 0 14.2 20.21"></path><path d="M16.66 18.01a1.35 1.35 0 1 0 2.7 0a1.35 1.35 0 1 0-2.7 0z" fill="#0A1426" stroke="none"></path><path d="M12 7v8.5"></path><path d="M8.6 12.1L12 15.5l3.4-3.4"></path></svg></div>
+<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px">
+<div style="display: flex; justify-content: space-between"><span style="font-weight: 600">Download complete</span><span style="font-size: 12px; color: #98A1AD">now</span></div>
+<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">ubuntu-26.04-desktop-amd64.iso</div>
+<div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #98A1AD">6.20 GB · 2m 11s · avg 48.4 MB/s</div>
+<div style="display: flex; gap: 8px; margin-top: 8px">
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 7px; border: 0; background: #5B9DFF; color: #0A1426; font: inherit; font-weight: 600; cursor: pointer">Open</button>
+<button type="button" style="height: 30px; padding: 0 12px; border-radius: 7px; border: 1px solid #333A45; background: transparent; color: #E7E9EC; font: inherit; cursor: pointer">Open folder</button>
+</div>
+</div>
+</div>
+</section>
+</div>
+
+<section style="border-radius: 14px; background: #14171C; border: 1px solid #262C35; padding: 22px; display: flex; flex-direction: column; gap: 14px">
+<h2 style="margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #98A1AD">Installer art</h2>
+<div style="display: flex; gap: 20px; align-items: flex-start">
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 6px"><img src="/_blob/078e546743333c7668024916fc1fd97f" alt="NSIS sidebar" style="width: 98px; height: 188px; border-radius: 4px"><figcaption style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #98A1AD">NSIS sidebar</figcaption></figure>
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 6px"><img src="/_blob/856a96595f203d980669cbd0bfd8994e" alt="WiX dialog" style="width: 296px; height: 187px; border-radius: 4px"><figcaption style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #98A1AD">WiX dialog</figcaption></figure>
+<div style="display: flex; flex-direction: column; gap: 6px"><img src="/_blob/482e802030ae2bfaed8e1e7d5041abe6" alt="WiX banner" style="width: 296px; height: 35px; border-radius: 4px"><span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #98A1AD">WiX banner</span></div>
+<figure style="margin: 0; display: flex; flex-direction: column; gap: 6px"><img src="/_blob/3803a7ebae628662bfb1189dc969b570" alt="macOS DMG background" style="width: 308px; height: 187px; border-radius: 4px"><figcaption style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #98A1AD">DMG background</figcaption></figure>
+</div>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var tiles = [96, 64, 48, 32, 24, 16].map(function (s) {
+      var small = s <= 32;
+      var m = s * (small ? 0.74 : 0.64);
+      return {
+        label: s + 'px',
+        sw: small ? 2.7 : 2.25,
+        box: 'width: ' + s + 'px; height: ' + s + 'px; border-radius: ' + (s * 0.22) + 'px; background: #5B9DFF; display: flex; align-items: center; justify-content: center',
+        svg: 'width: ' + m + 'px; height: ' + m + 'px; display: block'
+      };
+    });
+    function G(list, fg) {
+      return list.map(function (s) {
+        if (s.indexOf('D ') === 0) {
+          var p = s.slice(2).split(' ').map(Number);
+          return { d: 'M' + (p[0] - p[2]) + ' ' + p[1] + 'a' + p[2] + ' ' + p[2] + ' 0 1 0 ' + 2 * p[2] + ' 0a' + p[2] + ' ' + p[2] + ' 0 1 0 ' + (-2 * p[2]) + ' 0z', fill: fg, stroke: 'none' };
+        }
+        return { d: s, fill: 'none', stroke: fg };
+      });
+    }
+    var S = [
+      { k: 'idle', label: 'Idle', color: '', glyph: [], gfg: '' },
+      { k: 'downloading', label: 'Downloading', color: '#5B9DFF', glyph: ['M18.5 15.6v5.2', 'M16.4 18.8l2.1 2.1 2.1-2.1'], gfg: '#FFFFFF' },
+      { k: 'paused', label: 'Paused', color: '#F0A04B', glyph: ['M17.3 16.3v4.4', 'M19.7 16.3v4.4'], gfg: '#0A1426' },
+      { k: 'error', label: 'Error', color: '#F26B75', glyph: ['M18.5 15.6v3.1', 'D 18.5 21 0.9'], gfg: '#FFFFFF' },
+      { k: 'complete', label: 'Complete', color: '#4CC38A', glyph: ['M16.2 18.6l1.6 1.6 3-3.3'], gfg: '#0A1426' },
+      { k: 'limited', label: 'Speed limit on', color: '#F0A04B', glyph: ['M16.2 18.5h4.6'], gfg: '#0A1426' }
+    ];
+    return {
+      tiles: tiles,
+      tray: S.map(function (s) { return { label: s.label, badge: s.k !== 'idle', color: s.color, glyph: G(s.glyph, s.gfg) }; }),
+      trayT: S.map(function (s) { return { label: s.label, badge: s.k !== 'idle', glyphL: G(s.glyph, '#E9EAEC'), glyphD: G(s.glyph, '#2A2C30') }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

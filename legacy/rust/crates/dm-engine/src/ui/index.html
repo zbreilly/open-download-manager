@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Download Manager</title>
+<link rel="icon" type="image/png" href="/app-icon.png">
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header class="hdr">
+  <div class="brand">
+    <span class="brand-mark">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12"></path><path d="M6 11l6 6 6-6"></path><path d="M5 20h14"></path></svg>
+    </span>
+    <span class="brand-name">Open Download Manager</span>
+  </div>
+  <label class="search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+    <input id="search" type="search" placeholder="Search downloads, URLs, folders">
+    <span class="kbd">Ctrl K</span>
+  </label>
+  <div class="hdr-total">
+    <span class="muted">Total</span>
+    <span class="total-speed">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M6 13l6 6 6-6"></path></svg>
+      <span id="total-speed">—</span>
+    </span>
+  </div>
+</header>
+
+<div class="body">
+  <aside class="sidebar">
+    <nav class="nav-group" aria-label="Library">
+      <div class="nav-label">Library</div>
+      <button class="nav-item selected" data-filter="all"><span class="dot"></span>All downloads<span class="count" id="c-all">0</span></button>
+      <button class="nav-item" data-filter="active"><span class="dot"></span>Active<span class="count" id="c-active">0</span></button>
+      <button class="nav-item" data-filter="unfinished"><span class="dot"></span>Unfinished<span class="count" id="c-unfinished">0</span></button>
+      <button class="nav-item" data-filter="finished"><span class="dot"></span>Finished<span class="count" id="c-finished">0</span></button>
+    </nav>
+    <nav class="nav-group" aria-label="Categories">
+      <div class="nav-label">Categories</div>
+      <button class="nav-item" data-filter="cat:Video"><span class="dot"></span>Video<span class="count" id="c-video">0</span></button>
+      <button class="nav-item" data-filter="cat:Music"><span class="dot"></span>Music<span class="count" id="c-music">0</span></button>
+      <button class="nav-item" data-filter="cat:Documents"><span class="dot"></span>Documents<span class="count" id="c-documents">0</span></button>
+      <button class="nav-item" data-filter="cat:Compressed"><span class="dot"></span>Compressed<span class="count" id="c-compressed">0</span></button>
+      <button class="nav-item" data-filter="cat:Programs"><span class="dot"></span>Programs<span class="count" id="c-programs">0</span></button>
+      <button class="nav-item" data-filter="cat:General"><span class="dot"></span>General<span class="count" id="c-general">0</span></button>
+    </nav>
+    <nav class="nav-group" aria-label="Queues">
+      <div class="nav-label">Queues</div>
+      <div id="nav-queues-list"></div>
+      <button class="nav-item" onclick="window.open('/scheduler','odm-scheduler','width=840,height=680')">
+        <svg class="ic"><use href="/icons/sprite.svg#cat-queues"/></svg>Manage queues…</button>
+    </nav>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar" id="toolbar" title="Right-click to customize buttons"></div>
+
+    <div class="table-wrap">
+      <table class="dl-table" aria-label="Downloads">
+        <thead>
+          <tr><th>Name</th><th>Size</th><th>Progress</th><th class="right">Speed</th><th class="right">ETA</th><th>Status</th><th>Queue</th><th>Added</th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" hidden>
+        <div class="muted">No downloads here</div>
+        <button class="btn" onclick="ui.addFromEmpty()">Add URL</button>
+      </div>
+    </div>
+
+    <section class="details" id="details" hidden></section>
+  </main>
+</div>
+
+<footer class="statusbar">
+  <span id="sb-counts">0 active · 0 paused · 0 queued · 0 failed</span>
+  <span class="mono" id="sb-speed">↓ —</span>
+  <span class="muted" id="sb-limit">Speed limit: off</span>
+  <span class="muted" id="sb-extension"><span class="dot-off"></span> Browser extension not detected</span>
+</footer>
+
+<dialog id="add-dialog">
+  <form method="dialog" id="add-form">
+    <h3>Add download</h3>
+    <label>URL<input id="add-url" type="url" placeholder="https://example.com/file" required></label>
+    <div id="probe-card" class="probe-card" hidden>
+      <span class="badge" id="probe-badge">?</span>
+      <span><b id="probe-size">—</b> · <span id="probe-mime" class="muted">—</span>
+      <span id="probe-chips" class="chips"></span></span>
+    </div>
+    <label>File name<input id="add-name" placeholder="from Content-Disposition or URL"></label>
+    <div class="two-col">
+      <label>Category
+        <select id="add-category">
+          <option>Video</option><option>Music</option><option>Documents</option>
+          <option>Compressed</option><option>Programs</option><option>General</option>
+        </select>
+      </label>
+      <label>Queue<select id="add-queue"></select></label>
+    </div>
+    <label>Save to<input id="add-out" placeholder="/tmp/output" required></label>
+    <div class="label">Recent folders<span id="recent-chips" class="chips"></span></div>
+    <div class="label">Connections</div>
+    <div class="segctl" id="add-parts">
+      <button type="button" aria-pressed="false">1</button>
+      <button type="button" aria-pressed="true">4</button>
+      <button type="button" aria-pressed="false">8</button>
+      <button type="button" aria-pressed="false">16</button>
+      <button type="button" aria-pressed="false">32</button>
+    </div>
+    <div class="label"><button type="button" class="btn" id="adv-toggle" style="height:28px">Advanced: authentication, referrer, cookies, headers ▾</button></div>
+    <div id="adv" hidden>
+      <label>Username<input id="adv-user" autocomplete="off"></label>
+      <label>Password<input id="adv-pass" type="password" autocomplete="off"></label>
+      <label>Referrer<input id="adv-ref" placeholder="https://example.com/page"></label>
+      <label>Cookie string<input id="adv-cookie" placeholder="k=v; k2=v2"></label>
+      <label>Extra headers (k=v, k2=v2)<input id="adv-headers" placeholder="X-Flag=1"></label>
+    </div>
+    <div class="dialog-actions">
+      <button value="add-queue" class="btn" formnovalidate style="margin-right:auto">Add to queue</button>
+      <button value="cancel" class="btn" formnovalidate>Cancel</button>
+      <button value="start" class="btn primary" id="add-start">Start download</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="/app.js"></script>
+</body>
+</html>

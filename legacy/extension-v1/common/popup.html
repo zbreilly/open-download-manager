@@ -1,0 +1,40 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 280px; margin: 0; font: 13px/1.4 system-ui, sans-serif;
+         background: #14171c; color: #e7e9ec; }
+  header { display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+           background: #1a1e24; border-bottom: 1px solid #262c35; }
+  header img { width: 18px; height: 18px; }
+  header b { font-size: 13px; }
+  .status { padding: 8px 12px; font-size: 12px; }
+  .ok { color: #4cc38a; } .down { color: #f26b75; }
+  .row { padding: 4px 12px 10px; display: flex; gap: 6px; }
+  input { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px;
+          border: 1px solid #262c35; background: #0d0f12; color: #e7e9ec; }
+  button { padding: 6px 10px; border: 0; border-radius: 6px; cursor: pointer;
+           background: #5b9dff; color: #0a1426; font-weight: 600; }
+  button.gray { background: #333a45; color: #e7e9ec; }
+  .hint { padding: 0 12px 10px; font-size: 11px; color: #98a1ad; }
+
+/* button press feedback (spec 2.5 motion token) */
+button,  { transition: transform var(--motion), filter var(--motion), background var(--motion); }
+button:active:not(:disabled), :active:not(:disabled) { transform: scale(0.96); filter: brightness(0.88); }
+button.primary:active { transform: scale(0.96); filter: brightness(0.85); }
+</style>
+</head>
+<body>
+<header><img src="icons/96.png"><b>Open Download Manager</b></header>
+<div class="status" id="status">Checking server…</div>
+<div class="row"><input id="url" placeholder="URL to download">
+<button id="add">Add</button></div>
+<div class="row"><input id="port" placeholder="Port"><input id="token" placeholder="API token"><button class="gray" id="save">Save</button></div>
+<div class="row"><label style="flex:1;font-size:12px;color:#98a1ad">
+  <input type="checkbox" id="autocap" style="margin-right:6px">Auto-capture file links</label></div>
+<div class="hint">Right-click links, videos, and pages for download options.
+Hold Alt while clicking a link to capture it.</div>
+<script src="popup.js"></script>
+</body>
+</html>

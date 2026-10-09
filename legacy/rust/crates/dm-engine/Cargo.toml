@@ -1,0 +1,20 @@
+[package]
+name = "dm-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Open Download Manager — download engine (single-stream HTTP/HTTPS with resume)"
+
+[dependencies]
+rustls = "0.23"
+webpki-roots = "0.26"
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+
+[[bin]]
+name = "odm-fetch"
+path = "src/bin/odm_fetch.rs"
+
+[[bin]]
+name = "odm-serve"
+path = "src/bin/odm_serve.rs"

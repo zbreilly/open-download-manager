@@ -1,0 +1,8 @@
+/target
+/dist
+node_modules/
+ui/node_modules/
+src-tauri/gen/
+extension/dist/
+.DS_Store
+*.odmpart

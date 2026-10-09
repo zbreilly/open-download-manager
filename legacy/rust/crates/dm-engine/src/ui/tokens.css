@@ -1,0 +1,82 @@
+/* Design tokens from download-manager-ui/design/tokens.css (project design package) */
+/* Design tokens. Dark is the default theme.
+   Apply: <html data-theme="dark|light">. "system" resolves via prefers-color-scheme at startup. */
+
+:root,
+:root[data-theme="dark"] {
+  --bg: #0D0F12;            /* window background */
+  --surface: #14171C;       /* sidebar, header, cards, table */
+  --surface-2: #1A1E24;     /* inputs-in-cards, footers of dialogs, sparkline bg */
+  --surface-sunken: #0D0F12;/* text inputs, segmented-control tracks */
+  --raised: #222831;        /* file-type badges */
+  --border: #262C35;
+  --border-subtle: #1F242B; /* row dividers inside lists */
+  --text: #E7E9EC;
+  --text-muted: #98A1AD;    /* labels, secondary text; 7:1 on --surface */
+  --accent: #5B9DFF;        /* primary action, active progress, focus ring */
+  --on-accent: #0A1426;     /* text on accent fills */
+  --accent-soft: rgba(91,157,255,0.16); /* selected nav item, sparkline fill */
+  --row-selected: rgba(91,157,255,0.10);
+  --track: #232933;         /* empty part of progress bars and segments */
+  --success: #4CC38A;       /* complete */
+  --warning: #F0A04B;       /* paused, limiter on, reconnecting */
+  --danger: #F26B75;        /* failed, destructive */
+  --danger-soft: rgba(242,107,117,0.12);
+  --switch-off: #333A45;
+}
+
+:root[data-theme="light"] {
+  --bg: #F3F4F6;
+  --surface: #FFFFFF;
+  --surface-2: #F6F7F9;
+  --surface-sunken: #F3F4F6;
+  --raised: #ECEEF1;
+  --border: #DADEE4;
+  --border-subtle: #E8EBEF;
+  --text: #14171C;
+  --text-muted: #555E6B;
+  --accent: #2563EB;
+  --on-accent: #FFFFFF;
+  --accent-soft: rgba(37,99,235,0.12);
+  --row-selected: rgba(37,99,235,0.07);
+  --track: #E3E6EA;
+  --success: #15803D;
+  --warning: #B45309;
+  --danger: #C2353F;
+  --danger-soft: rgba(194,53,63,0.08);
+  --switch-off: #C9CED6;
+}
+
+:root {
+  /* Type. Bundle both fonts locally (OFL); do not load from Google at runtime. */
+  --font-ui: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace; /* all numbers: sizes, speeds, %, ETA, paths, URLs */
+  --fs-xs: 11px;  /* uppercase section labels (letter-spacing .06em), badges */
+  --fs-sm: 12px;  /* secondary text, table header, mono values */
+  --fs-md: 13px;  /* body / default */
+  --fs-lg: 14px;  /* section titles */
+  --fs-xl: 15px;  /* dialog titles, selected-download name */
+  --fs-hero: 40px;/* percent in progress window (mono, weight 500) */
+  --lh: 1.4;
+
+  /* Spacing (4px base) */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
+
+  /* Radius */
+  --r-sm: 5px;   /* row badges */
+  --r-md: 8px;   /* buttons, inputs */
+  --r-lg: 10px;  /* cards, table container */
+  --r-xl: 12px;  /* dialog windows */
+  --r-pill: 999px;
+
+  /* Sizes */
+  --control-h: 34px;      /* toolbar buttons */
+  --input-h: 36px;        /* inputs, dialog buttons */
+  --row-h-comfortable: 40px;
+  --row-h-compact: 30px;
+  --sidebar-w: 220px;
+  --progress-h: 6px;
+  --segment-h: 22px;      /* 30px in the progress window */
+
+  --motion: 120ms ease-out; /* hover/press/selection only. Progress bars update without CSS transition. */
+}

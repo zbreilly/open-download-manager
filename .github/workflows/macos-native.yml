@@ -1,0 +1,83 @@
+name: macos-native
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/macos/**"
+      - "crates/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "extension/**"
+      - ".github/workflows/macos-native.yml"
+  workflow_dispatch:
+    inputs:
+      universal:
+        description: "Build a universal (Apple silicon + Intel) binary"
+        type: boolean
+        default: false
+
+concurrency:
+  group: macos-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain info
+        run: |
+          xcodebuild -version
+          swiftc --version
+
+      - name: Type-check Swift
+        run: apps/macos/build.sh --typecheck
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: macos-native
+
+      - name: Engine tests
+        run: cargo test -p odm-core
+
+      - name: Build app
+        run: |
+          bash extension/build.sh
+          if [ "${{ inputs.universal }}" = "true" ]; then
+            apps/macos/build.sh --dmg --universal
+          else
+            apps/macos/build.sh --dmg
+          fi
+
+      - name: Smoke test (launch for 10 s)
+        run: |
+          APP="dist/macos-native/Open Download Manager.app/Contents/MacOS/OpenDownloadManager"
+          "$APP" > launch.log 2>&1 &
+          PID=$!
+          sleep 10
+          if kill -0 $PID 2>/dev/null; then
+            echo "app is running"
+            kill $PID
+          else
+            echo "app exited early"; cat launch.log; exit 1
+          fi
+
+      - name: Zip app
+        run: |
+          cd dist/macos-native
+          ditto -c -k --keepParent "Open Download Manager.app" OpenDownloadManager-macOS.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenDownloadManager-macOS
+          path: |
+            dist/macos-native/*.dmg
+            dist/macos-native/*.zip
+          retention-days: 14

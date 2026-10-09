@@ -2,25 +2,34 @@
 
 A cross-platform download manager modeled on Internet Download Manager. It runs on macOS, Windows and Linux from one codebase: a Rust engine with a Tauri 2 + Svelte 5 interface.
 
+## Platforms
+
+| Platform | Interface | Build |
+|---|---|---|
+| macOS 13+ | Native SwiftUI/AppKit (`apps/macos`) | `scripts/build-macos.sh --install` |
+| Windows, Linux | Tauri 2 + Svelte (`src-tauri`, `ui`) | `.github/workflows/build.yml` |
+
+All of them use the same Rust engine (`crates/odm-core`). The macOS app links it as a static library through a small C interface (`crates/odm-ffi`).
+
 ## Build on macOS
 
 ```bash
+git clone https://github.com/zbreilly/open-download-manager
 cd open-download-manager
 scripts/build-macos.sh --install
 ```
 
-The script compiles a release build, assembles **Open Download Manager.app**, signs it and builds a DMG. With `--install` it also copies the app to /Applications and launches it. If a *Developer ID Application* certificate is in your keychain the app is signed with it; otherwise it is ad-hoc signed, which works on the Mac that built it.
+This builds **Open Download Manager.app** and installs it in /Applications. You need Xcode (or the Command Line Tools) and Rust. The app is signed with your Developer ID if one is in your keychain, and ad-hoc signed otherwise.
 
 | Option | Effect |
 |---|---|
 | `--install` | copy the app to /Applications and open it |
+| `--dmg` | also build a DMG |
 | `--universal` | one binary for Apple silicon and Intel |
-| `--notarize` | submit the DMG to Apple with the `ODM_NOTARY` keychain profile and staple it |
-| `--no-dmg` | build only the .app |
 
-The build needs Rust (`rustup`) and the Xcode Command Line Tools. Node is optional: without it, the script uses the prebuilt UI in `ui/dist`. Output goes to `dist/macos/`.
+Every push to `main` that touches the macOS app or the engine also builds it on GitHub Actions (`macos-native` workflow). The DMG and a zipped app are attached to each run. Builds from GitHub aren't signed with your Developer ID, so the first time you open one, right-click it and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`).
 
-The first build downloads crates and takes a few minutes. Later builds are incremental.
+The Tauri version still builds on macOS with `scripts/build-macos-tauri.sh`.
 
 ## Install the browser extension
 
@@ -86,6 +95,8 @@ To build installers for every platform, push a `v*` tag or run the **build** wor
 ## Layout
 
 ```
+apps/macos/          native macOS app (SwiftUI/AppKit), build.sh, Info.plist
+crates/odm-ffi/      C interface to the engine for native front ends (include/odm.h)
 crates/odm-core/     engine: task.rs (segmented downloader), manager.rs (list, queues, scheduler, limits, events),
                      client.rs (HTTP, probe), store.rs (SQLite), grabber.rs, util.rs
 src-tauri/           desktop shell: IPC commands, windows, tray, extension bridge (bridge.rs), power actions

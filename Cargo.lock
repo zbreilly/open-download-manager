@@ -2960,6 +2960,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "odm-ffi"
+version = "0.2.0"
+dependencies = [
+ "axum",
+ "odm-core",
+ "parking_lot",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"

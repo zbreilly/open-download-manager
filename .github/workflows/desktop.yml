@@ -103,7 +103,8 @@ jobs:
         with: { node-version: 22 }
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-        with: { shared-key: linux-${{ matrix.arch }} }
+        with:
+          shared-key: linux-${{ matrix.arch }}
       - name: Build dependencies
         run: |
           sudo apt-get update

@@ -21,6 +21,9 @@ concurrency:
   group: macos-native-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: macos-15
@@ -34,7 +37,9 @@ jobs:
           swiftc --version
 
       - name: Type-check Swift
-        run: apps/macos/build.sh --typecheck
+        run: |
+          mkdir -p ci-out
+          apps/macos/build.sh --typecheck 2>&1 | tee ci-out/typecheck.log
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -49,25 +54,49 @@ jobs:
 
       - name: Build app
         run: |
+          mkdir -p ci-out
           bash extension/build.sh
           if [ "${{ inputs.universal }}" = "true" ]; then
-            apps/macos/build.sh --dmg --universal
+            apps/macos/build.sh --dmg --universal 2>&1 | tee ci-out/build.log
           else
-            apps/macos/build.sh --dmg
+            apps/macos/build.sh --dmg 2>&1 | tee ci-out/build.log
           fi
 
-      - name: Smoke test (launch for 10 s)
+      - name: Smoke test and screenshots
         run: |
-          APP="dist/macos-native/Open Download Manager.app/Contents/MacOS/OpenDownloadManager"
-          "$APP" > launch.log 2>&1 &
-          PID=$!
-          sleep 10
-          if kill -0 $PID 2>/dev/null; then
-            echo "app is running"
-            kill $PID
-          else
-            echo "app exited early"; cat launch.log; exit 1
-          fi
+          set -x
+          APP="$PWD/dist/macos-native/Open Download Manager.app"
+          mkdir -p ci-out
+          python3 -m http.server 8777 --directory "$PWD/download-manager-ui/brand/dist" > /dev/null 2>&1 &
+          open "$APP"
+          sleep 8
+          pgrep -fl OpenDownloadManager || { echo "app exited early"; exit 1; }
+          screencapture -x ci-out/01-main.png || true
+          open "odm://add?url=http://127.0.0.1:8777/installer/dmg-background.png"
+          sleep 5
+          screencapture -x ci-out/02-add.png || true
+          osascript -e 'tell application "System Events" to keystroke return' || true
+          sleep 4
+          screencapture -x ci-out/03-after-add.png || true
+          osascript -e 'tell application "Open Download Manager" to activate' -e 'tell application "System Events" to keystroke "," using command down' || true
+          sleep 3
+          screencapture -x ci-out/04-settings.png || true
+          log show --last 2m --predicate 'process == "OpenDownloadManager"' --style compact > ci-out/app.log 2>/dev/null || true
+          pkill -f OpenDownloadManager || true
+
+      - name: Publish CI output to the ci-output branch
+        if: always()
+        run: |
+          [ -d ci-out ] || exit 0
+          cd ci-out
+          printf '%s\n' "run ${{ github.run_id }} · commit ${{ github.sha }} · ${{ job.status }}" > RUN.txt
+          git init -q
+          git checkout -q -b ci-output
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CI output for ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-output
 
       - name: Zip app
         run: |

@@ -1,9 +1,12 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // show notifications as banners even while the app is frontmost
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
         Task { @MainActor in
             AppStore.shared.start()
             ClipboardMonitor.shared.start()
@@ -31,6 +34,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+/// odm:// links and http(s) links handed to the app come from web pages, so
+/// they open the Add window as source "web": only the URL is used (a
+/// supplied name or referrer is ignored), the URL is not probed until the
+/// user asks, and Start is not the default button.
 enum DeepLink {
     @MainActor
     static func handle(_ u: URL) {
@@ -40,14 +47,52 @@ enum DeepLink {
             let items = URLComponents(url: u, resolvingAgainstBaseURL: false)?.queryItems ?? []
             let q = Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { a, _ in a })
             if u.host == "add" || u.host == nil {
-                store.openAdd(AddParams(url: q["url"] ?? "", fileName: q["name"], referrer: q["referrer"]))
+                let target = (q["url"] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                store.openAdd(AddParams(url: AddDownloadView.isHTTP(target) ? target : "", source: "web"))
             } else {
                 store.openMain()
             }
         case "http", "https":
-            store.openAdd(AddParams(url: u.absoluteString))
+            store.openAdd(AddParams(url: u.absoluteString, source: "web"))
         default:
             break
+        }
+    }
+}
+
+/// Presents notifications while the app is frontmost (the default is to
+/// drop them silently).
+final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    static let shared = NotificationDelegate()
+
+    @objc(userNotificationCenter:willPresentNotification:withCompletionHandler:)
+    func userNotificationCenter(_ center: UNUserNotificationCenter,
+                                willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .sound, .list])
+    }
+}
+
+/// Routing for list shortcuts that clash with text editing (⌘⌫, ⌘.).
+@MainActor
+enum KeyRouting {
+    /// A text field or text view is being edited in the key window.
+    static var textHasFocus: Bool { NSApp.keyWindow?.firstResponder is NSText }
+
+    static var mainWindowIsKey: Bool { NSApp.keyWindow?.identifier?.rawValue.hasPrefix("main") == true }
+
+    /// For a menu item whose shortcut clashes with text editing: when it was
+    /// triggered by its key equivalent while text is being edited (or outside
+    /// the main window), pass the key's standard editing action (delete to
+    /// line start, cancel) to the focused view instead. Chosen with the mouse,
+    /// it always runs.
+    static func listCommand(otherwise fallback: Selector, _ action: () -> Void) {
+        let mouseTypes: [NSEvent.EventType] = [.leftMouseDown, .leftMouseUp, .rightMouseDown, .rightMouseUp, .otherMouseUp]
+        let fromMouse = NSApp.currentEvent.map { mouseTypes.contains($0.type) } ?? false
+        if fromMouse || (mainWindowIsKey && !textHasFocus) {
+            action()
+        } else {
+            NSApp.sendAction(fallback, to: nil, from: nil)
         }
     }
 }
@@ -208,7 +253,7 @@ struct SettingsButton: View {
 struct AppCommands: Commands {
     @ObservedObject var store: AppStore
 
-    private var selected: [Download] { store.downloads.filter { store.selection.contains($0.id) } }
+    private var selected: [Download] { store.selection.compactMap { store.download($0) } }
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -223,7 +268,9 @@ struct AppCommands: Commands {
             Button("Resume") { store.resume(selected.map(\.id)) }
                 .keyboardShortcut("r")
                 .disabled(!selected.contains { [.paused, .error, .queued].contains($0.status) })
-            Button("Pause") { store.pause(selected.map(\.id)) }
+            Button("Pause") {
+                KeyRouting.listCommand(otherwise: Selector(("cancelOperation:"))) { store.pause(selected.map(\.id)) }
+            }
                 .keyboardShortcut(".")
                 .disabled(!selected.contains { $0.status.isActive || $0.status == .queued })
             Button("Pause All") { store.pauseAll() }
@@ -239,7 +286,11 @@ struct AppCommands: Commands {
                 .keyboardShortcut("c", modifiers: [.command, .shift])
                 .disabled(selected.isEmpty)
             Divider()
-            Button("Delete…") { NotificationCenter.default.post(name: .odmAskDelete, object: nil) }
+            Button("Delete…") {
+                KeyRouting.listCommand(otherwise: Selector(("deleteToBeginningOfLine:"))) {
+                    NotificationCenter.default.post(name: .odmAskDelete, object: nil)
+                }
+            }
                 .keyboardShortcut(.delete)
                 .disabled(selected.isEmpty)
             Button("Delete Completed") { store.deleteCompleted() }

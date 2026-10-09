@@ -4,7 +4,7 @@
   import Icon from '../lib/Icon.svelte';
   import FileBadge from '../components/FileBadge.svelte';
   import Modal from '../components/Modal.svelte';
-  import { api, errText, type Queue } from '../lib/ipc';
+  import { api, errText, type Queue, type QueueSettings } from '../lib/ipc';
   import { store, initStore, byId } from '../lib/store.svelte';
   import * as f from '../lib/format';
   import { toast } from '../components/Toast.svelte';
@@ -14,6 +14,8 @@
   let selId = $state('main');
   let draft = $state<Queue | null>(null);
   let dirty = $state(false);
+  // true only after the user reordered the list; order is sent only then
+  let reordered = $state(false);
   let naming = $state<{ name: string } | null>(null);
   let dragIdx = $state<number | null>(null);
 
@@ -25,15 +27,36 @@
     const q = store.queues.find((x) => x.id === id);
     draft = q ? structuredClone($state.snapshot(q)) as Queue : null;
     dirty = false;
+    reordered = false;
   }
   $effect(() => {
     // keep the run state and membership fresh without clobbering edits
     const q = current;
     if (q && draft && draft.id === q.id) {
       draft.running = q.running;
-      if (!dirty) draft.order = [...q.order];
+      if (!reordered) draft.order = [...q.order];
     }
   });
+
+  const clampConcurrent = (v: unknown) => {
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? Math.min(32, Math.max(1, n)) : 1;
+  };
+
+  /** Queue settings without `order` (the engine keeps the current order). */
+  function settingsOf(q: Queue): QueueSettings {
+    const { order: _order, ...rest } = q;
+    return { ...rest, maxConcurrent: clampConcurrent(rest.maxConcurrent) };
+  }
+
+  /** The user's arrangement applied to the live membership: downloads that
+   *  left the queue are dropped, ones that joined since are kept at the end. */
+  function liveOrder(wanted: string[], live: string[]): string[] {
+    const inLive = new Set(live);
+    const kept = wanted.filter((id) => inLive.has(id));
+    const keptSet = new Set(kept);
+    return [...kept, ...live.filter((id) => !keptSet.has(id))];
+  }
 
   const files = $derived((draft?.order ?? []).map((id) => byId(id)).filter((d) => !!d));
   const pendingFiles = $derived(files.filter((d) => d!.status !== 'complete'));
@@ -57,10 +80,16 @@
   }
   async function save() {
     if (!draft) return;
+    const snap = $state.snapshot(draft) as Queue;
+    const wasReordered = reordered;
     await act(async () => {
-      const q = await api.saveQueue($state.snapshot(draft) as Queue);
-      if (draft) await api.reorderQueue(q.id, [...draft.order]);
+      const q = await api.saveQueue(settingsOf(snap));
+      if (wasReordered) {
+        const live = store.queues.find((x) => x.id === q.id)?.order ?? q.order;
+        await api.reorderQueue(q.id, liveOrder(snap.order, live));
+      }
       dirty = false;
+      reordered = false;
       toast('Schedule saved');
     });
   }
@@ -72,7 +101,7 @@
       const q = await api.saveQueue({
         id: '', name, builtin: false, maxConcurrent: 2, retryFailed: 3, startEnabled: false, startTime: '01:00',
         stopEnabled: false, stopTime: '07:00', days: [true, true, true, true, true, true, true], onFinish: 'none',
-        order: [], running: false, nextRun: null,
+        running: false, nextRun: null,
       });
       store.queues = await api.listQueues();
       pick(q.id);
@@ -85,6 +114,7 @@
     const [x] = draft.order.splice(i, 1);
     draft.order.splice(j, 0, x);
     dirty = true;
+    reordered = true;
   }
   function change() { dirty = true; }
 
@@ -155,9 +185,11 @@
           <div class="field">
             <span>Files at the same time</span>
             <div class="stepper">
-              <button type="button" aria-label="Decrease" onclick={() => { draft!.maxConcurrent = Math.max(1, draft!.maxConcurrent - 1); change(); }}>−</button>
-              <input class="mono" bind:value={draft.maxConcurrent} oninput={change} inputmode="numeric" aria-label="Files at the same time" />
-              <button type="button" aria-label="Increase" onclick={() => { draft!.maxConcurrent = Math.min(32, draft!.maxConcurrent + 1); change(); }}>+</button>
+              <button type="button" aria-label="Decrease" onclick={() => { draft!.maxConcurrent = clampConcurrent(draft!.maxConcurrent - 1); change(); }}>−</button>
+              <input class="mono" type="number" min="1" max="32" step="1" value={draft.maxConcurrent} aria-label="Files at the same time"
+                oninput={(e) => { const v = e.currentTarget.value; if (v.trim() !== '' && Number.isFinite(Number(v))) { draft!.maxConcurrent = clampConcurrent(v); change(); } }}
+                onchange={(e) => { draft!.maxConcurrent = clampConcurrent(e.currentTarget.value); e.currentTarget.value = String(draft!.maxConcurrent); change(); }} />
+              <button type="button" aria-label="Increase" onclick={() => { draft!.maxConcurrent = clampConcurrent(draft!.maxConcurrent + 1); change(); }}>+</button>
             </div>
           </div>
           <label class="field">
@@ -258,7 +290,8 @@
   .day.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); font-weight: 600; }
   .stepper { display: flex; align-items: center; height: var(--input-h); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-sunken); overflow: hidden; }
   .stepper button { width: 36px; height: 100%; border: 0; background: transparent; color: var(--text-muted); font-size: 16px; }
-  .stepper input { flex: 1; min-width: 0; text-align: center; border: 0; background: transparent; font-size: var(--fs-lg); outline: none; }
+  .stepper input { flex: 1; min-width: 0; text-align: center; border: 0; background: transparent; font-size: var(--fs-lg); outline: none; -moz-appearance: textfield; appearance: textfield; }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .order { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
   .order li { display: flex; align-items: center; gap: 10px; padding: 7px 12px; border-bottom: 1px solid var(--border-subtle); background: var(--surface); }
   .order li:last-child { border-bottom: 0; }

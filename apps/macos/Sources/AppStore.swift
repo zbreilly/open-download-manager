@@ -21,6 +21,16 @@ final class AppStore: ObservableObject {
 
     private var index: [String: Int] = [:]
 
+    /// Bumped when list membership or a row's status/category/queue/name
+    /// changes (anything filters, counts or non-progress sorts depend on).
+    private(set) var listVersion = 0
+    /// Bumped on every progress tick.
+    private(set) var progressVersion = 0
+    private var countsCache: (version: Int, counts: [SidebarItem: Int])?
+
+    /// Keeps idle sleep off while downloads are active.
+    private var keepAwake: NSObjectProtocol?
+
     /// Window opener captured from a SwiftUI view (openWindow environment).
     var openWindowAction: ((String, AddParams?, String?) -> Void)?
 
@@ -46,6 +56,7 @@ final class AppStore: ObservableObject {
             return
         }
         reload()
+        syncLoginItem()
         applyAppearance()
     }
 
@@ -54,11 +65,12 @@ final class AppStore: ObservableObject {
         if let list: [Download] = try? e.call("list_downloads") { setDownloads(list) }
         if let q: [DownloadQueue] = try? e.call("list_queues") { queues = q }
         if let s: AppSettings = try? e.call("get_settings") { settings = s }
-        if let t: Totals = try? e.call("totals") { totals = t }
+        if let t: Totals = try? e.call("totals") { totals = t; updateKeepAwake() }
         if let x: ExtensionStatus = try? e.call("extension_status") { ext = x }
     }
 
     private func setDownloads(_ list: [Download]) {
+        listVersion &+= 1
         downloads = list
         reindex()
     }
@@ -68,9 +80,29 @@ final class AppStore: ObservableObject {
         for (i, d) in downloads.enumerated() { index[d.id] = i }
     }
 
+    /// O(1) lookup through the id → position index.
     func download(_ id: String) -> Download? {
-        guard let i = index[id], i < downloads.count else { return nil }
+        guard let i = index[id], i < downloads.count, downloads[i].id == id else { return nil }
         return downloads[i]
+    }
+
+    /// Sidebar badge counts, recomputed only when listVersion changes.
+    func sidebarCounts() -> [SidebarItem: Int] {
+        if let c = countsCache, c.version == listVersion { return c.counts }
+        var c: [SidebarItem: Int] = [:]
+        for d in downloads {
+            c[.library("all"), default: 0] += 1
+            if d.status.isActive { c[.library("active"), default: 0] += 1 }
+            if d.status == .complete {
+                c[.library("finished"), default: 0] += 1
+            } else {
+                c[.library("unfinished"), default: 0] += 1
+            }
+            c[.category(d.category), default: 0] += 1
+            if let q = d.queueId { c[.queue(q), default: 0] += 1 }
+        }
+        countsCache = (listVersion, c)
+        return c
     }
 
     func queueName(_ id: String?) -> String {
@@ -81,6 +113,7 @@ final class AppStore: ObservableObject {
     // MARK: - events
 
     private func upsert(_ d: Download) {
+        listVersion &+= 1
         if let i = index[d.id], i < downloads.count {
             var nd = d
             // keep the locally accumulated speed history if the record has none
@@ -98,8 +131,10 @@ final class AppStore: ObservableObject {
         case "progress_batch":
             guard let items = e.decode([ProgressItem].self, data) else { return }
             var list = downloads
+            var statusChanged = false
             for p in items {
                 guard let i = index[p.id], i < list.count else { continue }
+                if list[i].status != p.status { statusChanged = true }
                 list[i].receivedBytes = p.receivedBytes
                 if let t = p.totalBytes { list[i].totalBytes = t }
                 list[i].speedBps = p.speedBps
@@ -108,14 +143,19 @@ final class AppStore: ObservableObject {
                 list[i].segments = p.segments
                 list[i].status = p.status
             }
+            progressVersion &+= 1
+            if statusChanged { listVersion &+= 1 }
             downloads = list
         case "download_changed", "download_added":
             if let d = e.decode(Download.self, data) { upsert(d) }
         case "download_removed":
-            if let id = e.decode(String.self, data), let i = index[id] {
-                downloads.remove(at: i)
-                selection.remove(id)
-                reindex()
+            if let id = e.decode(String.self, data) {
+                if selection.contains(id) { selection.remove(id) }
+                if let i = index[id], i < downloads.count {
+                    listVersion &+= 1
+                    downloads.remove(at: i)
+                    reindex()
+                }
             }
         case "totals":
             if let t = e.decode(Totals.self, data) {
@@ -129,6 +169,7 @@ final class AppStore: ObservableObject {
                 }
                 if changed { downloads = list }
                 updateDockBadge()
+                updateKeepAwake()
             }
         case "queues_changed":
             if let q = e.decode([DownloadQueue].self, data) { queues = q }
@@ -261,21 +302,41 @@ final class AppStore: ObservableObject {
         setGlobalLimit(s.globalLimitEnabled ? nil : s.globalLimitBps)
     }
 
-    func saveSettings(_ s: AppSettings) {
-        let old = settings
+    func saveSettings(_ new: AppSettings) {
+        var s = new
+        if settings?.launchAtLogin != s.launchAtLogin {
+            // keep the setting equal to what the system actually did
+            let r = LoginItem.set(s.launchAtLogin)
+            s.launchAtLogin = r.isOn
+            if let m = r.message { report(m) }
+        }
         settings = s
         let v = Engine.shared.jsonValue(s)
         act("save_settings", ["settings": v])
-        if old?.launchAtLogin != s.launchAtLogin { LoginItem.set(s.launchAtLogin) }
         applyAppearance()
     }
 
-    func saveQueue(_ q: DownloadQueue, completion: (@MainActor (DownloadQueue?) -> Void)? = nil) {
-        let v = Engine.shared.jsonValue(q)
-        Task {
-            let r: DownloadQueue? = try? await Engine.shared.callAsync("save_queue", ["queue": v])
-            completion?(r)
+    /// Bring the stored "open at login" setting in line with the system's
+    /// login items (the user can change them in System Settings).
+    private func syncLoginItem() {
+        guard var s = settings else { return }
+        let real = LoginItem.isOn
+        guard s.launchAtLogin != real else { return }
+        s.launchAtLogin = real
+        settings = s
+        act("save_settings", ["settings": Engine.shared.jsonValue(s)])
+    }
+
+    /// Save a queue's settings. Without `order` in the payload the engine
+    /// keeps the queue's current order; send the order only after the user
+    /// reordered (reorder_queue). Throws the engine's error.
+    func saveQueue(_ q: DownloadQueue) async throws -> DownloadQueue {
+        var v = Engine.shared.jsonValue(q)
+        if var dict = v as? [String: Any] {
+            dict.removeValue(forKey: "order")
+            v = dict
         }
+        return try await Engine.shared.callAsync("save_queue", ["queue": v])
     }
 
     func openFile(_ d: Download) {
@@ -319,6 +380,20 @@ final class AppStore: ObservableObject {
 
     private func updateDockBadge() {
         NSApp.dockTile.badgeLabel = totals.active > 0 ? "\(totals.active)" : nil
+    }
+
+    /// Hold a ProcessInfo activity (no idle system sleep) while anything is
+    /// downloading; release it when nothing is.
+    private func updateKeepAwake() {
+        let busy = totals.active > 0
+        if busy, keepAwake == nil {
+            keepAwake = ProcessInfo.processInfo.beginActivity(
+                options: [.idleSystemSleepDisabled, .userInitiated],
+                reason: "Downloading files")
+        } else if !busy, let a = keepAwake {
+            ProcessInfo.processInfo.endActivity(a)
+            keepAwake = nil
+        }
     }
 
     /// Menu-bar icon state, by the brand priority rules.

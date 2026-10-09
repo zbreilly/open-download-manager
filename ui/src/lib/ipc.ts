@@ -62,6 +62,12 @@ export interface Queue {
   days: boolean[]; onFinish: string; order: string[]; running: boolean; nextRun: string | null;
 }
 
+/** A queue as sent to save_queue: settings fields, `order` only when reordering. */
+export type QueueSettings = Omit<Queue, 'order'> & { order?: string[] };
+
+/** power_countdown event / get_power_countdown payload. `seconds` is the time left. */
+export interface PowerCountdown { action: string; seconds: number; queue: string; token?: string; remaining?: number }
+
 export interface Category { id: string; name: string; icon: string; extensions: string[]; folder: string | null }
 
 export interface Settings {
@@ -129,7 +135,8 @@ export const api = {
   openFolder: (id: string) => invoke<void>('open_folder', { id }),
   openPath: (path: string) => invoke<void>('open_path', { path }),
   listQueues: () => invoke<Queue[]>('list_queues'),
-  saveQueue: (queue: Queue) => invoke<Queue>('save_queue', { queue }),
+  /** `order` is optional: without it the engine keeps the queue's current order. */
+  saveQueue: (queue: QueueSettings) => invoke<Queue>('save_queue', { queue }),
   deleteQueue: (id: string) => invoke<void>('delete_queue', { id }),
   startQueue: (id: string) => invoke<void>('start_queue', { id }),
   stopQueue: (id: string) => invoke<void>('stop_queue', { id }),
@@ -149,6 +156,7 @@ export const api = {
   takeParams: (token: string) => invoke<any>('take_params', { token }),
   extensionStatus: () => invoke<{ connected: boolean; browsers: string[]; port: number }>('extension_status'),
   cancelPowerAction: () => invoke<void>('cancel_power_action'),
+  getPowerCountdown: () => invoke<PowerCountdown | null>('get_power_countdown'),
   exportList: (path: string, onlyUnfinished: boolean) => invoke<number>('export_list', { path, onlyUnfinished }),
   readUrlList: (path: string) => invoke<string[]>('read_url_list', { path }),
   appInfo: () => invoke<{ name: string; version: string; os: string; arch: string; dataDir: string }>('app_info'),

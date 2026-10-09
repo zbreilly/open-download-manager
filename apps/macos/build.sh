@@ -7,7 +7,8 @@
 #   apps/macos/build.sh --install       # copy to /Applications and open
 #   apps/macos/build.sh --typecheck     # Swift type-check only (fast, no Rust build)
 #
-# Needs Xcode (or the Command Line Tools) and Rust.
+# Needs Xcode (or the Command Line Tools) and Rust. With a Developer ID
+# certificate and ODM_NOTARY_PROFILE set, the app (and DMG) are notarized.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -27,7 +28,7 @@ for a in "$@"; do
     --dmg) DMG=1 ;;
     --install) INSTALL=1 ;;
     --typecheck) TYPECHECK=1 ;;
-    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown option: $a"; exit 2 ;;
   esac
 done
@@ -114,6 +115,42 @@ else
 fi
 codesign --verify --strict "$APP" && echo "signature OK"
 
+# Notarization (optional): set ODM_NOTARY_PROFILE to a keychain profile made
+# with `xcrun notarytool store-credentials <name> ...`. Needs a Developer ID
+# Application signature (hardened runtime + timestamp, as above).
+NOTARIZE=0
+if [ -n "${ODM_NOTARY_PROFILE:-}" ]; then
+  SIG_INFO="$(codesign -dvv "$APP" 2>&1 || true)"
+  case "$SIG_INFO" in
+    *"Authority=Developer ID Application"*) NOTARIZE=1 ;;
+    *) echo "ODM_NOTARY_PROFILE is set but the app is not signed with a Developer ID Application certificate; skipping notarization" >&2 ;;
+  esac
+fi
+
+# notarize <file>: submit (zip, dmg or pkg), wait, fail unless Accepted
+notarize() {
+  local f="$1" out
+  out="$(xcrun notarytool submit "$f" --keychain-profile "$ODM_NOTARY_PROFILE" --wait 2>&1)" || true
+  printf '%s\n' "$out"
+  case "$out" in
+    *"status: Accepted"*) ;;
+    *) die "notarization of $f failed (details: xcrun notarytool log <submission id> --keychain-profile \"$ODM_NOTARY_PROFILE\")" ;;
+  esac
+}
+
+if [ "$NOTARIZE" = 1 ]; then
+  # The app is notarized and stapled on its own first, so a copy taken out
+  # of the DMG still carries its ticket offline.
+  step "Notarizing $APP_NAME.app"
+  ZIP="$OUT/$EXE-notarize.zip"
+  rm -f "$ZIP"
+  ditto -c -k --keepParent "$APP" "$ZIP"
+  notarize "$ZIP"
+  rm -f "$ZIP"
+  xcrun stapler staple "$APP"
+  xcrun stapler validate "$APP"
+fi
+
 if [ "$DMG" = 1 ]; then
   step "DMG"
   DMG_OUT="$OUT/OpenDownloadManager-$VERSION-macOS.dmg"
@@ -125,6 +162,12 @@ if [ "$DMG" = 1 ]; then
   hdiutil create -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG_OUT" >/dev/null
   rm -rf "$STAGE"
   if [ -n "$IDENTITY" ]; then codesign --force --timestamp -s "$IDENTITY" "$DMG_OUT"; fi
+  if [ "$NOTARIZE" = 1 ]; then
+    step "Notarizing DMG"
+    notarize "$DMG_OUT"
+    xcrun stapler staple "$DMG_OUT"
+    xcrun stapler validate "$DMG_OUT"
+  fi
   echo "built $DMG_OUT"
 fi
 

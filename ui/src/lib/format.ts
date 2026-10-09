@@ -83,3 +83,20 @@ export function host(url: string): string {
 }
 
 export const MBPS = MB;
+
+/** Largest speed limit accepted from a text field, in MB/s. */
+export const MAX_LIMIT_MB = 1_000_000;
+
+/**
+ * Parse a "MB/s" text field into bytes per second. Returns null for anything
+ * that is not a finite number above 0 (NaN, Infinity, negative, empty) or is
+ * above MAX_LIMIT_MB, so callers can show an error instead of silently
+ * turning a limit off.
+ */
+export function parseLimitMB(text: string): number | null {
+  const v = Number(String(text).trim().replace(',', '.'));
+  if (!Number.isFinite(v) || v <= 0 || v > MAX_LIMIT_MB) return null;
+  return Math.max(1, Math.round(v * MB));
+}
+
+export const LIMIT_ERROR = `Enter a speed between 0 and ${MAX_LIMIT_MB.toLocaleString('en-US')} MB/s`;

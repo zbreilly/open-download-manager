@@ -8,7 +8,15 @@ struct GrabberView: View {
         var fileName: String
         var ext: String
         var on: Bool
+        /// This link's own cookies (never shared with other links).
+        var cookies: String? = nil
         var id: String { url }
+    }
+
+    /// Keep the first row for each URL: rows are identified by URL.
+    private static func dedupe(_ rows: [Row]) -> [Row] {
+        var seen = Set<String>()
+        return rows.filter { seen.insert($0.url).inserted }
     }
 
     @State private var pageURL = ""
@@ -24,8 +32,8 @@ struct GrabberView: View {
     @State private var queueId = ""
     @State private var fromList = false
     @State private var referrer: String?
-    @State private var cookies: String?
     @State private var userAgent: String?
+    @State private var host = HostWindow()
 
     private static let presets: [(String, String, String)] = [
         ("all", "All files", ""),
@@ -136,27 +144,30 @@ struct GrabberView: View {
             HStack {
                 Button("Add to Queue") { add(start: false) }.disabled(chosen.isEmpty || busy)
                 Spacer()
-                Button("Cancel") { closeKeyWindow() }.keyboardShortcut(.cancelAction)
+                Button("Cancel") { host.close() }.keyboardShortcut(.cancelAction)
                 Button("Download \(chosen.count)") { add(start: true) }.disabled(chosen.isEmpty || busy)
             }
             .padding(14)
         }
         .onAppear(perform: takePending)
         .onChange(of: store.pendingLinks) { _ in takePending() }
+        .background(WindowAccessor(host: host))
     }
 
     private func takePending() {
         guard let p = store.pendingLinks else { return }
         store.pendingLinks = nil
         fromList = true
-        referrer = p.referrer
-        cookies = p.cookies
-        userAgent = p.userAgent
-        rows = p.links.map { l in
+        error = ""
+        // a new list is a new context: nothing carries over from the last one
+        referrer = p.referrer.flatMap { $0.isEmpty ? nil : $0 }
+        userAgent = p.userAgent.flatMap { $0.isEmpty ? nil : $0 }
+        rows = Self.dedupe(p.links.filter { !$0.url.isEmpty }.map { l in
             let name = URL(string: l.url).map { $0.lastPathComponent.removingPercentEncoding ?? $0.lastPathComponent } ?? l.url
             let ext = (name as NSString).pathExtension
-            return Row(url: l.url, fileName: name.isEmpty ? l.url : name, ext: ext.isEmpty ? "FILE" : ext.uppercased(), on: true)
-        }
+            let c = l.cookies.flatMap { $0.isEmpty ? nil : $0 }
+            return Row(url: l.url, fileName: name.isEmpty ? l.url : name, ext: ext.isEmpty ? "FILE" : ext.uppercased(), on: true, cookies: c)
+        })
     }
 
     private func run() {
@@ -169,8 +180,9 @@ struct GrabberView: View {
         Task {
             do {
                 let found: [GrabbedLink] = try await Engine.shared.callAsync("grab", ["url": u, "depth": d, "extensions": e, "sameHost": same])
-                rows = found.map { Row(url: $0.url, fileName: $0.fileName, ext: $0.ext, on: true) }
+                rows = Self.dedupe(found.map { Row(url: $0.url, fileName: $0.fileName, ext: $0.ext, on: true) })
                 referrer = u
+                userAgent = nil
                 if found.isEmpty { error = "No matching files were found on that page." }
             } catch {
                 self.error = error.localizedDescription
@@ -185,13 +197,13 @@ struct GrabberView: View {
             AddRequest(url: r.url, saveDir: saveDir.isEmpty ? nil : saveDir,
                        queueId: queueId.isEmpty ? (start ? nil : "main") : queueId,
                        start: start, connections: store.settings?.defaultConnections,
-                       referrer: referrer, cookies: cookies, userAgent: userAgent)
+                       referrer: referrer, cookies: r.cookies, userAgent: userAgent)
         }
         busy = true
         Task {
             do {
                 let _: [String] = try await e.callAsync("add_many", ["reqs": e.jsonValue(reqs)])
-                closeKeyWindow()
+                host.close()
             } catch {
                 self.error = error.localizedDescription
             }

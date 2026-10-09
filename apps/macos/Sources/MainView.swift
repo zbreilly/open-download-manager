@@ -8,6 +8,24 @@ enum SidebarItem: Hashable {
     case queue(String)
 }
 
+/// Filtered + sorted row order, kept across renders. Recomputed only when
+/// the list's membership/status/names change (AppStore.listVersion), the
+/// filter/search/sort change, or — when sorting by a column that moves with
+/// progress — on progress ticks. A plain reference, so updating it while
+/// rendering doesn't trigger another render.
+@MainActor
+final class RowCache {
+    struct Key: Equatable {
+        var version: Int
+        var tick: Int
+        var filter: SidebarItem?
+        var search: String
+        var sort: [KeyPathComparator<Download>]
+    }
+    var key: Key?
+    var ids: [String] = []
+}
+
 struct MainView: View {
     @EnvironmentObject var store: AppStore
     @State private var filter: SidebarItem? = .library("all")
@@ -19,7 +37,9 @@ struct MainView: View {
     @State private var refreshError = ""
     @State private var limitSheet = false
     @State private var limitText = "25"
+    @State private var limitError = ""
     @State private var showDetails = true
+    @State private var rowCache = RowCache()
 
     // MARK: data
 
@@ -34,23 +54,35 @@ struct MainView: View {
         }
     }
 
-    private var rows: [Download] {
-        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
-        var list = store.downloads.filter { matches($0, filter) }
-        if !q.isEmpty {
-            list = list.filter {
-                $0.fileName.lowercased().contains(q) || $0.url.lowercased().contains(q) || $0.saveDir.lowercased().contains(q)
-            }
-        }
-        return list.sorted(using: sortOrder)
+    /// Sort columns whose values change with every progress tick.
+    private var sortIsLive: Bool {
+        let live: [PartialKeyPath<Download>] = [\Download.sizeSort, \Download.progressSort, \Download.speedSort, \Download.etaSort]
+        return sortOrder.contains { live.contains($0.keyPath) }
     }
 
-    private var selected: [Download] { store.downloads.filter { store.selection.contains($0.id) } }
+    /// The table rows (computed once per render, order cached; see RowCache).
+    private func currentRows() -> [Download] {
+        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
+        let key = RowCache.Key(version: store.listVersion, tick: sortIsLive ? store.progressVersion : 0,
+                               filter: filter, search: q, sort: sortOrder)
+        if rowCache.key != key {
+            var list = store.downloads.filter { matches($0, filter) }
+            if !q.isEmpty {
+                list = list.filter {
+                    $0.fileName.lowercased().contains(q) || $0.url.lowercased().contains(q) || $0.saveDir.lowercased().contains(q)
+                }
+            }
+            rowCache.ids = list.sorted(using: sortOrder).map(\.id)
+            rowCache.key = key
+        }
+        return rowCache.ids.compactMap { store.download($0) }
+    }
 
-    private var focused: Download? {
-        let r = rows
-        if let id = store.selection.first, let d = r.first(where: { $0.id == id }) { return d }
-        return r.first
+    private var selected: [Download] { store.selection.compactMap { store.download($0) } }
+
+    private func focused(_ rows: [Download]) -> Download? {
+        if let id = store.selection.first, let d = rows.first(where: { $0.id == id }) { return d }
+        return rows.first
     }
 
     private var currentQueue: String {
@@ -58,13 +90,13 @@ struct MainView: View {
         return "main"
     }
 
-    private func count(_ f: SidebarItem) -> Int { store.downloads.filter { matches($0, f) }.count }
-
     // MARK: body
 
     var body: some View {
+        let rows = currentRows()
+        let counts = store.sidebarCounts()
         NavigationSplitView {
-            sidebar
+            sidebar(counts)
                 .navigationSplitViewColumnWidth(min: 180, ideal: 220, max: 300)
         } detail: {
             VStack(spacing: 0) {
@@ -74,9 +106,9 @@ struct MainView: View {
                         .foregroundStyle(.red).padding(8)
                 }
                 VSplitView {
-                    table
+                    table(rows)
                         .frame(minHeight: 160)
-                    if showDetails, let d = focused {
+                    if showDetails, let d = focused(rows) {
                         ScrollView {
                             DetailsPanel(download: d, onRefresh: { startRefresh($0) })
                         }
@@ -120,17 +152,17 @@ struct MainView: View {
 
     // MARK: sidebar
 
-    private var sidebar: some View {
+    private func sidebar(_ counts: [SidebarItem: Int]) -> some View {
         List(selection: $filter) {
             Section("Library") {
-                sidebarRow("All Downloads", "tray.full", .library("all"))
-                sidebarRow("Active", "arrow.down.circle", .library("active"))
-                sidebarRow("Unfinished", "circle.lefthalf.filled", .library("unfinished"))
-                sidebarRow("Finished", "checkmark.circle", .library("finished"))
+                sidebarRow("All Downloads", "tray.full", .library("all"), counts)
+                sidebarRow("Active", "arrow.down.circle", .library("active"), counts)
+                sidebarRow("Unfinished", "circle.lefthalf.filled", .library("unfinished"), counts)
+                sidebarRow("Finished", "checkmark.circle", .library("finished"), counts)
             }
             Section("Categories") {
                 ForEach(store.settings?.categories ?? []) { c in
-                    sidebarRow(c.name, categorySymbol(c.icon), .category(c.id))
+                    sidebarRow(c.name, categorySymbol(c.icon), .category(c.id), counts)
                         .contextMenu {
                             SettingsButton(title: "Edit File Types & Folders…")
                         }
@@ -138,7 +170,7 @@ struct MainView: View {
             }
             Section("Queues") {
                 ForEach(store.queues) { q in
-                    sidebarRow(q.name, q.running ? "play.circle.fill" : (q.builtin ? "list.bullet" : "clock"), .queue(q.id))
+                    sidebarRow(q.name, q.running ? "play.circle.fill" : (q.builtin ? "list.bullet" : "clock"), .queue(q.id), counts)
                         .contextMenu {
                             Button("Start") { store.startQueue(q.id) }.disabled(q.running)
                             Button("Stop") { store.stopQueue(q.id) }.disabled(!q.running)
@@ -154,9 +186,9 @@ struct MainView: View {
         .listStyle(.sidebar)
     }
 
-    private func sidebarRow(_ title: String, _ symbol: String, _ item: SidebarItem) -> some View {
+    private func sidebarRow(_ title: String, _ symbol: String, _ item: SidebarItem, _ counts: [SidebarItem: Int]) -> some View {
         Label(title, systemImage: symbol)
-            .badge(count(item))
+            .badge(counts[item] ?? 0)
             .tag(item)
     }
 
@@ -176,7 +208,7 @@ struct MainView: View {
 
     // MARK: table
 
-    private var table: some View {
+    private func table(_ rows: [Download]) -> some View {
         Table(rows, selection: $store.selection, sortOrder: $sortOrder) {
             TableColumn("Name", value: \.fileName) { d in
                 HStack(spacing: 8) {
@@ -237,6 +269,8 @@ struct MainView: View {
             guard let id = ids.first, let d = store.download(id) else { return }
             if d.status == .complete { store.openFile(d) } else { store.openProgress(d.id) }
         }
+        // the Delete key while the list has focus (text fields keep their own)
+        .onDeleteCommand { askDelete(Array(store.selection)) }
         .overlay {
             if store.downloads.isEmpty == false && rows.isEmpty {
                 emptyState(search.isEmpty ? "No downloads here" : "No downloads match your search")
@@ -359,6 +393,7 @@ struct MainView: View {
                 Divider()
                 Button("Custom…") {
                     limitText = String(format: "%g", Fmt.mbps(store.settings?.globalLimitBps ?? 0))
+                    limitError = ""
                     limitSheet = true
                 }
                 if store.settings?.globalLimitEnabled == true {
@@ -390,13 +425,19 @@ struct MainView: View {
                 TextField("MB/s", text: $limitText).frame(width: 100).monospacedDigit()
                 Text("MB/s").foregroundStyle(.secondary)
             }
+            if !limitError.isEmpty {
+                Text(limitError).font(.caption).foregroundStyle(.red)
+            }
             HStack {
                 Spacer()
                 Button("Cancel") { limitSheet = false }.keyboardShortcut(.cancelAction)
                 Button("Turn On Limit") {
-                    if let v = Double(limitText.replacingOccurrences(of: ",", with: ".")), v > 0 {
-                        store.setGlobalLimit(Fmt.bps(fromMB: v))
+                    // reject NaN / inf / 0 instead of silently doing nothing
+                    guard let bps = Fmt.limitBps(limitText) else {
+                        limitError = Fmt.limitError
+                        return
                     }
+                    store.setGlobalLimit(bps)
                     limitSheet = false
                 }
                 .keyboardShortcut(.defaultAction)

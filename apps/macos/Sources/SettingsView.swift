@@ -5,6 +5,10 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var store: AppStore
     @State private var draft: AppSettings?
+    /// The engine's settings the draft is based on. A field whose draft value
+    /// still equals this is untouched, so changes made elsewhere (menu bar,
+    /// toolbar) flow into it; fields edited here are kept.
+    @State private var base: AppSettings?
     @State private var saveTask: Task<Void, Never>?
 
     var body: some View {
@@ -24,10 +28,19 @@ struct SettingsView: View {
                 ProgressView().frame(width: 680, height: 520)
             }
         }
-        .onAppear { draft = store.settings }
+        .onAppear {
+            draft = store.settings
+            base = store.settings
+        }
         .onChange(of: store.settings) { s in
-            // pick up changes made elsewhere (menu bar, toolbar) when not editing
-            if saveTask == nil, let s = s { draft = s }
+            // pick up changes made elsewhere without losing edits in progress
+            guard let s = s else { return }
+            if let d = draft, let b = base {
+                draft = SettingsMerge.merge(base: b, edited: d, latest: s)
+            } else {
+                draft = s
+            }
+            base = s
         }
     }
 
@@ -35,13 +48,48 @@ struct SettingsView: View {
         Binding(get: { draft ?? store.settings! }, set: { v in
             draft = v
             saveTask?.cancel()
-            saveTask = Task {
+            saveTask = Task { @MainActor in
                 try? await Task.sleep(nanoseconds: 400_000_000)
                 if Task.isCancelled { return }
-                store.saveSettings(v)
+                // the draft already has newer outside changes merged in
+                let d = draft ?? v
+                let merged = store.settings.map { SettingsMerge.merge(base: base ?? $0, edited: d, latest: $0) } ?? d
+                store.saveSettings(merged)
+                // what was stored (e.g. login item adjusted to the real status)
+                draft = store.settings ?? merged
+                base = store.settings ?? merged
                 saveTask = nil
             }
         })
+    }
+}
+
+/// Three-way merge of settings: start from `latest` and apply every field
+/// whose value in `edited` differs from `base` (fields compared as JSON).
+enum SettingsMerge {
+    static func merge(base: AppSettings, edited: AppSettings, latest: AppSettings) -> AppSettings {
+        if edited == base { return latest }
+        if latest == base { return edited }
+        guard let b = dict(base), let e = dict(edited), var l = dict(latest) else { return edited }
+        for k in Set(b.keys).union(e.keys) where !same(b[k], e[k]) {
+            l[k] = e[k] // nil removes the key (an optional cleared in the draft)
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: l),
+              let out = try? JSONDecoder().decode(AppSettings.self, from: data) else { return edited }
+        return out
+    }
+
+    private static func dict(_ s: AppSettings) -> [String: Any]? {
+        guard let d = try? JSONEncoder().encode(s) else { return nil }
+        return (try? JSONSerialization.jsonObject(with: d)) as? [String: Any]
+    }
+
+    private static func same(_ a: Any?, _ b: Any?) -> Bool {
+        switch (a, b) {
+        case (nil, nil): return true
+        case let (x?, y?): return (x as? NSObject)?.isEqual(y) ?? false
+        default: return false
+        }
     }
 }
 
@@ -121,13 +169,16 @@ private struct MBField: View {
             }
         }
         .onAppear { text = String(format: "%g", Fmt.mbps(bps)) }
+        .onChange(of: bps) { b in
+            // changed elsewhere (menu bar, toolbar): show the new value
+            if Fmt.limitBps(text) != b { text = String(format: "%g", Fmt.mbps(b)) }
+        }
     }
 
     private func commit() {
-        if let v = Double(text.replacingOccurrences(of: ",", with: ".")), v > 0 {
-            let n = Fmt.bps(fromMB: v)
-            if n != bps { bps = n }
-        }
+        // ignore text that isn't a usable speed (NaN, inf, 0) instead of
+        // storing it; the previous value stays
+        if let n = Fmt.limitBps(text), n != bps { bps = n }
     }
 }
 

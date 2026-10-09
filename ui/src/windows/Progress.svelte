@@ -47,8 +47,10 @@
     try { await fn(); } catch (e) { toast(errText(e), 'error'); }
   }
   function applyLimit() {
-    const v = parseFloat(limitMB);
-    act(() => api.setDownloadLimit(id, limitOn && v > 0 ? Math.round(v * f.MBPS) : null));
+    if (!limitOn) return act(() => api.setDownloadLimit(id, null));
+    const bps = f.parseLimitMB(limitMB);
+    if (bps == null) return toast(f.LIMIT_ERROR, 'error');
+    act(() => api.setDownloadLimit(id, bps));
   }
 
   const conns = $derived.by(() => {

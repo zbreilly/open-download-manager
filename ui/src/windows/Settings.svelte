@@ -7,7 +7,7 @@
   import Switch from '../components/Switch.svelte';
   import Segmented from '../components/Segmented.svelte';
   import { api, errText, on, type Category, type Settings } from '../lib/ipc';
-  import { MBPS } from '../lib/format';
+  import { MBPS, parseLimitMB, LIMIT_ERROR } from '../lib/format';
   import { toast } from '../components/Toast.svelte';
   import { isMac } from '../lib/theme';
 
@@ -27,7 +27,10 @@
   ];
   let page = $state('connection');
   let s = $state<Settings | null>(null);
-  let original = '';
+  /** Latest settings known from the engine. A field whose value still equals
+   *  this is untouched, so changes made elsewhere (tray, toolbar, another
+   *  window) flow into it; fields the user edited are left alone. */
+  let base: Settings | null = null;
   let busy = $state(false);
   let ext = $state({ connected: false, browsers: [] as string[], port: 8901 });
 
@@ -37,20 +40,51 @@
   let captureExts = $state('');
   let pausedNow = $state(false);
 
-  function load(x: Settings) {
-    s = x;
-    original = JSON.stringify(x);
-    globalMB = String(Math.round((x.globalLimitBps / MBPS) * 10) / 10);
-    perMB = String(Math.round((x.perDownloadLimitBps / MBPS) * 10) / 10);
-    captureExts = x.captureExtensions.join(' ');
-    pausedNow = !!x.capturePausedUntil && x.capturePausedUntil > Date.now();
+  const fmtMB = (bps: number) => String(Math.round((bps / MBPS) * 10) / 10);
+  const extsText = (x: Settings) => x.captureExtensions.join(' ');
+  const pausedOf = (x: Settings) => !!x.capturePausedUntil && x.capturePausedUntil > Date.now();
+  const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+
+  /** Show `x` in the form (text helpers included). */
+  function fill(x: Settings) {
+    s = structuredClone(x);
+    globalMB = fmtMB(x.globalLimitBps);
+    perMB = fmtMB(x.perDownloadLimitBps);
+    captureExts = extsText(x);
+    pausedNow = pausedOf(x);
   }
 
-  function collect(): Settings {
+  function load(x: Settings) {
+    base = structuredClone(x);
+    fill(x);
+  }
+
+  /** settings_changed: take the new values for every field the user hasn't edited. */
+  function merge(incoming: Settings) {
+    if (!s || !base) return load(incoming);
+    const cur = $state.snapshot(s) as Settings;
+    const b = base;
+    for (const k of Object.keys(incoming) as (keyof Settings)[]) {
+      if (same(cur[k], b[k])) (s as unknown as Record<string, unknown>)[k] = structuredClone(incoming[k]);
+    }
+    if (globalMB === fmtMB(b.globalLimitBps)) globalMB = fmtMB(incoming.globalLimitBps);
+    if (perMB === fmtMB(b.perDownloadLimitBps)) perMB = fmtMB(incoming.perDownloadLimitBps);
+    if (captureExts === extsText(b)) captureExts = extsText(incoming);
+    if (pausedNow === pausedOf(b)) pausedNow = pausedOf(incoming);
+    base = structuredClone(incoming);
+  }
+
+  function collect(): Settings | null {
     const x = $state.snapshot(s!) as Settings;
-    const g = parseFloat(globalMB), p = parseFloat(perMB);
-    if (g > 0) x.globalLimitBps = Math.round(g * MBPS);
-    if (p > 0) x.perDownloadLimitBps = Math.round(p * MBPS);
+    // a text field still showing the stored value keeps the exact stored value
+    const limit = (text: string, cur: number) => (text === fmtMB(cur) ? cur : parseLimitMB(text));
+    const g = limit(globalMB, x.globalLimitBps), p = limit(perMB, x.perDownloadLimitBps);
+    if (g == null || p == null) {
+      toast(`${g == null ? 'Global' : 'Per-download'} limit: ${LIMIT_ERROR}`, 'error');
+      return null;
+    }
+    x.globalLimitBps = g;
+    x.perDownloadLimitBps = p;
     x.captureExtensions = captureExts.split(/[\s,;]+/).map((e) => e.replace(/^\./, '').toLowerCase()).filter(Boolean);
     x.defaultConnections = Math.max(1, Math.min(32, Number(x.defaultConnections) || 16));
     x.maxSimultaneous = Math.max(1, Math.min(64, Number(x.maxSimultaneous) || 4));
@@ -67,9 +101,11 @@
 
   async function save(close = true) {
     if (!s) return;
+    const x = collect();
+    if (!x) return;
     busy = true;
     try {
-      await api.saveSettings(collect());
+      await api.saveSettings(x);
       if (close) await win.close();
       else toast('Settings saved');
     } catch (e) {
@@ -80,7 +116,7 @@
   }
   async function restore() {
     const d = await api.defaultSettings();
-    load({ ...d, categories: d.categories });
+    fill(d); // not the engine's state: every changed field stays edited
     toast('Defaults restored — press Save to keep them');
   }
   async function pickFolder(cur: string | null, set: (v: string) => void) {
@@ -130,12 +166,13 @@
     if (params?.page) page = params.page;
     ext = await api.extensionStatus();
     const un = await on<{ connected: boolean; browsers: string[] }>('extension_status', (e) => (ext = { ...ext, ...e }));
+    const unSettings = await on<Settings>('settings_changed', merge);
     const k = (e: KeyboardEvent) => {
       if (e.key === 'Escape') win.close();
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key === 's') { e.preventDefault(); save(false); }
     };
     window.addEventListener('keydown', k);
-    cleanups.push(() => { un(); window.removeEventListener('keydown', k); });
+    cleanups.push(() => { un(); unSettings(); window.removeEventListener('keydown', k); });
     })();
     return () => cleanups.forEach((c) => c());
   });
@@ -361,7 +398,7 @@
     <div class="dialog-foot">
       <button class="btn" style="color:var(--text-muted)" onclick={restore}>Restore defaults</button>
       <span class="spacer"></span>
-      <button class="btn" onclick={() => { if (s) previewTheme(JSON.parse(original).theme); win.close(); }}>Cancel</button>
+      <button class="btn" onclick={() => { if (base) previewTheme(base.theme); win.close(); }}>Cancel</button>
       <button class="btn primary" disabled={busy} onclick={() => save(true)}>Save</button>
     </div>
   </div>

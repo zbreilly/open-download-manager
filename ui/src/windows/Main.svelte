@@ -1,12 +1,11 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { SvelteSet } from 'svelte/reactivity';
   import { writeText } from '@tauri-apps/plugin-clipboard-manager';
   import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
-  import { api, errText, on, type Download } from '../lib/ipc';
-  import { store, initStore, byId } from '../lib/store.svelte';
+  import { api, errText, on, type Download, type PowerCountdown } from '../lib/ipc';
+  import { store, initStore, byId, selection } from '../lib/store.svelte';
   import * as f from '../lib/format';
   import { modKey, isMac } from '../lib/theme';
   import StatusPill from '../components/StatusPill.svelte';
@@ -22,14 +21,14 @@
   let searchInput = $state('');
   let search = $state('');
   let searchEl = $state<HTMLInputElement | undefined>();
-  const selected = new SvelteSet<string>();
+  const selected = selection;
   let focusedId = $state<string | null>(null);
   let anchorId = $state<string | null>(null);
   let menu: { x: number; y: number; items: MenuItem[] } | null = $state(null);
   let confirmDelete: { ids: string[]; files: boolean } | null = $state(null);
   let refreshModal: { id: string; url: string; busy: boolean; err: string } | null = $state(null);
   let limitModal = $state<{ value: string } | null>(null);
-  let power: { action: string; seconds: number; queue: string; left: number } | null = $state(null);
+  let power: { action: string; queue: string; token: string | null; left: number } | null = $state(null);
   let dropOver = $state(false);
   let dragTarget = $state<string | null>(null);
 
@@ -156,9 +155,11 @@
     if (d.status === 'complete') act(() => api.openFile(d.id));
     else openProgress(d);
   }
-  async function copyLink(d: Download) {
-    await writeText(d.url);
-    toast('Link copied');
+  function copyLink(d: Download) {
+    act(async () => {
+      await writeText(d.url);
+      toast('Link copied');
+    });
   }
   function currentQueueId() {
     return filter.kind === 'queue' ? filter.id : 'main';
@@ -169,10 +170,10 @@
     act(() => api.setGlobalLimit(limitOn ? null : store.settings?.globalLimitBps ?? 0));
   }
   async function saveLimit() {
-    const v = parseFloat(limitModal?.value ?? '');
+    const bps = f.parseLimitMB(limitModal?.value ?? '');
+    if (bps == null) return toast(f.LIMIT_ERROR, 'error');
     limitModal = null;
-    if (!(v > 0)) return toast('Enter a speed above 0 MB/s', 'error');
-    await act(() => api.setGlobalLimit(Math.round(v * f.MBPS)));
+    await act(() => api.setGlobalLimit(bps));
   }
   async function doRefresh() {
     if (!refreshModal) return;
@@ -186,18 +187,22 @@
       if (refreshModal) { refreshModal.err = errText(e); refreshModal.busy = false; }
     }
   }
-  async function importList() {
-    const p = await openDialog({ multiple: false, filters: [{ name: 'Text', extensions: ['txt', 'csv', 'lst'] }] });
-    if (!p) return;
-    const urls = await api.readUrlList(p as string);
-    if (!urls.length) return toast('No http(s) links found in that file', 'error');
-    act(() => api.openWindow('grabber', null, { links: urls.map((url) => ({ url })) }));
+  function importList() {
+    act(async () => {
+      const p = await openDialog({ multiple: false, filters: [{ name: 'Text', extensions: ['txt', 'csv', 'lst'] }] });
+      if (!p) return;
+      const urls = await api.readUrlList(p as string);
+      if (!urls.length) return toast('No http(s) links found in that file', 'error');
+      await api.openWindow('grabber', null, { links: urls.map((url) => ({ url })) });
+    });
   }
-  async function exportList() {
-    const p = await saveDialog({ defaultPath: 'downloads.txt', filters: [{ name: 'Text', extensions: ['txt'] }] });
-    if (!p) return;
-    const n = await api.exportList(p, false);
-    toast(`Exported ${n} links`);
+  function exportList() {
+    act(async () => {
+      const p = await saveDialog({ defaultPath: 'downloads.txt', filters: [{ name: 'Text', extensions: ['txt'] }] });
+      if (!p) return;
+      const n = await api.exportList(p, false);
+      toast(`Exported ${n} links`);
+    });
   }
 
   function fileExt(d: Download) {
@@ -453,10 +458,15 @@
   }
 
   // ---------------- keyboard ----------------
+  const FIELDS = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
+  const CONTROLS = 'button, a, [role=switch], [role=menuitem]';
   function onKey(e: KeyboardEvent) {
     const mod = isMac ? e.metaKey : e.ctrlKey;
-    const inField = (e.target as HTMLElement).closest('input, textarea, select');
+    const target = e.target instanceof Element ? e.target : null;
+    const inField = !!target?.closest(FIELDS);
     if (menu || confirmDelete || refreshModal || limitModal) return;
+    // Enter / Space on a focused control activate that control, not the list
+    if ((e.key === 'Enter' || e.key === ' ') && target?.closest(CONTROLS)) return;
     if (mod && e.key.toLowerCase() === 'n') { e.preventDefault(); addUrl(); return; }
     if (mod && e.key.toLowerCase() === 'k') { e.preventDefault(); searchEl?.focus(); searchEl?.select(); return; }
     if (mod && e.key === ',') { e.preventDefault(); act(() => api.openWindow('settings')); return; }
@@ -498,9 +508,18 @@
         if (saved.sort) sort = saved.sort;
       } catch {}
     });
-    const un = on<{ action: string; seconds: number; queue: string } | null>('power_countdown', (p) => {
-      power = p ? { ...p, left: p.seconds } : null;
-    });
+    // The backend re-emits the countdown every second: each event only
+    // updates the one banner (never stacks), keyed by its token.
+    const applyPower = (p: PowerCountdown | null) => {
+      if (!p) { power = null; return; }
+      const left = Math.max(0, Math.round(Number(p.remaining ?? p.seconds) || 0));
+      const token = p.token ?? null;
+      if (power && power.token === token && power.action === p.action) power.left = left;
+      else power = { action: p.action, queue: p.queue, token, left };
+    };
+    const un = on<PowerCountdown | null>('power_countdown', applyPower);
+    // a countdown that started before this window existed
+    api.getPowerCountdown().then((p) => { if (p && !power) applyPower(p); }).catch(() => {});
     const t = setInterval(() => { if (power && power.left > 0) power.left--; }, 1000);
     const ro = new ResizeObserver(() => { if (scroller) { viewH = scroller.clientHeight; viewW = scroller.clientWidth; } });
     tick().then(() => scroller && ro.observe(scroller));
@@ -552,7 +571,7 @@
       <Icon name={power.action === 'sleep' ? 'sleep' : power.action === 'shutdown' ? 'shutdown' : 'exit'} size={16} />
       <span>“{power.queue}” finished. {powerLabel(power.action)} in <b class="mono">{power.left}s</b>.</span>
       <span class="spacer"></span>
-      <button class="btn sm" onclick={() => api.cancelPowerAction()}>Cancel</button>
+      <button class="btn sm" onclick={() => act(() => api.cancelPowerAction())}>Cancel</button>
     </div>
   {/if}
 

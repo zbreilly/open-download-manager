@@ -32,14 +32,25 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": { "../extension/dist/": "extension/" },
+    "resources": {
+      "../extension/dist/": "extension/"
+    },
     "macOS": {
       "minimumSystemVersion": "11.0",
       "dmg": {
         "background": "installer/dmg-background.png",
-        "windowSize": { "width": 660, "height": 400 },
-        "appPosition": { "x": 180, "y": 215 },
-        "applicationFolderPosition": { "x": 480, "y": 215 }
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 215
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 215
+        }
       }
     },
     "windows": {
@@ -54,12 +65,25 @@
       }
     },
     "linux": {
-      "deb": { "depends": [] }
+      "deb": {
+        "depends": [
+          "libayatana-appindicator3-1"
+        ]
+      },
+      "rpm": {
+        "depends": [
+          "libayatana-appindicator-gtk3"
+        ]
+      }
     }
   },
   "plugins": {
     "deep-link": {
-      "desktop": { "schemes": ["odm"] }
+      "desktop": {
+        "schemes": [
+          "odm"
+        ]
+      }
     }
   }
 }

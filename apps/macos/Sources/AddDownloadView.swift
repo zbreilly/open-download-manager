@@ -40,6 +40,11 @@ struct AddDownloadView: View {
     @State private var submitError = ""
     @State private var probeTask: Task<Void, Never>?
     @State private var loaded = false
+    @State private var host = HostWindow()
+
+    /// Opened from a web page: the page chose the URL, so it is not contacted
+    /// until the user asks (Check Link), and Start is not the default button.
+    private var fromWeb: Bool { params.fromWeb }
 
     struct HeaderPair: Identifiable {
         let id = UUID()
@@ -170,9 +175,9 @@ struct AddDownloadView: View {
                 Toggle("Batch", isOn: $batch).toggleStyle(.switch).help("Add several links or a numbered pattern")
                 Spacer()
                 Button("Add to Queue") { submit(start: false) }.disabled(!valid || busy)
-                Button("Cancel") { closeKeyWindow() }.keyboardShortcut(.cancelAction)
+                Button("Cancel") { host.close() }.keyboardShortcut(.cancelAction)
                 Button(batch ? "Start \(batchURLs.count) Downloads" : "Start Download") { submit(start: true) }
-                    .keyboardShortcut(.defaultAction)
+                    .keyboardShortcut(fromWeb ? nil : KeyboardShortcut.defaultAction)
                     .disabled(!valid || busy)
             }
             .padding(14)
@@ -187,6 +192,7 @@ struct AddDownloadView: View {
         .onChange(of: url) { _ in scheduleProbe() }
         .onChange(of: batch) { _ in scheduleProbe() }
         .onAppear(perform: setup)
+        .background(WindowAccessor(host: host))
     }
 
     private var infoRow: some View {
@@ -196,6 +202,10 @@ struct AddDownloadView: View {
                 if probing {
                     ProgressView().controlSize(.small)
                     Text("Checking link…").font(.caption).foregroundStyle(.secondary)
+                } else if fromWeb && probe == nil && probeError.isEmpty {
+                    Text(Fmt.host(url)).font(.system(.callout, design: .monospaced))
+                    Text("Opened from a web page. The link has not been contacted yet.")
+                        .font(.caption).foregroundStyle(.secondary)
                 } else if !probeError.isEmpty {
                     Text(probeError).foregroundStyle(.red).font(.callout)
                     Text("You can still add it; it will retry when started.").font(.caption).foregroundStyle(.secondary)
@@ -216,6 +226,9 @@ struct AddDownloadView: View {
                 }
             }
             Spacer()
+            if fromWeb && !probing {
+                Button(probe == nil && probeError.isEmpty ? "Check Link" : "Check Again") { probeNow() }
+            }
         }
     }
 
@@ -234,10 +247,13 @@ struct AddDownloadView: View {
                   Self.isHTTP(clip), !clip.contains(where: { $0.isWhitespace }) {
             url = clip
         }
-        if let n = params.fileName, !n.isEmpty { fileName = n }
-        referrer = params.referrer ?? ""
-        cookies = params.cookies ?? ""
-        userAgent = params.userAgent ?? ""
+        if !fromWeb {
+            // a web page only gets to suggest the URL
+            if let n = params.fileName, !n.isEmpty { fileName = n }
+            referrer = params.referrer ?? ""
+            cookies = params.cookies ?? ""
+            userAgent = params.userAgent ?? ""
+        }
         loaded = true
         scheduleProbe()
     }
@@ -278,7 +294,22 @@ struct AddDownloadView: View {
         }
         probe = nil
         probeError = ""
-        guard Self.isHTTP(u) else { probing = false; return }
+        // from a web page: probe only on request (Check Link)
+        guard Self.isHTTP(u), !fromWeb else { probing = false; return }
+        startProbe(u, delay: 300_000_000)
+    }
+
+    /// Probe right away (the Check Link button).
+    private func probeNow() {
+        let u = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !batch, Self.isHTTP(u), !probing else { return }
+        probeTask?.cancel()
+        probe = nil
+        probeError = ""
+        startProbe(u, delay: 0)
+    }
+
+    private func startProbe(_ u: String, delay: UInt64) {
         probing = true
         let opts: [String: Any] = [
             "referrer": orNull(referrer),
@@ -288,7 +319,7 @@ struct AddDownloadView: View {
             "headers": headers.filter { !$0.key.isEmpty }.map { [$0.key, $0.value] },
         ]
         probeTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000)
+            if delay > 0 { try? await Task.sleep(nanoseconds: delay) }
             if Task.isCancelled { return }
             do {
                 let p: ProbeResult = try await Engine.shared.callAsync("probe_url", ["url": u, "opts": opts])
@@ -366,7 +397,7 @@ struct AddDownloadView: View {
                 } else {
                     let _: [String] = try await e.callAsync("add_many", ["reqs": e.jsonValue(reqs)])
                 }
-                closeKeyWindow()
+                host.close()
             } catch {
                 submitError = error.localizedDescription
                 busy = false

@@ -21,7 +21,8 @@ enum Fmt {
     static func percent(_ d: Download) -> Int {
         if d.status == .complete { return 100 }
         guard let t = d.totalBytes, t > 0 else { return 0 }
-        return min(99, Int(Double(d.receivedBytes) / Double(t) * 100))
+        // clamp before converting: Int(Double) traps on huge values
+        return Int(min(99, max(0, Double(d.receivedBytes) / Double(t) * 100)))
     }
 
     static func eta(_ s: UInt64?) -> String {
@@ -86,7 +87,26 @@ enum Fmt {
     }
 
     static func mbps(_ bps: UInt64) -> Double { (Double(bps) / MB * 10).rounded() / 10 }
-    static func bps(fromMB mb: Double) -> UInt64 { UInt64(max(0, mb) * MB) }
+
+    /// Largest speed limit accepted from a text field, in MB/s.
+    static let maxLimitMB: Double = 1_000_000
+    static let limitError = "Enter a speed between 0 and 1,000,000 MB/s."
+
+    /// MB/s → bytes/s, clamped to 0…maxLimitMB (NaN and negatives give 0).
+    /// Never traps: UInt64(Double) crashes on non-finite or out-of-range values.
+    static func bps(fromMB mb: Double) -> UInt64 {
+        guard mb.isFinite, mb > 0 else { return 0 }
+        return UInt64((min(mb, maxLimitMB) * MB).rounded())
+    }
+
+    /// Parse a "MB/s" text field. nil for anything that is not a finite
+    /// number above 0 and at most maxLimitMB (so callers can show an error
+    /// instead of silently turning a limit off).
+    static func limitBps(_ text: String) -> UInt64? {
+        guard let v = Double(text.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")),
+              v.isFinite, v > 0, v <= maxLimitMB else { return nil }
+        return max(1, bps(fromMB: v))
+    }
 
     static func host(_ url: String) -> String { URL(string: url)?.host ?? "" }
 }

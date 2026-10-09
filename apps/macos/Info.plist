@@ -17,6 +17,7 @@
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSSupportsAutomaticTermination</key><false/>
   <key>NSSupportsSuddenTermination</key><false/>
+  <key>LSFileQuarantineEnabled</key><true/>
   <key>NSHumanReadableCopyright</key><string>Open Download Manager · AGPL-3.0</string>
   <key>NSAppleEventsUsageDescription</key><string>Open Download Manager can shut down your Mac when a queue finishes, if you turn that on in the scheduler.</string>
   <key>NSAppTransportSecurity</key>

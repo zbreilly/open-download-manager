@@ -13,6 +13,8 @@ struct DownloadWindowView: View {
     @State private var closeAt: Date?
     @State private var hovering = false
     @State private var initialized = false
+    @State private var limitError = ""
+    @State private var host = HostWindow()
 
     var body: some View {
         Group {
@@ -26,6 +28,7 @@ struct DownloadWindowView: View {
         }
         .frame(minWidth: 620, minHeight: 520)
         .onHover { hovering = $0 }
+        .background(WindowAccessor(host: host))
     }
 
     private func content(_ d: Download) -> some View {
@@ -63,6 +66,9 @@ struct DownloadWindowView: View {
                                         Text("MB/s").foregroundStyle(.secondary)
                                         Button("Apply") { applyLimit() }
                                     }
+                                    if !limitError.isEmpty {
+                                        Text(limitError).font(.caption).foregroundStyle(.red)
+                                    }
                                 }
                                 Text("Overrides the per-download setting.").font(.caption).foregroundStyle(.secondary)
                             }
@@ -90,7 +96,7 @@ struct DownloadWindowView: View {
         .confirmationDialog("Cancel this download?", isPresented: $confirmCancel, titleVisibility: .visible) {
             Button("Cancel Download", role: .destructive) {
                 store.delete([d.id], files: false)
-                closeKeyWindow()
+                host.close()
             }
             Button("Keep Downloading", role: .cancel) {}
         } message: {
@@ -199,23 +205,23 @@ struct DownloadWindowView: View {
     private func footer(_ d: Download) -> some View {
         HStack {
             if d.status == .complete {
-                Button(closeAt.map { _ in "Close" } ?? "Close") { closeKeyWindow() }
+                Button(closeAt.map { _ in "Close" } ?? "Close") { host.close() }
                 if closeAt != nil {
                     TimelineView(.periodic(from: .now, by: 1)) { ctx in
                         let left = max(0, Int((closeAt ?? ctx.date).timeIntervalSince(ctx.date)))
                         Text("Closing in \(left)s").font(.caption).foregroundStyle(.secondary)
                             .onChange(of: left) { l in
-                                if l == 0 && !hovering { closeKeyWindow() }
+                                if l == 0 && !hovering { host.close() }
                                 else if hovering { closeAt = nil }
                             }
                     }
                 }
                 Spacer()
                 Button { store.revealInFinder(d) } label: { Label("Show in Finder", systemImage: "folder") }
-                Button { store.openFile(d); closeKeyWindow() } label: { Label("Open", systemImage: "arrow.up.forward.app") }
+                Button { store.openFile(d); host.close() } label: { Label("Open", systemImage: "arrow.up.forward.app") }
                     .keyboardShortcut(.defaultAction)
             } else {
-                Button("Hide") { closeKeyWindow() }.keyboardShortcut(.cancelAction)
+                Button("Hide") { host.close() }.keyboardShortcut(.cancelAction)
                 Spacer()
                 Button("Cancel Download", role: .destructive) { confirmCancel = true }
                 if d.status.isActive || d.status == .queued {
@@ -246,8 +252,16 @@ struct DownloadWindowView: View {
     }
 
     private func applyLimit() {
-        let v = Double(limitMB.replacingOccurrences(of: ",", with: ".")) ?? 0
-        let bps: UInt64? = (limitOn && v > 0) ? Fmt.bps(fromMB: v) : nil
-        store.act("set_download_limit", ["id": id, "bps": orNull(bps)])
+        limitError = ""
+        guard limitOn else {
+            store.act("set_download_limit", ["id": id, "bps": NSNull()])
+            return
+        }
+        // reject NaN / inf / 0 instead of silently turning the limit off
+        guard let bps = Fmt.limitBps(limitMB) else {
+            limitError = Fmt.limitError
+            return
+        }
+        store.act("set_download_limit", ["id": id, "bps": bps])
     }
 }

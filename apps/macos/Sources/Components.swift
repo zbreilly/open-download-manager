@@ -152,10 +152,54 @@ struct InfoRow: View {
     }
 }
 
-/// Close the window that hosts the calling view.
+/// The NSWindow that hosts a SwiftUI view, so the view can close its own
+/// window (not whichever window happens to be key, e.g. the main window when
+/// a progress window auto-closes in the background).
+///
+///     @State private var host = HostWindow()
+///     …
+///     .background(WindowAccessor(host: host))
+///     …
+///     host.close()
 @MainActor
-func closeKeyWindow() {
-    NSApp.keyWindow?.performClose(nil)
+final class HostWindow {
+    weak var window: NSWindow?
+
+    func close() {
+        window?.performClose(nil)
+    }
+}
+
+/// Reports the hosting NSWindow into a HostWindow. Writes go to a plain
+/// reference (not observed state), so nothing re-renders.
+@MainActor
+struct WindowAccessor: NSViewRepresentable {
+    let host: HostWindow
+
+    func makeNSView(context: Context) -> WindowReaderView {
+        let v = WindowReaderView()
+        let host = self.host
+        v.onWindow = { w in
+            if let w = w { host.window = w }
+        }
+        return v
+    }
+
+    func updateNSView(_ nsView: WindowReaderView, context: Context) {
+        if let w = nsView.window { host.window = w }
+    }
+}
+
+final class WindowReaderView: NSView {
+    var onWindow: (@MainActor (NSWindow?) -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        onWindow?(window)
+    }
+
+    // never takes clicks from the content above it
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
 
 @MainActor

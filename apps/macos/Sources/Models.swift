@@ -245,6 +245,9 @@ struct ExtensionStatus: Codable, Equatable {
 }
 
 /// Parameters for an Add Download window (also used for extension handoff).
+/// The engine's `show_add` payload has only url/fileName/referrer/cookies/
+/// userAgent/totalBytes/mime (any may be null), so decoding fills defaults
+/// for everything else (see the extension below).
 struct AddParams: Codable, Hashable {
     var url: String = ""
     var fileName: String?
@@ -254,13 +257,54 @@ struct AddParams: Codable, Hashable {
     var totalBytes: UInt64?
     var mime: String?
     var batch: Bool = false
+    /// "web" when a web page asked for this (odm:// or a link handed to the
+    /// app): no automatic probe, no default Start button, and only the URL is
+    /// taken from the request.
+    var source: String?
     var nonce: String = UUID().uuidString
+
+    var fromWeb: Bool { source == "web" }
 }
 
+// In an extension so the memberwise initializer stays available.
+extension AddParams {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        url = try c.decodeIfPresent(String.self, forKey: .url) ?? ""
+        fileName = try c.decodeIfPresent(String.self, forKey: .fileName)
+        referrer = try c.decodeIfPresent(String.self, forKey: .referrer)
+        cookies = try c.decodeIfPresent(String.self, forKey: .cookies)
+        userAgent = try c.decodeIfPresent(String.self, forKey: .userAgent)
+        totalBytes = try? c.decodeIfPresent(UInt64.self, forKey: .totalBytes)
+        mime = try c.decodeIfPresent(String.self, forKey: .mime)
+        batch = (try? c.decodeIfPresent(Bool.self, forKey: .batch)) ?? false
+        source = try c.decodeIfPresent(String.self, forKey: .source)
+        nonce = try c.decodeIfPresent(String.self, forKey: .nonce) ?? UUID().uuidString
+    }
+}
+
+/// `show_links` payload: `{ links: [{ url, cookies? }], referrer?, userAgent? }`.
+/// Cookies belong to each link and are never shared between links.
 struct LinkParams: Codable, Hashable {
-    struct Link: Codable, Hashable { var url: String }
+    struct Link: Codable, Hashable {
+        var url: String
+        var cookies: String?
+
+        init(url: String, cookies: String? = nil) {
+            self.url = url
+            self.cookies = cookies
+        }
+    }
     var links: [Link] = []
     var referrer: String?
-    var cookies: String?
     var userAgent: String?
+}
+
+extension LinkParams {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        links = try c.decodeIfPresent([Link].self, forKey: .links) ?? []
+        referrer = try c.decodeIfPresent(String.self, forKey: .referrer)
+        userAgent = try c.decodeIfPresent(String.self, forKey: .userAgent)
+    }
 }

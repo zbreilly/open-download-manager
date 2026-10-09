@@ -48,6 +48,10 @@
   let submitErr = $state('');
   let batchUrls = $state<string[]>([]);
   let urlEl = $state<HTMLInputElement | HTMLTextAreaElement | undefined>();
+  // Opened from a web page (odm:// deep link): the page chose the URL, so it
+  // is not contacted until the user asks (Check link), Enter does not start
+  // the download, and any name / referrer the page supplied is ignored.
+  let fromWeb = $state(false);
 
   const isUrl = (s: string) => { try { const u = new URL(s.trim()); return u.protocol === 'http:' || u.protocol === 'https:'; } catch { return false; } };
   const urlValid = $derived(batch ? batchUrls.length > 0 : isUrl(url));
@@ -59,6 +63,7 @@
   $effect(() => {
     const u = url.trim();
     const isBatch = batch;
+    const manual = fromWeb;
     clearTimeout(timer);
     exists = false;
     if (isBatch) {
@@ -75,34 +80,47 @@
     }
     probe = null;
     probeErr = '';
-    if (!isUrl(u)) { probing = false; return; }
-    probing = true;
     const seq = ++probeSeq;
-    timer = setTimeout(async () => {
-      try {
-        const p = await api.probe(u, {
-          referrer: referrer || null, cookies: cookies || null,
-          headers: headers.filter((h) => h.k).map((h) => [h.k, h.v]),
-          username: username || null, password: password || null,
-        });
-        if (seq !== probeSeq) return;
-        probe = p;
-        if (!nameTouched) fileName = p.fileName;
-        autoCat = p.category;
-        if (!catTouched) await setCategory(p.category, false);
-        if (!p.resumable) conns = 1;
-        else if (conns === 1) conns = settings?.defaultConnections ?? 16;
-      } catch (e) {
-        if (seq !== probeSeq) return;
-        probeErr = errText(e);
-        if (!nameTouched) {
-          try { fileName = decodeURIComponent(new URL(u).pathname.split('/').filter(Boolean).pop() || ''); } catch {}
-        }
-      } finally {
-        if (seq === probeSeq) probing = false;
-      }
-    }, 300);
+    if (!isUrl(u) || manual) { probing = false; return; }
+    probing = true;
+    timer = setTimeout(() => runProbe(u, seq), 300);
   });
+
+  /** Probe now (the Check link button, used when auto-probing is off). */
+  function probeNow() {
+    const u = url.trim();
+    if (!isUrl(u) || probing) return;
+    clearTimeout(timer);
+    probe = null;
+    probeErr = '';
+    probing = true;
+    runProbe(u, ++probeSeq);
+  }
+
+  async function runProbe(u: string, seq: number) {
+    try {
+      const p = await api.probe(u, {
+        referrer: referrer || null, cookies: cookies || null,
+        headers: headers.filter((h) => h.k).map((h) => [h.k, h.v]),
+        username: username || null, password: password || null,
+      });
+      if (seq !== probeSeq) return;
+      probe = p;
+      if (!nameTouched) fileName = p.fileName;
+      autoCat = p.category;
+      if (!catTouched) await setCategory(p.category, false);
+      if (!p.resumable) conns = 1;
+      else if (conns === 1) conns = settings?.defaultConnections ?? 16;
+    } catch (e) {
+      if (seq !== probeSeq) return;
+      probeErr = errText(e);
+      if (!nameTouched) {
+        try { fileName = decodeURIComponent(new URL(u).pathname.split('/').filter(Boolean).pop() || ''); } catch {}
+      }
+    } finally {
+      if (seq === probeSeq) probing = false;
+    }
+  }
 
   async function setCategory(c: string, touched = true) {
     category = c;
@@ -119,7 +137,9 @@
     return {
       url: link,
       fileName: batch ? null : fileName.trim() || null,
-      saveDir: saveDir.trim() || null,
+      // only a folder the user picked; otherwise the engine applies the
+      // category folder (and its subfolder rules)
+      saveDir: dirTouched ? saveDir.trim() || null : null,
       category: batch ? null : category,
       queueId: queueId || (start ? null : 'main'),
       start,
@@ -165,7 +185,7 @@
 
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') { e.preventDefault(); win.close(); }
-    if (e.key === 'Enter' && !(e.target as HTMLElement).closest('textarea') && !(e.target as HTMLElement).closest('button')) {
+    if (e.key === 'Enter' && !fromWeb && !(e.target as HTMLElement).closest('textarea') && !(e.target as HTMLElement).closest('button')) {
       e.preventDefault();
       submit(true);
     }
@@ -178,8 +198,10 @@
 
   function applyParams(p: any) {
     if (!p) return;
+    fromWeb = p.source === 'web';
     if (p.batch) batch = true;
     if (p.url) url = p.url;
+    if (fromWeb) return; // a web page only gets to suggest the URL
     if (p.fileName) { fileName = p.fileName; nameTouched = true; }
     if (p.referrer) referrer = p.referrer;
     if (p.cookies) cookies = p.cookies;
@@ -247,6 +269,9 @@
           {#if probing}
             <div class="skeleton" style="width:60%"></div>
             <div class="muted small">Checking link…</div>
+          {:else if fromWeb && !probe && !probeErr}
+            <div class="mono small ellipsis">{f.host(url)}</div>
+            <div class="muted small">Opened from a web page. The link has not been contacted yet.</div>
           {:else if probeErr}
             <div class="bad">{probeErr}</div>
             <div class="muted small">You can still add it; the download will retry when started.</div>
@@ -263,6 +288,9 @@
             {/if}
           {/if}
         </div>
+        {#if fromWeb && !probing}
+          <button type="button" class="btn sm" onclick={probeNow}><Icon name="refresh-link" size={14} />{probe || probeErr ? 'Check again' : 'Check link'}</button>
+        {/if}
       </div>
     {/if}
 

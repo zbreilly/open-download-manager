@@ -19,14 +19,22 @@
   let sameHost = $state(true);
   let busy = $state(false);
   let err = $state('');
-  let links = $state<(GrabbedLink & { on: boolean })[]>([]);
+  type Row = GrabbedLink & { on: boolean; cookies: string | null };
+  let links = $state<Row[]>([]);
   let filterText = $state('');
   let saveDir = $state('');
   let queueId = $state('');
   let fromList = $state(false);
+  // Context of the current list. Cookies travel with each link (contract:
+  // a link only ever gets its own cookies).
   let referrer: string | null = null;
-  let cookies: string | null = null;
   let userAgent: string | null = null;
+
+  /** Keep the first entry for each URL (the list is keyed by URL). */
+  function dedupe(rows: Row[]): Row[] {
+    const seen = new Set<string>();
+    return rows.filter((r) => (seen.has(r.url) ? false : (seen.add(r.url), true)));
+  }
 
   const PRESETS: Record<string, string> = {
     all: '',
@@ -47,8 +55,9 @@
     fromList = false;
     try {
       const r = await api.grab(url.trim(), depth, exts, sameHost);
-      links = r.map((l) => ({ ...l, on: true }));
+      links = dedupe(r.map((l) => ({ ...l, on: true, cookies: null })));
       referrer = url.trim();
+      userAgent = null;
       if (!r.length) err = 'No matching files were found on that page.';
     } catch (e) {
       err = errText(e);
@@ -66,9 +75,11 @@
   }
 
   async function add(start: boolean) {
+    // an empty folder means "category folders": let the engine pick per file
+    const dir = saveDir.trim() || null;
     const reqs = chosen.map((l) => ({
-      url: l.url, start, saveDir: saveDir.trim() || null, queueId: queueId || (start ? null : 'main'),
-      referrer, cookies, userAgent, connections: settings?.defaultConnections,
+      url: l.url, start, saveDir: dir, queueId: queueId || (start ? null : 'main'),
+      referrer, cookies: l.cookies ?? null, userAgent, connections: settings?.defaultConnections,
     }));
     if (!reqs.length) return;
     busy = true;
@@ -83,24 +94,26 @@
 
   function applyParams(p: any) {
     if (!p) return;
+    // a new payload is a new context: never carry over the previous one's
+    // referrer / user agent (cookies are per link)
+    referrer = typeof p.referrer === 'string' && p.referrer ? p.referrer : null;
+    userAgent = typeof p.userAgent === 'string' && p.userAgent ? p.userAgent : null;
     if (p.url) url = p.url;
-    if (p.links?.length) {
+    if (Array.isArray(p.links) && p.links.length) {
       fromList = true;
-      links = p.links.map((l: any) => {
+      err = '';
+      links = dedupe(p.links.filter((l: any) => l && typeof l.url === 'string' && l.url).map((l: any): Row => {
         const n = l.fileName || nameOf(l.url);
-        return { url: l.url, fileName: n, ext: extOf(n), category: '', source: 'link', on: true };
-      });
+        const c = typeof l.cookies === 'string' && l.cookies ? l.cookies : null;
+        return { url: l.url, fileName: n, ext: extOf(n), category: '', source: 'link', on: true, cookies: c };
+      }));
     }
-    referrer = p.referrer ?? referrer;
-    cookies = p.cookies ?? cookies;
-    userAgent = p.userAgent ?? userAgent;
   }
 
   onMount(() => {
     const cleanups: (() => void)[] = [];
     (async () => {
     [settings, queues] = await Promise.all([api.getSettings(), api.listQueues()]);
-    saveDir = settings.defaultFolder;
     applyParams(params);
     const un = await listen('view_params', (e) => applyParams(e.payload));
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') win.close(); };
@@ -176,8 +189,9 @@
       <label class="field" style="flex:2">
         <span>Save to</span>
         <div class="row">
-          <input class="input mono" style="flex:1" bind:value={saveDir} />
-          <button class="btn" onclick={async () => { const p = await openDialog({ directory: true, defaultPath: saveDir }); if (p) saveDir = p as string; }}>Browse</button>
+          <input class="input mono" style="flex:1" bind:value={saveDir} placeholder="Category folders" spellcheck="false" />
+          {#if saveDir.trim()}<button class="btn" title="Save each file to its category's folder" onclick={() => (saveDir = '')}>Use category folders</button>{/if}
+          <button class="btn" onclick={async () => { const p = await openDialog({ directory: true, defaultPath: saveDir || settings?.defaultFolder || undefined }); if (p) saveDir = p as string; }}>Browse</button>
         </div>
       </label>
       <label class="field" style="flex:1">

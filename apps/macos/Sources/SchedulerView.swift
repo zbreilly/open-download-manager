@@ -5,6 +5,10 @@ struct SchedulerView: View {
     @State private var selectedId: String? = "main"
     @State private var draft: DownloadQueue?
     @State private var dirty = false
+    /// The user reordered the list: only then is the order sent.
+    @State private var reordered = false
+    @State private var saving = false
+    @State private var saveError = ""
     @State private var newName = ""
     @State private var naming = false
 
@@ -39,9 +43,14 @@ struct SchedulerView: View {
         .onAppear { pick(selectedId) }
         .onChange(of: selectedId) { id in pick(id) }
         .onChange(of: store.queues) { qs in
+            // a queue created here shows up once the engine reports it
+            if draft == nil, let id = selectedId, qs.contains(where: { $0.id == id }) {
+                pick(id)
+                return
+            }
             guard let d = draft, let q = qs.first(where: { $0.id == d.id }) else { return }
             draft?.running = q.running
-            if !dirty { draft?.order = q.order }
+            if !reordered { draft?.order = q.order }
         }
         .alert("New Queue", isPresented: $naming) {
             TextField("Name", text: $newName)
@@ -53,6 +62,8 @@ struct SchedulerView: View {
     private func pick(_ id: String?) {
         draft = store.queues.first(where: { $0.id == id })
         dirty = false
+        reordered = false
+        saveError = ""
     }
 
     private var binding: Binding<DownloadQueue> {
@@ -150,7 +161,10 @@ struct SchedulerView: View {
                                     }
                                 }
                             }
-                            .onMove { from, to in q.wrappedValue.order.move(fromOffsets: from, toOffset: to) }
+                            .onMove { from, to in
+                                q.wrappedValue.order.move(fromOffsets: from, toOffset: to)
+                                reordered = true
+                            }
                         }
                         .frame(minHeight: 140)
                         Text("Drag to reorder.").font(.caption).foregroundStyle(.secondary)
@@ -168,10 +182,15 @@ struct SchedulerView: View {
             .formStyle(.grouped)
             Divider()
             HStack {
-                Text(summary(q.wrappedValue)).font(.caption).foregroundStyle(.secondary)
+                if saveError.isEmpty {
+                    Text(summary(q.wrappedValue)).font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text(saveError).font(.caption).foregroundStyle(.red).textSelection(.enabled)
+                        .lineLimit(2)
+                }
                 Spacer()
-                Button("Revert") { pick(selectedId) }.disabled(!dirty)
-                Button("Save Schedule") { save() }.keyboardShortcut(.defaultAction).disabled(!dirty)
+                Button("Revert") { pick(selectedId) }.disabled(!dirty || saving)
+                Button("Save Schedule") { save() }.keyboardShortcut(.defaultAction).disabled(!dirty || saving)
             }
             .padding(12)
         }
@@ -215,14 +234,37 @@ struct SchedulerView: View {
         return "Next run: \(nextRun(q) ?? "not scheduled") · \(pending.count) files · \(Fmt.bytes(left))"
     }
 
+    /// The user's arrangement applied to the live membership: downloads that
+    /// left the queue are dropped, ones that joined since go to the end.
+    private func liveOrder(_ wanted: [String], id: String) -> [String] {
+        let live = store.queues.first(where: { $0.id == id })?.order ?? wanted
+        let inLive = Set(live)
+        let kept = wanted.filter { inLive.contains($0) }
+        let keptSet = Set(kept)
+        return kept + live.filter { !keptSet.contains($0) }
+    }
+
     private func save() {
-        guard let d = draft else { return }
-        let order = d.order
-        store.saveQueue(d) { saved in
-            if let s = saved {
-                store.act("reorder_queue", ["id": s.id, "order": order])
+        guard var d = draft, !saving else { return }
+        d.maxConcurrent = min(32, max(1, d.maxConcurrent))
+        let wasReordered = reordered
+        let wanted = d.order
+        saving = true
+        saveError = ""
+        Task { @MainActor in
+            do {
+                // settings only: the engine keeps the queue's current order
+                let saved = try await store.saveQueue(d)
+                if wasReordered {
+                    try await Engine.shared.runAwait("reorder_queue", ["id": saved.id, "order": liveOrder(wanted, id: saved.id)])
+                }
+                dirty = false
+                reordered = false
+            } catch {
+                // keep the edits (dirty) so the user can retry
+                saveError = "Could not save: \(error.localizedDescription)"
             }
-            dirty = false
+            saving = false
         }
     }
 
@@ -230,8 +272,13 @@ struct SchedulerView: View {
         let name = newName.trimmingCharacters(in: .whitespaces)
         newName = ""
         guard !name.isEmpty else { return }
-        store.saveQueue(DownloadQueue.new(name: name)) { saved in
-            if let s = saved { selectedId = s.id }
+        Task { @MainActor in
+            do {
+                let saved = try await store.saveQueue(DownloadQueue.new(name: name))
+                selectedId = saved.id
+            } catch {
+                store.report("Could not create the queue: \(error.localizedDescription)")
+            }
         }
     }
 }

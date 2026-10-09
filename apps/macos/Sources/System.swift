@@ -27,16 +27,51 @@ enum Power {
 }
 
 /// Launch at login through the system's login items.
+@MainActor
 enum LoginItem {
-    static func set(_ on: Bool) {
+    struct Outcome {
+        /// What the system has now (pending approval counts as on: the item
+        /// is registered and runs once the user allows it).
+        var isOn: Bool
+        /// Something to tell the user, if the request did not simply work.
+        var message: String?
+    }
+
+    /// Whether the app is registered as a login item (enabled or awaiting approval).
+    static var isOn: Bool {
+        let st = SMAppService.mainApp.status
+        return st == .enabled || st == .requiresApproval
+    }
+
+    /// Register or unregister, then read the status back.
+    static func set(_ on: Bool) -> Outcome {
+        let app = SMAppService.mainApp
+        var failure: String?
         do {
             if on {
-                if SMAppService.mainApp.status != .enabled { try SMAppService.mainApp.register() }
-            } else {
-                if SMAppService.mainApp.status == .enabled { try SMAppService.mainApp.unregister() }
+                if app.status != .enabled { try app.register() }
+            } else if app.status == .enabled || app.status == .requiresApproval {
+                try app.unregister()
             }
         } catch {
+            failure = error.localizedDescription
             NSLog("login item: \(error.localizedDescription)")
+        }
+        switch app.status {
+        case .enabled:
+            if on { return Outcome(isOn: true, message: nil) }
+            return Outcome(isOn: true, message: "Open Download Manager could not be removed from your login items"
+                + (failure.map { " (\($0))." } ?? ".") + " You can remove it in System Settings › General › Login Items.")
+        case .requiresApproval:
+            if on {
+                SMAppService.openSystemSettingsLoginItems()
+                return Outcome(isOn: true, message: "To open Open Download Manager at login, allow it in System Settings › General › Login Items.")
+            }
+            return Outcome(isOn: true, message: "Open Download Manager is still listed in your login items. You can remove it in System Settings › General › Login Items.")
+        default: // .notRegistered, .notFound
+            if !on { return Outcome(isOn: false, message: nil) }
+            return Outcome(isOn: false, message: "Open Download Manager could not be added to your login items"
+                + (failure.map { " (\($0))." } ?? ".") + " You can add it in System Settings › General › Login Items.")
         }
     }
 }

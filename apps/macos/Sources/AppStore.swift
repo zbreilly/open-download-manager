@@ -191,7 +191,12 @@ final class AppStore: ObservableObject {
 
     func openAdd(_ p: AddParams = AddParams()) {
         NSApp.activate(ignoringOtherApps: true)
-        openWindowAction?("add", p, nil)
+        // let a window that is being brought forward (e.g. by a URL event)
+        // settle first, so the Add window ends up on top
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 150_000_000)
+            AppStore.shared.openWindowAction?("add", p, nil)
+        }
     }
 
     func openProgress(_ id: String) {

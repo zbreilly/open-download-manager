@@ -93,12 +93,14 @@ struct OpenDownloadManagerApp: App {
         }
         .defaultSize(width: 560, height: 680)
         .windowResizability(.contentMinSize)
+        .handlesExternalEvents(matching: [])
 
         WindowGroup("Download", id: "progress", for: String.self) { $id in
             DownloadWindowView(id: id ?? "")
                 .environmentObject(store)
         }
         .defaultSize(width: 760, height: 660)
+        .handlesExternalEvents(matching: [])
 
         Window("Queues & Scheduler", id: "scheduler") {
             SchedulerView()

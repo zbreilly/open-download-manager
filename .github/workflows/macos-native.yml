@@ -67,17 +67,20 @@ jobs:
           set -x
           APP="$PWD/dist/macos-native/Open Download Manager.app"
           mkdir -p ci-out
-          python3 -m http.server 8777 --directory "$PWD/download-manager-ui/brand/dist" > /dev/null 2>&1 &
           open "$APP"
           sleep 8
           pgrep -fl OpenDownloadManager || { echo "app exited early"; exit 1; }
           screencapture -x ci-out/01-main.png || true
-          open "odm://add?url=http://127.0.0.1:8777/installer/dmg-background.png"
-          sleep 5
+          open "odm://add?url=https://proof.ovh.net/files/100Mb.dat"
+          sleep 6
           screencapture -x ci-out/02-add.png || true
           osascript -e 'tell application "System Events" to keystroke return' || true
-          sleep 4
-          screencapture -x ci-out/03-after-add.png || true
+          sleep 6
+          screencapture -x ci-out/03-downloading.png || true
+          osascript -e 'tell application "Open Download Manager" to activate' -e 'tell application "System Events" to keystroke "n" using command down' || true
+          sleep 3
+          screencapture -x ci-out/03b-add-menu.png || true
+          osascript -e 'tell application "System Events" to key code 53' || true
           osascript -e 'tell application "Open Download Manager" to activate' -e 'tell application "System Events" to keystroke "," using command down' || true
           sleep 3
           screencapture -x ci-out/04-settings.png || true

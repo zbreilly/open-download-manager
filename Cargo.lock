@@ -2995,6 +2995,7 @@ name = "open-download-manager"
 version = "0.2.0"
 dependencies = [
  "axum",
+ "libc",
  "odm-core",
  "parking_lot",
  "serde",
@@ -3013,6 +3014,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -35,6 +35,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Power", "Win32_System_Threading"] }
+
 [features]
 # serve the bundled frontend (ui/dist) instead of the dev server.
 # `tauri build` turns this on automatically; scripts/build-macos.sh passes it.

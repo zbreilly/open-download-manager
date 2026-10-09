@@ -6,7 +6,7 @@ use odm_core::Totals;
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Manager, Wry};
 
 fn icon_bytes(state: &str) -> &'static [u8] {
     #[cfg(target_os = "macos")]
@@ -33,7 +33,9 @@ fn icon_bytes(state: &str) -> &'static [u8] {
     }
 }
 
-pub fn build(app: &AppHandle, limit_on: bool) -> tauri::Result<TrayIcon> {
+/// Build the tray icon. Also returns the "Speed limiter" check item so it can
+/// follow later settings changes (see [`sync_limit`]).
+pub fn build(app: &AppHandle, limit_on: bool) -> tauri::Result<(TrayIcon, CheckMenuItem<Wry>)> {
     let show = MenuItem::with_id(app, "show", "Show Open Download Manager", true, None::<&str>)?;
     let add = MenuItem::with_id(app, "add", "Add URL…", true, None::<&str>)?;
     let grab = MenuItem::with_id(app, "grabber", "Site grabber…", true, None::<&str>)?;
@@ -83,7 +85,17 @@ pub fn build(app: &AppHandle, limit_on: bool) -> tauri::Result<TrayIcon> {
             }
         })
         .build(app)?;
-    Ok(tray)
+    Ok((tray, limit))
+}
+
+/// Reflect the global speed limiter setting in the tray menu.
+pub fn sync_limit(app: &AppHandle, on: bool) {
+    let item = app.state::<AppState>().limit_item.lock().clone();
+    if let Some(item) = item {
+        if item.is_checked().ok() != Some(on) {
+            let _ = item.set_checked(on);
+        }
+    }
 }
 
 fn with_mgr(app: &AppHandle, f: impl FnOnce(&odm_core::Manager) + Send + 'static) {

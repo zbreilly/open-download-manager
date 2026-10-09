@@ -95,24 +95,62 @@ function updateIcon() {
   try { action.setTitle({ title }); } catch {}
 }
 
-async function cookiesFor(url) {
+/**
+ * Cookie header for `url` from the given cookie store (Firefox containers /
+ * private windows); the default store when `storeId` is empty.
+ */
+async function cookiesFor(url, storeId) {
   try {
-    const list = await B.cookies.getAll({ url });
+    const q = { url };
+    if (storeId) q.storeId = storeId;
+    const list = await B.cookies.getAll(q);
     return list.map((c) => `${c.name}=${c.value}`).join("; ");
   } catch {
     return "";
   }
 }
 
+/** Cookie store of a tab: Firefox containers carry it; Chromium incognito tabs are looked up. */
+async function storeIdForTab(tab) {
+  if (!tab) return undefined;
+  if (tab.cookieStoreId) return tab.cookieStoreId;
+  if (!tab.incognito) return undefined;
+  try {
+    const stores = await B.cookies.getAllCookieStores();
+    return stores.find((s) => (s.tabIds || []).includes(tab.id))?.id;
+  } catch {
+    return undefined;
+  }
+}
+
+/** [{url, cookies}] with each URL's own cookies (cookies omitted when none). */
+async function cookieItems(urls, storeId) {
+  const out = [];
+  const seen = new Map();
+  for (let i = 0; i < urls.length; i += 32) {
+    const chunk = urls.slice(i, i + 32);
+    const got = await Promise.all(chunk.map((u) => {
+      if (!seen.has(u)) seen.set(u, cookiesFor(u, storeId));
+      return seen.get(u);
+    }));
+    chunk.forEach((u, k) => out.push(got[k] ? { url: u, cookies: got[k] } : { url: u }));
+  }
+  return out;
+}
+
 /** Send one or more URLs to the app. Returns true on success. */
-async function sendToApp({ url, urls, referrer, fileName, totalBytes, mime, silent }) {
-  const first = url || (urls && urls[0]);
-  if (!first) return false;
-  const cookies = await cookiesFor(first);
+async function sendToApp({ url, urls, referrer, fileName, totalBytes, mime, silent, storeId }) {
+  const list = (urls || []).filter((u) => typeof u === "string" && u);
+  if (!url && !list.length) return false;
+  const items = list.length ? await cookieItems(list, storeId) : [];
+  const cookies = url ? await cookiesFor(url, storeId) : (items[0]?.cookies || "");
   try {
     await call("/api/add", {
       url: url || "",
-      urls: urls || [],
+      // each link with its own cookies
+      items,
+      // older app versions read `urls` (+ the first link's cookies above)
+      urls: list,
       referrer: referrer || "",
       fileName: fileName || null,
       cookies,
@@ -144,6 +182,7 @@ function shouldCapture(item, name) {
   const c = state.capture;
   if (!state.connected || !c.enabled || c.paused) return false;
   if (Date.now() < state.bypassUntil) return false;
+  if (item.incognito) return false; // private windows: the browser handles it
   const url = item.finalUrl || item.url || "";
   if (!/^https?:/i.test(url)) return false; // blob:, data:, file: stay in the browser
   const ext = extOf(name) || extOf(url);
@@ -153,6 +192,12 @@ function shouldCapture(item, name) {
   return true;
 }
 
+/**
+ * Hand a browser download to the app. On success the browser download is
+ * cancelled but stays in the browser's list, so it can be retried there if
+ * the app's dialog is dismissed. If the app can't be reached the download
+ * is left untouched. Returns true when the browser download was cancelled.
+ */
 async function takeOver(item, name) {
   const ok = await sendToApp({
     url: item.finalUrl || item.url,
@@ -160,12 +205,15 @@ async function takeOver(item, name) {
     fileName: name ? name.split(/[\\/]/).pop() : null,
     totalBytes: item.totalBytes || item.fileSize || 0,
     mime: item.mime || null,
+    storeId: item.cookieStoreId, // Firefox containers
   });
-  if (ok) {
-    try { await B.downloads.cancel(item.id); } catch {}
-    try { await B.downloads.erase({ id: item.id }); } catch {}
+  if (!ok) return false;
+  try {
+    await B.downloads.cancel(item.id);
+    return true;
+  } catch {
+    return false;
   }
-  return ok;
 }
 
 if (!IS_FIREFOX && B.downloads?.onDeterminingFilename) {
@@ -173,12 +221,18 @@ if (!IS_FIREFOX && B.downloads?.onDeterminingFilename) {
   // never shows up half-started in the browser
   B.downloads.onDeterminingFilename.addListener((item, suggest) => {
     (async () => {
-      await ensureFresh();
-      if (shouldCapture(item, item.filename)) {
-        const ok = await takeOver(item, item.filename);
-        if (ok) return; // cancelled; suggest() not needed
+      let cancelled = false;
+      try {
+        await ensureFresh();
+        if (shouldCapture(item, item.filename)) cancelled = await takeOver(item, item.filename);
+      } catch {
+        // fall through: the browser keeps the download
+      } finally {
+        // a cancelled download needs no name; anything else must get one
+        if (!cancelled) {
+          try { suggest(); } catch {}
+        }
       }
-      suggest();
     })();
     return true; // async suggest
   });
@@ -190,32 +244,73 @@ if (!IS_FIREFOX && B.downloads?.onDeterminingFilename) {
 }
 
 // ---------------------------------------------------------------- media sniffing
+// The list lives in storage.session so it survives the service worker being
+// stopped; Firefox versions without storage.session keep it in memory only.
 
 const MEDIA_MIME = /^(video|audio)\//i;
 const MEDIA_EXT = /\.(mp4|m4v|webm|mkv|mov|avi|flv|wmv|mp3|m4a|aac|flac|wav|ogg|oga|opus)(\?|#|$)/i;
+const SESSION = B.storage?.session;
+let mediaReady = null;
+
+function loadMedia() {
+  if (!mediaReady) {
+    mediaReady = (async () => {
+      if (!SESSION) return;
+      try {
+        const d = await SESSION.get({ media: {} });
+        for (const [tab, list] of Object.entries(d.media || {})) {
+          const m = new Map();
+          for (const it of list || []) if (it && it.url) m.set(it.url, it);
+          if (m.size) state.media.set(Number(tab), m);
+        }
+      } catch {}
+    })();
+  }
+  return mediaReady;
+}
+
+function saveMedia() {
+  if (!SESSION) return;
+  const o = {};
+  for (const [tab, m] of state.media) o[tab] = [...m.values()];
+  try { Promise.resolve(SESSION.set({ media: o })).catch(() => {}); } catch {}
+}
+
+/** Run a change to the media list after it was loaded, then persist it. */
+function changeMedia(fn) {
+  loadMedia().then(() => { if (fn() !== false) saveMedia(); });
+}
+
+async function mediaFor(tabId) {
+  await loadMedia();
+  return [...(state.media.get(tabId)?.values() ?? [])];
+}
 
 function noteMedia(tabId, url, mime, size) {
   if (tabId < 0 || !/^https?:/i.test(url)) return;
   if (/\.(m3u8|mpd)(\?|$)/i.test(url) || /mpegurl|dash\+xml/i.test(mime || "")) return; // streaming manifests
   if (size > 0 && size < 256 * 1024) return; // thumbnails / previews
-  let m = state.media.get(tabId);
-  if (!m) state.media.set(tabId, (m = new Map()));
   // strip byte-range query params some players add
   const clean = url.replace(/([?&])(range|bytes|rn|rbuf)=[^&]*/gi, "$1").replace(/[?&]$/, "");
-  if (m.has(clean)) return;
-  let name = "";
-  try { name = decodeURIComponent(new URL(clean).pathname.split("/").pop() || ""); } catch {}
-  m.set(clean, { url: clean, mime: mime || "", size: size || 0, name: name || "media" });
-  if (m.size > 50) m.delete(m.keys().next().value);
-  const action = B.action ?? B.browserAction;
-  try { action.setBadgeText({ tabId, text: String(m.size) }); } catch {}
-  try { action.setBadgeBackgroundColor({ color: "#5B9DFF" }); } catch {}
+  changeMedia(() => {
+    let m = state.media.get(tabId);
+    if (!m) state.media.set(tabId, (m = new Map()));
+    if (m.has(clean)) return false;
+    let name = "";
+    try { name = decodeURIComponent(new URL(clean).pathname.split("/").pop() || ""); } catch {}
+    m.set(clean, { url: clean, mime: mime || "", size: size || 0, name: name || "media" });
+    if (m.size > 50) m.delete(m.keys().next().value);
+    const action = B.action ?? B.browserAction;
+    try { action.setBadgeText({ tabId, text: String(m.size) }); } catch {}
+    try { action.setBadgeBackgroundColor({ color: "#5B9DFF" }); } catch {}
+  });
 }
 
 if (B.webRequest?.onHeadersReceived) {
   B.webRequest.onHeadersReceived.addListener(
     (d) => {
       if (d.statusCode < 200 || d.statusCode >= 300) return;
+      if (d.incognito) return;
       let mime = "", len = 0, range = "";
       for (const h of d.responseHeaders || []) {
         const n = h.name.toLowerCase();
@@ -231,10 +326,10 @@ if (B.webRequest?.onHeadersReceived) {
   );
 }
 
-B.tabs?.onRemoved?.addListener((tabId) => state.media.delete(tabId));
+B.tabs?.onRemoved?.addListener((tabId) => changeMedia(() => state.media.delete(tabId)));
 B.tabs?.onUpdated?.addListener((tabId, info) => {
   if (info.status === "loading" && info.url) {
-    state.media.delete(tabId);
+    changeMedia(() => state.media.delete(tabId));
     const action = B.action ?? B.browserAction;
     try { action.setBadgeText({ tabId, text: "" }); } catch {}
   }
@@ -264,38 +359,61 @@ async function linksFromTab(tabId, selectionOnly) {
   }
 }
 
+/** Offer the media a tab loaded (for streamed blob: players). */
+async function sendTabMedia(tab, referrer) {
+  const found = await mediaFor(tab?.id ?? -1);
+  if (!found.length) {
+    notifyNoMedia();
+    return true;
+  }
+  return sendToApp({ urls: found.map((m) => m.url), referrer, storeId: await storeIdForTab(tab) });
+}
+
 B.contextMenus.onClicked.addListener(async (info, tab) => {
   const referrer = (tab && tab.url) || info.pageUrl || "";
   await ensureFresh();
+  const storeId = await storeIdForTab(tab);
   let ok = true;
-  if (info.menuItemId === "odm-link" && info.linkUrl) ok = await sendToApp({ url: info.linkUrl, referrer });
+  if (info.menuItemId === "odm-link" && info.linkUrl) ok = await sendToApp({ url: info.linkUrl, referrer, storeId });
   else if ((info.menuItemId === "odm-media" || info.menuItemId === "odm-image") && info.srcUrl) {
-    if (/^blob:/i.test(info.srcUrl)) {
-      // streamed media: offer what the page actually loaded
-      const found = [...(state.media.get(tab?.id ?? -1)?.values() ?? [])];
-      ok = found.length ? await sendToApp({ urls: found.map((m) => m.url), referrer }) : false;
-    } else ok = await sendToApp({ url: info.srcUrl, referrer });
+    if (/^blob:/i.test(info.srcUrl)) ok = await sendTabMedia(tab, referrer);
+    else ok = await sendToApp({ url: info.srcUrl, referrer, storeId });
   } else if (info.menuItemId === "odm-selection" || info.menuItemId === "odm-all") {
     const links = await linksFromTab(tab.id, info.menuItemId === "odm-selection");
-    if (links.length) ok = await sendToApp({ urls: links, referrer });
+    if (links.length) ok = await sendToApp({ urls: links, referrer, storeId });
   }
   if (!ok) notifyDown();
 });
 
-function notifyDown() {
+function notify(title, message) {
   try {
-    B.notifications?.create?.({
-      type: "basic",
-      iconUrl: "icons/icon-48.png",
-      title: "Open Download Manager isn't running",
-      message: "Start the app, then try again.",
-    });
+    B.notifications?.create?.({ type: "basic", iconUrl: "icons/icon-48.png", title, message });
   } catch {}
+}
+
+function notifyDown() {
+  notify("Open Download Manager isn't running", "Start the app, then try again.");
+}
+
+function notifyNoMedia() {
+  notify("No media found on this page", "Play the video for a few seconds, then try again.");
 }
 
 // ---------------------------------------------------------------- messages
 
+/** Messages from the extension's own pages (popup), not from content scripts. */
+function fromExtensionPage(sender) {
+  return !sender.tab && typeof sender.url === "string" && sender.url.startsWith(B.runtime.getURL(""));
+}
+
+async function tabById(tabId) {
+  if (typeof tabId !== "number" || tabId < 0) return undefined;
+  try { return await B.tabs.get(tabId); } catch { return undefined; }
+}
+
 B.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (sender.id && sender.id !== B.runtime.id) return false;
+  const privileged = fromExtensionPage(sender);
   (async () => {
     switch (msg && msg.type) {
       case "odm-bypass":
@@ -307,33 +425,55 @@ B.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         await ensureFresh();
         sendResponse({ connected: state.connected, capture: state.capture });
         break;
-      case "odm-add":
-        sendResponse({ ok: await sendToApp({ url: msg.url, urls: msg.urls, referrer: msg.referrer || sender.tab?.url || "", fileName: msg.fileName }) });
+      case "odm-add": {
+        const tab = privileged ? await tabById(msg.tabId) : sender.tab;
+        sendResponse({
+          ok: await sendToApp({
+            url: msg.url,
+            urls: msg.urls,
+            referrer: msg.referrer || sender.tab?.url || "",
+            fileName: msg.fileName,
+            storeId: await storeIdForTab(tab),
+          }),
+        });
         break;
+      }
+      case "odm-add-media": {
+        // the video button over a streamed (blob:) player
+        const ok = await sendTabMedia(sender.tab, msg.referrer || sender.tab?.url || "");
+        if (!ok) notifyDown();
+        sendResponse({ ok });
+        break;
+      }
       case "odm-status": {
         await ping();
-        const tabId = msg.tabId ?? sender.tab?.id ?? -1;
+        // only the popup may ask about another tab
+        const tabId = privileged ? (msg.tabId ?? -1) : (sender.tab?.id ?? -1);
         sendResponse({
           connected: state.connected,
           capture: state.capture,
           browser: browserName(),
           port: await port(),
-          media: [...(state.media.get(tabId)?.values() ?? [])],
+          media: await mediaFor(tabId),
         });
         break;
       }
       case "odm-pause-capture":
+        if (!privileged) { sendResponse({ error: "not allowed" }); break; }
         try {
-          const info = await call("/api/capture-pause", { minutes: msg.minutes });
+          const info = await call("/api/capture-pause", { minutes: Math.max(0, Math.min(1440, Number(msg.minutes) || 0)) });
           state.capture = info.capture || state.capture;
         } catch {}
         updateIcon();
         sendResponse({ capture: state.capture });
         break;
-      case "odm-set-port":
-        await B.storage.local.set({ port: Number(msg.port) || DEFAULT_PORT });
+      case "odm-set-port": {
+        if (!privileged) { sendResponse({ error: "not allowed" }); break; }
+        const p = Number(msg.port);
+        await B.storage.local.set({ port: Number.isInteger(p) && p > 0 && p < 65536 ? p : DEFAULT_PORT });
         sendResponse({ connected: await ping() });
         break;
+      }
       default:
         sendResponse({});
     }
@@ -344,4 +484,5 @@ B.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 // keep the app's "extension connected" indicator and capture config fresh
 B.alarms?.create("odm-ping", { periodInMinutes: 1 });
 B.alarms?.onAlarm.addListener((a) => { if (a.name === "odm-ping") ping(); });
+loadMedia();
 ping();

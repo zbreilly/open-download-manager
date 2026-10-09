@@ -1,5 +1,6 @@
 //! Open Download Manager — Tauri 2 desktop shell.
 
+mod awake;
 mod bridge;
 mod commands;
 mod power;
@@ -10,47 +11,133 @@ mod windows;
 use odm_core::{Event, Manager as Engine, Status};
 use serde_json::json;
 use state::AppState;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
+/// How long quitting waits for downloads to stop and flush.
+const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// Stop the bridge, release keep-awake and shut the engine down, waiting
+/// (bounded) for downloads to flush. Runs once; later calls return at once.
+pub async fn shutdown_engine(app: &AppHandle) {
+    let st = app.state::<AppState>();
+    if st.shut_down.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    bridge::stop(app);
+    st.awake.set(false);
+    let mgr = st.mgr.clone();
+    if tokio::time::timeout(SHUTDOWN_TIMEOUT + Duration::from_secs(1), mgr.shutdown_wait(SHUTDOWN_TIMEOUT))
+        .await
+        .is_err()
+    {
+        tracing::warn!("engine shutdown timed out");
+    }
+}
+
+/// Blocking variant for the run loop's Exit event (no-op after quit()).
+fn shutdown_engine_blocking(app: &AppHandle) {
+    if app.state::<AppState>().shut_down.load(Ordering::SeqCst) {
+        return;
+    }
+    if tokio::runtime::Handle::try_current().is_ok() {
+        // inside the async runtime blocking would panic: wait on a helper
+        // thread instead
+        let a = app.clone();
+        let _ = std::thread::spawn(move || tauri::async_runtime::block_on(shutdown_engine(&a))).join();
+    } else {
+        tauri::async_runtime::block_on(shutdown_engine(app));
+    }
+}
+
+/// Quit from synchronous code (tray menu). The shutdown runs on the async
+/// runtime so the main thread keeps serving the tray/windows meanwhile.
 pub fn quit(app: &AppHandle) {
-    app.state::<AppState>().mgr.shutdown();
+    let a = app.clone();
+    tauri::async_runtime::spawn(async move { quit_async(&a).await });
+}
+
+/// Quit from async code (IPC command, power action).
+pub async fn quit_async(app: &AppHandle) {
+    shutdown_engine(app).await;
     app.exit(0);
 }
 
-/// Handle a URL handed to the app (deep link, CLI argument, second instance).
+/// URLs seen within this window are the same hand-off arriving twice (e.g.
+/// the deep-link plugin and the single-instance argv on Windows/Linux).
+const INCOMING_DEDUPE: Duration = Duration::from_secs(3);
+
+fn first_time(app: &AppHandle, raw: &str) -> bool {
+    let st = app.state::<AppState>();
+    let mut m = st.recent_incoming.lock();
+    m.retain(|_, t| t.elapsed() < INCOMING_DEDUPE);
+    if m.contains_key(raw) {
+        return false;
+    }
+    m.insert(raw.to_string(), Instant::now());
+    true
+}
+
+fn is_http(u: &url::Url) -> bool {
+    matches!(u.scheme(), "http" | "https")
+}
+
+/// Handle a URL handed to the app (deep link, CLI argument, second
+/// instance). Links from outside the app open the Add window with
+/// `source: "web"`; only the URL itself is taken from them.
 fn handle_incoming(app: &AppHandle, raw: &str) {
     let raw = raw.trim();
     if raw.is_empty() {
         return;
     }
-    if let Ok(u) = url::Url::parse(raw) {
-        match u.scheme() {
-            "odm" => {
-                let q: std::collections::HashMap<String, String> = u.query_pairs().into_owned().collect();
-                let action = u.host_str().unwrap_or("add");
-                if action == "add" {
-                    if let Some(target) = q.get("url") {
-                        let _ = windows::open(
-                            app,
-                            "add",
-                            None,
-                            Some(json!({ "url": target, "referrer": q.get("referrer"), "fileName": q.get("name") })),
-                        );
-                    } else {
-                        let _ = windows::open(app, "add", None, None);
-                    }
-                } else {
-                    windows::show_main(app);
-                }
+    let Ok(u) = url::Url::parse(raw) else { return };
+    if !matches!(u.scheme(), "odm" | "http" | "https") {
+        return;
+    }
+    if !first_time(app, u.as_str()) {
+        tracing::debug!("incoming {} link already handled", u.scheme());
+        return;
+    }
+    tracing::debug!("incoming {} link", u.scheme());
+    match u.scheme() {
+        "odm" => {
+            let action = u.host_str().unwrap_or("add");
+            if action == "add" {
+                let target = u
+                    .query_pairs()
+                    .find(|(k, _)| k == "url")
+                    .map(|(_, v)| v.trim().to_string())
+                    .filter(|t| url::Url::parse(t).map(|t| is_http(&t)).unwrap_or(false));
+                let params = match target {
+                    Some(t) => json!({ "url": t, "source": "web" }),
+                    None => json!({ "source": "web" }),
+                };
+                let _ = windows::open(app, "add", None, Some(params));
+            } else {
+                windows::show_main(app);
             }
-            "http" | "https" => {
-                let _ = windows::open(app, "add", None, Some(json!({ "url": raw })));
-            }
-            _ => {}
         }
+        _ => {
+            let _ = windows::open(app, "add", None, Some(json!({ "url": raw, "source": "web" })));
+        }
+    }
+}
+
+/// Handle command-line arguments (first launch or a second instance).
+/// On Windows/Linux an `odm:` link passed as the only argument is a deep
+/// link: the deep-link plugin delivers it (on_open_url / get_current), so it
+/// is skipped here.
+fn handle_args(app: &AppHandle, args: &[String]) {
+    let only_one = args.len() == 1;
+    for a in args.iter().filter(|a| !a.starts_with('-')) {
+        let deep_link = a.trim().to_ascii_lowercase().starts_with("odm:");
+        if deep_link && only_one && cfg!(any(windows, target_os = "linux")) {
+            continue;
+        }
+        handle_incoming(app, a);
     }
 }
 
@@ -82,6 +169,8 @@ fn forward_events(app: AppHandle, engine: Engine) {
                 }
                 Event::Totals(t) => {
                     tray::update(&app, &t);
+                    // keep the system awake while anything downloads
+                    app.state::<AppState>().awake.set(t.active > 0);
                     let st = app.state::<AppState>();
                     let b = st.extension_browsers();
                     let _ = app.emit("totals", t);
@@ -132,6 +221,7 @@ fn forward_events(app: AppHandle, engine: Engine) {
                     let _ = app.emit("queues_changed", qs);
                 }
                 Event::SettingsChanged(s) => {
+                    tray::sync_limit(&app, s.global_limit_enabled);
                     let _ = app.emit("settings_changed", s);
                 }
             }
@@ -192,11 +282,7 @@ pub fn run() {
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             windows::show_main(app);
-            for a in argv.iter().skip(1) {
-                if !a.starts_with('-') {
-                    handle_incoming(app, a);
-                }
-            }
+            handle_args(app, argv.get(1..).unwrap_or_default());
         }));
     }
 
@@ -222,12 +308,20 @@ pub fn run() {
 
             forward_events(handle.clone(), engine.clone());
             clipboard_monitor(handle.clone(), engine.clone());
-            bridge::spawn(handle.clone(), engine.settings().extension_port);
+            let port = engine.settings().extension_port;
+            let h2 = handle.clone();
+            // a bind error is kept for extension_status and emitted as bridge_error
+            let _ = tauri::async_runtime::block_on(bridge::start(h2, port));
 
             match tray::build(&handle, engine.settings().global_limit_enabled) {
-                Ok(t) => *app.state::<AppState>().tray.lock() = Some(t),
+                Ok((t, limit)) => {
+                    *app.state::<AppState>().tray.lock() = Some(t);
+                    *app.state::<AppState>().limit_item.lock() = Some(limit);
+                }
                 Err(e) => tracing::warn!("tray unavailable: {e}"),
             }
+
+            commands::reconcile_autostart(&handle);
 
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
@@ -247,19 +341,20 @@ pub fn run() {
             }
 
             let args: Vec<String> = std::env::args().skip(1).collect();
-            let minimized = args.iter().any(|a| a == "--minimized");
+            // without a tray icon a minimized start would leave no way back in
+            let minimized = args.iter().any(|a| a == "--minimized") && app.state::<AppState>().has_tray();
             if !minimized {
                 windows::show_main(&handle);
             }
-            for a in args.iter().filter(|a| !a.starts_with('-')) {
-                handle_incoming(&handle, a);
-            }
+            handle_args(&handle, &args);
             Ok(())
         })
         .on_window_event(|w, ev| {
             if let WindowEvent::CloseRequested { api, .. } = ev {
                 if w.label() == "main" {
-                    let to_tray = w.app_handle().state::<AppState>().mgr.settings().minimize_to_tray;
+                    // hide to the tray only when there is one to come back from
+                    let st = w.app_handle().state::<AppState>();
+                    let to_tray = st.mgr.settings().minimize_to_tray && st.has_tray();
                     if to_tray {
                         api.prevent_close();
                         let _ = w.hide();
@@ -307,6 +402,7 @@ pub fn run() {
             commands::take_params,
             commands::extension_status,
             commands::cancel_power_action,
+            commands::get_power_countdown,
             commands::export_list,
             commands::read_url_list,
             commands::app_info,
@@ -325,12 +421,14 @@ pub fn run() {
             RunEvent::ExitRequested { api, code, .. } => {
                 // closing the last window keeps the app alive in the tray;
                 // an explicit quit (code is Some) exits
-                if code.is_none() && app.state::<AppState>().mgr.settings().minimize_to_tray {
+                let st = app.state::<AppState>();
+                if code.is_none() && st.mgr.settings().minimize_to_tray && st.has_tray() {
                     api.prevent_exit();
                 }
             }
             RunEvent::Exit => {
-                app.state::<AppState>().mgr.shutdown();
+                // no-op when quit()/quit_async() already did it
+                shutdown_engine_blocking(app);
             }
             _ => {}
         });

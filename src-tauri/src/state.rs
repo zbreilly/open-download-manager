@@ -1,11 +1,21 @@
+use crate::awake::Awake;
 use odm_core::Manager;
 use parking_lot::Mutex;
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
 pub struct PowerAction {
     pub token: String,
     pub action: String,
+    pub queue: String,
+    pub deadline: Instant,
+}
+
+/// The running extension bridge listener.
+pub struct BridgeHandle {
+    /// dropping or sending stops the listener (graceful shutdown)
+    pub stop: tokio::sync::oneshot::Sender<()>,
 }
 
 pub struct AppState {
@@ -16,8 +26,18 @@ pub struct AppState {
     pub ext_seen: Mutex<HashMap<String, Instant>>,
     pub power: Mutex<Option<PowerAction>>,
     pub tray: Mutex<Option<tauri::tray::TrayIcon>>,
+    /// the tray's "Speed limiter" check item, kept in sync with the settings
+    pub limit_item: Mutex<Option<tauri::menu::CheckMenuItem<tauri::Wry>>>,
     pub last_complete: Mutex<Option<Instant>>,
     pub tray_state: Mutex<&'static str>,
+    pub bridge: Mutex<Option<BridgeHandle>>,
+    /// last bind failure of the extension bridge (None while it listens)
+    pub bridge_error: Mutex<Option<String>>,
+    /// URLs handed to the app recently (deep link / argv), to handle each once
+    pub recent_incoming: Mutex<HashMap<String, Instant>>,
+    /// set once the engine has been shut down for quitting
+    pub shut_down: AtomicBool,
+    pub awake: Awake,
 }
 
 impl AppState {
@@ -28,8 +48,14 @@ impl AppState {
             ext_seen: Mutex::new(HashMap::new()),
             power: Mutex::new(None),
             tray: Mutex::new(None),
+            limit_item: Mutex::new(None),
             last_complete: Mutex::new(None),
             tray_state: Mutex::new(""),
+            bridge: Mutex::new(None),
+            bridge_error: Mutex::new(None),
+            recent_incoming: Mutex::new(HashMap::new()),
+            shut_down: AtomicBool::new(false),
+            awake: Awake::new(),
         }
     }
 
@@ -43,5 +69,9 @@ impl AppState {
             .collect();
         v.sort();
         v
+    }
+
+    pub fn has_tray(&self) -> bool {
+        self.tray.lock().is_some()
     }
 }

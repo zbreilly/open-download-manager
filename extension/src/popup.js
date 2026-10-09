@@ -41,7 +41,7 @@ async function render() {
     const n = document.createElement("span"); n.className = "n"; n.textContent = m.name; n.title = m.url;
     const s = document.createElement("span"); s.className = "s"; s.textContent = fmt(m.size);
     const b = document.createElement("button"); b.textContent = "Download";
-    b.onclick = async () => { b.disabled = true; await B.runtime.sendMessage({ type: "odm-add", url: m.url, referrer: tab?.url || "", fileName: m.name }); b.textContent = "Sent"; };
+    b.onclick = async () => { b.disabled = true; await B.runtime.sendMessage({ type: "odm-add", url: m.url, referrer: tab?.url || "", fileName: m.name, tabId: tab?.id }); b.textContent = "Sent"; };
     li.append(n, s, b);
     ul.append(li);
   }
@@ -55,7 +55,7 @@ async function setPause(minutes) {
 $("add").onclick = async () => {
   const url = $("url").value.trim();
   if (!/^https?:\/\//i.test(url)) { $("url").focus(); return; }
-  const r = await B.runtime.sendMessage({ type: "odm-add", url, referrer: tab?.url || "" });
+  const r = await B.runtime.sendMessage({ type: "odm-add", url, referrer: tab?.url || "", tabId: tab?.id });
   if (r?.ok) { $("url").value = ""; window.close(); }
   else $("status").textContent = "Couldn't reach the app";
 };

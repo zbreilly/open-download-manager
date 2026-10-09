@@ -16,3 +16,8 @@ serde_json = "1"
 parking_lot = "0.12"
 axum = { version = "0.8", default-features = false, features = ["tokio", "http1", "json"] }
 url = "2"
+
+[features]
+# adds a "__panic" method used by tests to check that panics never cross
+# the C boundary
+test-hooks = []

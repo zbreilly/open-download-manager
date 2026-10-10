@@ -1,7 +1,7 @@
 name: checks
 
 # Tests and lints. Runs on pull requests, and is called by the
-# windows-linux workflow before it builds installers.
+# linux-webview workflow before it builds packages.
 
 on:
   pull_request:

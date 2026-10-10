@@ -22,7 +22,7 @@ on:
       - "scripts/ci/**"
       - ".github/workflows/linux-native.yml"
   workflow_dispatch:
-  # the windows-linux workflow calls this for tagged releases
+  # the linux-webview workflow calls this for tagged releases
   workflow_call:
 
 concurrency:

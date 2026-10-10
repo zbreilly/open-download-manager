@@ -19,7 +19,7 @@ on:
         description: "Build a universal (Apple silicon + Intel) binary"
         type: boolean
         default: false
-  # the windows-linux workflow calls this for tagged releases
+  # the linux-webview workflow calls this for tagged releases
   workflow_call:
     inputs:
       universal:

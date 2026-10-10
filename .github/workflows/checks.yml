@@ -28,12 +28,12 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: checks
-      - name: Engine and FFI tests
+      - name: Engine, FFI and shared UI logic tests
         run: |
           mkdir -p ci-out
-          { cargo test -p odm-core && cargo test -p odm-ffi --features test-hooks; } 2>&1 | tee ci-out/test.log
+          { cargo test -p odm-core && cargo test -p odm-ffi --features test-hooks && cargo test -p odm-ui; } 2>&1 | tee ci-out/test.log
       - name: Clippy
-        run: cargo clippy -p odm-core -p odm-ffi --all-targets -- -D warnings 2>&1 | tee ci-out/clippy.log
+        run: cargo clippy -p odm-core -p odm-ffi -p odm-ui --all-targets -- -D warnings 2>&1 | tee ci-out/clippy.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: ${{ !cancelled() }}
         with:

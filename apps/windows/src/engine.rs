@@ -24,11 +24,6 @@ mod stub {
 #[cfg(not(feature = "engine"))]
 pub use stub::{call, shutdown, start};
 
-/// `call`, with `fallback` instead of an error.
-pub fn call_or(method: &str, args: Value, fallback: Value) -> Value {
-    call(method, args).unwrap_or(fallback)
-}
-
 /// Where the app keeps its data: `%APPDATA%\app.opendm.desktop` (the same
 /// folder the earlier Tauri build used, so the list carries over).
 pub fn data_dir() -> std::path::PathBuf {

@@ -3340,6 +3340,7 @@ dependencies = [
 name = "odm-windows"
 version = "0.2.0"
 dependencies = [
+ "embed-resource",
  "odm-ffi",
  "odm-ui",
  "rfd 0.17.2",

@@ -1,0 +1,2 @@
+// The executable's icon (the manifest is embedded by windows-reactor-setup).
+1 ICON "..\\..\\src-tauri\\icons\\icon.ico"

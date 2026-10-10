@@ -48,3 +48,4 @@ tauri-winrt-notification = "0.8"
 
 [target.'cfg(windows)'.build-dependencies]
 windows-reactor-setup = { git = "https://github.com/microsoft/windows-rs", rev = "d5b6a1f68f" }
+embed-resource = "3"

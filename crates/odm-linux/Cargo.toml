@@ -6,5 +6,15 @@ license.workspace = true
 description = "Desktop services shared by the native Linux apps (GTK and Kirigami): single instance, tray, notifications, keep-awake, power actions, autostart, opening files"
 
 [dependencies]
+odm-ffi = { path = "../odm-ffi" }
 serde_json = "1"
 url = "2"
+chrono = "0.4"
+parking_lot = "0.12"
+png = "0.18"
+zbus = { version = "5", default-features = false, features = ["async-io", "blocking-api"] }
+ksni = { version = "0.3", default-features = false, features = ["async-io", "blocking"] }
+
+[[bin]]
+name = "open-download-manager"
+path = "src/bin/launcher.rs"

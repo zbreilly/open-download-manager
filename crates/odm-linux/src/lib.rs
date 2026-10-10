@@ -13,12 +13,14 @@
 pub mod autostart;
 pub mod awake;
 pub mod desktop;
+pub mod fmt;
 pub mod incoming;
 pub mod instance;
 pub mod notify;
 pub mod open;
 pub mod paths;
 pub mod power;
+pub mod shell;
 pub mod tray;
 
 /// Reverse-DNS application id: D-Bus name, desktop file, icon name.

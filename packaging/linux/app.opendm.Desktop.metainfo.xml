@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>app.opendm.Desktop</id>
+  <name>Open Download Manager</name>
+  <summary>Fast, resumable, segmented downloads</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>AGPL-3.0-only</project_license>
+  <description>
+    <p>
+      Open Download Manager accelerates downloads with multiple connections, resumes interrupted
+      transfers, schedules queues and integrates with your browser.
+    </p>
+    <ul>
+      <li>Up to 32 connections per file, with dynamic segmentation</li>
+      <li>Resume across pauses, crashes and restarts</li>
+      <li>Queues with a scheduler, and speed limits</li>
+      <li>A site grabber and a browser extension that hands downloads over</li>
+    </ul>
+    <p>
+      On KDE Plasma it starts its Kirigami interface, elsewhere its GTK and libadwaita one.
+    </p>
+  </description>
+  <launchable type="desktop-id">app.opendm.Desktop.desktop</launchable>
+  <url type="homepage">https://github.com/zbreilly/open-download-manager</url>
+  <url type="bugtracker">https://github.com/zbreilly/open-download-manager/issues</url>
+  <provides>
+    <binary>open-download-manager</binary>
+  </provides>
+  <categories>
+    <category>Network</category>
+    <category>FileTransfer</category>
+  </categories>
+  <content_rating type="oars-1.1" />
+</component>

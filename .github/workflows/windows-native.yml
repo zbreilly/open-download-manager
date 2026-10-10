@@ -72,9 +72,13 @@ jobs:
           "installed: $app" | Tee-Object ci-out/install.log
           # the odm:// scheme points at the installed app
           (Get-ItemProperty 'HKCU:\Software\Classes\odm\shell\open\command').'(default)' | Tee-Object -Append ci-out/install.log
+          # a failed start writes its reason to a log instead of showing a dialog
+          $env:ODM_NO_DIALOG = '1'
+          $errorLog = "$env:APPDATA\app.opendm.desktop\startup-error.log"
           $p = Start-Process $app -PassThru
           Start-Sleep 15
           if ($p.HasExited) {
+            if (Test-Path $errorLog) { "startup error: $(Get-Content $errorLog -Raw)" | Tee-Object -Append ci-out/install.log }
             Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-5)} -MaxEvents 20 -ErrorAction SilentlyContinue |
               Format-List TimeCreated, ProviderName, Message | Out-File ci-out/crash.log
             Get-Content ci-out/crash.log

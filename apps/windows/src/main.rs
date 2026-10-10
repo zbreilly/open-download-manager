@@ -26,6 +26,9 @@ mod widgets;
 
 #[cfg(windows)]
 fn main() {
+    // a GUI app has no console: what goes wrong at startup is written to a
+    // log file and shown in a message box
+    std::panic::set_hook(Box::new(|info| system::startup_failure(&format!("internal error: {info}"))));
     let args: Vec<String> = std::env::args().skip(1).collect();
     // a second launch (an odm:// link, the shortcut again) hands its
     // arguments to the running instance and exits
@@ -33,7 +36,7 @@ fn main() {
         return;
     }
     if let Err(e) = app::run(args) {
-        eprintln!("open-download-manager: {e}");
+        system::startup_failure(&e);
         std::process::exit(1);
     }
 }

@@ -32,6 +32,28 @@ fn pipe_name() -> String {
     format!(r"\\.\pipe\OpenDownloadManager.Open.{user}")
 }
 
+// ------------------------------------------------------- startup failures
+
+/// Where the reason of a failed start is written.
+pub fn error_log() -> std::path::PathBuf {
+    crate::engine::data_dir().join("startup-error.log")
+}
+
+/// The app could not start (or hit an internal error): keep the reason in
+/// [`error_log`] and tell the user. `ODM_NO_DIALOG` (set by automated runs)
+/// skips the message box.
+pub fn startup_failure(message: &str) {
+    let log = error_log();
+    if let Some(dir) = log.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(&log, message);
+    if std::env::var_os("ODM_NO_DIALOG").is_none() {
+        let text = wide(&format!("Open Download Manager could not start.\n\n{message}"));
+        unsafe { MessageBoxW(std::ptr::null_mut(), text.as_ptr(), wide(odm_ui::APP_NAME).as_ptr(), MB_OK | MB_ICONERROR) };
+    }
+}
+
 // ------------------------------------------------------------ one instance
 
 /// Become the app's one instance. Returns false when another instance was

@@ -1,0 +1,269 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="OpenDownloadManager.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:OpenDownloadManager">
+
+    <Grid x:Name="Root" AllowDrop="True" DragOver="Root_DragOver" Drop="Root_Drop">
+        <NavigationView x:Name="Nav"
+                        PaneDisplayMode="Left"
+                        OpenPaneLength="240"
+                        IsBackButtonVisible="Collapsed"
+                        IsPaneToggleButtonVisible="False"
+                        IsSettingsVisible="True"
+                        AlwaysShowHeader="False"
+                        SelectionChanged="Nav_SelectionChanged">
+            <NavigationView.AutoSuggestBox>
+                <AutoSuggestBox x:Name="Search" QueryIcon="Find" PlaceholderText="Search downloads, URLs, folders" TextChanged="Search_TextChanged">
+                    <AutoSuggestBox.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F" Modifiers="Control" Invoked="FocusSearch" />
+                    </AutoSuggestBox.KeyboardAccelerators>
+                </AutoSuggestBox>
+            </NavigationView.AutoSuggestBox>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <CommandBar Grid.Row="0" DefaultLabelPosition="Right" HorizontalAlignment="Left" Background="Transparent" OverflowButtonVisibility="Visible">
+                    <AppBarButton x:Name="AddButton" Icon="Add" Label="Add URL" Click="Add_Click" ToolTipService.ToolTip="Add URL (Ctrl+N)">
+                        <AppBarButton.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="N" Modifiers="Control" />
+                        </AppBarButton.KeyboardAccelerators>
+                    </AppBarButton>
+                    <AppBarSeparator />
+                    <AppBarButton x:Name="ResumeButton" Icon="Play" Label="Resume" Click="Resume_Click" ToolTipService.ToolTip="Resume (Ctrl+R)">
+                        <AppBarButton.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="R" Modifiers="Control" />
+                        </AppBarButton.KeyboardAccelerators>
+                    </AppBarButton>
+                    <AppBarButton x:Name="PauseButton" Icon="Pause" Label="Pause" Click="Pause_Click" ToolTipService.ToolTip="Pause (Ctrl+P)">
+                        <AppBarButton.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="P" Modifiers="Control" />
+                        </AppBarButton.KeyboardAccelerators>
+                    </AppBarButton>
+                    <AppBarButton x:Name="DeleteButton" Icon="Delete" Label="Delete" Click="Delete_Click" ToolTipService.ToolTip="Delete (Del)" />
+                    <AppBarSeparator />
+                    <AppBarButton x:Name="QueueButton" Icon="List" Label="Queue">
+                        <AppBarButton.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem Text="Start Queue" Click="StartQueue_Click" />
+                                <MenuFlyoutItem Text="Stop Queue" Click="StopQueue_Click" />
+                                <MenuFlyoutSeparator />
+                                <MenuFlyoutItem Text="Queues &amp; Scheduler…" Click="Scheduler_Click" />
+                            </MenuFlyout>
+                        </AppBarButton.Flyout>
+                    </AppBarButton>
+                    <AppBarButton Icon="Globe" Label="Grabber" Click="Grabber_Click" ToolTipService.ToolTip="Site grabber (Ctrl+Shift+G)">
+                        <AppBarButton.KeyboardAccelerators>
+                            <KeyboardAccelerator Key="G" Modifiers="Control,Shift" />
+                        </AppBarButton.KeyboardAccelerators>
+                    </AppBarButton>
+                    <AppBarButton x:Name="LimitButton" Icon="Clock" Label="No Limit" ToolTipService.ToolTip="Global speed limit">
+                        <AppBarButton.Flyout>
+                            <MenuFlyout x:Name="LimitMenu" Opening="LimitMenu_Opening" />
+                        </AppBarButton.Flyout>
+                    </AppBarButton>
+                    <AppBarToggleButton x:Name="DetailsToggle" Icon="DockBottom" Label="Details" IsChecked="True" Click="Details_Click" />
+                    <CommandBar.SecondaryCommands>
+                        <AppBarButton Label="Add Batch Download…" Click="AddBatch_Click">
+                            <AppBarButton.KeyboardAccelerators>
+                                <KeyboardAccelerator Key="N" Modifiers="Control,Shift" />
+                            </AppBarButton.KeyboardAccelerators>
+                        </AppBarButton>
+                        <AppBarButton Label="Pause All" Click="PauseAll_Click" />
+                        <AppBarButton Label="Delete Completed" Click="DeleteCompleted_Click" />
+                        <AppBarSeparator />
+                        <AppBarButton Label="Queues &amp; Scheduler…" Click="Scheduler_Click">
+                            <AppBarButton.KeyboardAccelerators>
+                                <KeyboardAccelerator Key="J" Modifiers="Control" />
+                            </AppBarButton.KeyboardAccelerators>
+                        </AppBarButton>
+                        <AppBarButton Label="Import Link List…" Click="Import_Click" />
+                        <AppBarButton Label="Export Link List…" Click="Export_Click" />
+                        <AppBarSeparator />
+                        <AppBarButton Label="Settings…" Click="Settings_Click" />
+                        <AppBarButton Label="About" Click="About_Click" />
+                        <AppBarButton Label="Quit" Click="Quit_Click">
+                            <AppBarButton.KeyboardAccelerators>
+                                <KeyboardAccelerator Key="Q" Modifiers="Control" />
+                            </AppBarButton.KeyboardAccelerators>
+                        </AppBarButton>
+                    </CommandBar.SecondaryCommands>
+                </CommandBar>
+
+                <StackPanel Grid.Row="1">
+                    <InfoBar x:Name="PowerBar" Severity="Warning" IsClosable="False" IsOpen="False">
+                        <InfoBar.ActionButton>
+                            <Button Content="Cancel" Click="CancelPower_Click" />
+                        </InfoBar.ActionButton>
+                    </InfoBar>
+                    <InfoBar x:Name="ErrorBar" Severity="Error" IsOpen="False" Title="Open Download Manager" />
+                </StackPanel>
+
+                <!-- column headers: click to sort -->
+                <Grid Grid.Row="2" x:Name="Header" Padding="16,0,12,0" ColumnSpacing="8" Height="32"
+                      BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" MinWidth="140" />
+                        <ColumnDefinition Width="86" />
+                        <ColumnDefinition Width="170" />
+                        <ColumnDefinition Width="96" />
+                        <ColumnDefinition Width="76" />
+                        <ColumnDefinition Width="124" />
+                        <ColumnDefinition Width="110" />
+                        <ColumnDefinition Width="120" />
+                    </Grid.ColumnDefinitions>
+                    <HyperlinkButton Grid.Column="0" Content="Name" Tag="name" Click="Sort_Click" Padding="4,2" />
+                    <HyperlinkButton Grid.Column="1" Content="Size" Tag="size" Click="Sort_Click" Padding="4,2" HorizontalAlignment="Right" />
+                    <HyperlinkButton Grid.Column="2" Content="Progress" Tag="progress" Click="Sort_Click" Padding="4,2" />
+                    <HyperlinkButton Grid.Column="3" Content="Speed" Tag="speed" Click="Sort_Click" Padding="4,2" HorizontalAlignment="Right" />
+                    <HyperlinkButton Grid.Column="4" Content="ETA" Tag="eta" Click="Sort_Click" Padding="4,2" HorizontalAlignment="Right" />
+                    <HyperlinkButton Grid.Column="5" Content="Status" Tag="status" Click="Sort_Click" Padding="4,2" />
+                    <HyperlinkButton Grid.Column="6" Content="Queue" Tag="queue" Click="Sort_Click" Padding="4,2" />
+                    <HyperlinkButton Grid.Column="7" Content="Added ↓" Tag="added" Click="Sort_Click" Padding="4,2" />
+                </Grid>
+
+                <Grid Grid.Row="3">
+                    <ListView x:Name="Downloads"
+                              SelectionMode="Extended"
+                              IsDoubleTapEnabled="True"
+                              SelectionChanged="List_SelectionChanged"
+                              DoubleTapped="List_DoubleTapped"
+                              RightTapped="List_RightTapped"
+                              KeyDown="List_KeyDown">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="16,0,12,0" />
+                                <Setter Property="MinHeight" Value="36" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="local:DownloadRow">
+                                <Grid ColumnSpacing="8" ToolTipService.ToolTip="{x:Bind Name, Mode=OneWay}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MinWidth="140" />
+                                        <ColumnDefinition Width="86" />
+                                        <ColumnDefinition Width="170" />
+                                        <ColumnDefinition Width="96" />
+                                        <ColumnDefinition Width="76" />
+                                        <ColumnDefinition Width="124" />
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="120" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="{x:Bind Glyph, Mode=OneWay}" FontSize="16" VerticalAlignment="Center" />
+                                        <TextBlock Text="{x:Bind Name, Mode=OneWay}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Text="{x:Bind SizeText, Mode=OneWay}" Style="{StaticResource Num}" HorizontalAlignment="Right" />
+                                    <Grid Grid.Column="2" ColumnSpacing="8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="40" />
+                                        </Grid.ColumnDefinitions>
+                                        <ProgressBar Value="{x:Bind Percent, Mode=OneWay}" Maximum="100" Foreground="{x:Bind StatusBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                                        <TextBlock Grid.Column="1" Text="{x:Bind PercentText, Mode=OneWay}" Style="{StaticResource Num}" HorizontalAlignment="Right" />
+                                    </Grid>
+                                    <TextBlock Grid.Column="3" Text="{x:Bind SpeedText, Mode=OneWay}" Style="{StaticResource Num}" HorizontalAlignment="Right" />
+                                    <TextBlock Grid.Column="4" Text="{x:Bind EtaText, Mode=OneWay}" Style="{StaticResource Num}" HorizontalAlignment="Right" />
+                                    <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <Ellipse Width="7" Height="7" Fill="{x:Bind StatusBrush, Mode=OneWay}" VerticalAlignment="Center" />
+                                        <TextBlock Text="{x:Bind StatusText, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="6" Text="{x:Bind QueueName, Mode=OneWay}" Style="{StaticResource Dim}" />
+                                    <TextBlock Grid.Column="7" Text="{x:Bind AddedText, Mode=OneWay}" Style="{StaticResource Dim}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                    <StackPanel x:Name="Empty" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+                        <FontIcon Glyph="&#xE896;" FontSize="40" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <TextBlock x:Name="EmptyText" Text="No downloads yet" HorizontalAlignment="Center" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                        <Button Content="Add URL…" HorizontalAlignment="Center" Click="Add_Click" />
+                        <TextBlock x:Name="EmptyHint" Text="Or drag a link from your browser onto this window." FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- details of the selected download -->
+                <Border Grid.Row="4" x:Name="Details" Padding="16,12" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnSpacing="12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <FontIcon x:Name="DetailIcon" FontSize="30" VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock x:Name="DetailName" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True" />
+                                <TextBlock x:Name="DetailUrl" FontFamily="{StaticResource Mono}" FontSize="12" TextTrimming="CharacterEllipsis" IsTextSelectionEnabled="True"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <Ellipse x:Name="DetailDot" Width="7" Height="7" VerticalAlignment="Center" />
+                                <TextBlock x:Name="DetailStatus" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                <Button x:Name="DetailRetry" Content="Retry" Click="DetailRetry_Click" />
+                                <Button x:Name="DetailPrimary" Style="{StaticResource AccentButtonStyle}" Click="DetailPrimary_Click" />
+                                <Button Content="Show in Folder" Click="DetailReveal_Click" />
+                                <Button Content="Copy Link" Click="DetailCopy_Click" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock x:Name="DetailError" FontFamily="{StaticResource Mono}" Foreground="{ThemeResource SystemFillColorCriticalBrush}"
+                                   TextWrapping="Wrap" IsTextSelectionEnabled="True" Visibility="Collapsed" />
+                        <Grid ColumnSpacing="24">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" MinWidth="300" MaxWidth="460" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid x:Name="DetailGrid" ColumnSpacing="14" RowSpacing="4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                            </Grid>
+                            <StackPanel Grid.Column="1" Spacing="6">
+                                <Grid>
+                                    <TextBlock Text="Segments" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock x:Name="DetailPercent" FontSize="12" HorizontalAlignment="Right" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                                <local:SegmentMap x:Name="DetailSegments" />
+                                <Grid>
+                                    <TextBlock Text="Speed, last 60 s" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    <TextBlock x:Name="DetailPeak" FontSize="12" HorizontalAlignment="Right" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                </Grid>
+                                <local:Sparkline x:Name="DetailSpark" Height="52" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- status bar -->
+                <Grid Grid.Row="5" Padding="16,6" ColumnSpacing="18" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="StatusSummary" FontSize="12" Style="{StaticResource Dim}" />
+                    <TextBlock Grid.Column="1" x:Name="StatusSpeed" FontSize="12" Style="{StaticResource Dim}" />
+                    <TextBlock Grid.Column="2" x:Name="StatusLimit" FontSize="12" Style="{StaticResource Dim}" />
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="6">
+                        <Ellipse x:Name="ExtDot" Width="7" Height="7" VerticalAlignment="Center" />
+                        <TextBlock x:Name="StatusExt" FontSize="12" Style="{StaticResource Dim}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="4" x:Name="StatusFree" FontSize="12" Style="{StaticResource Dim}" />
+                </Grid>
+            </Grid>
+        </NavigationView>
+    </Grid>
+</Window>

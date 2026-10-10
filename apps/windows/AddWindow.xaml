@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="OpenDownloadManager.AddWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid x:Name="Root">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Key="Escape" Invoked="Escape_Invoked" />
+        </Grid.KeyboardAccelerators>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="Form" Padding="20,16,20,8" />
+        </ScrollViewer>
+
+        <Grid Grid.Row="1" Padding="20,12" ColumnSpacing="8"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ToggleSwitch x:Name="Batch" OnContent="Batch" OffContent="Batch" Toggled="Batch_Toggled"
+                          ToolTipService.ToolTip="Add several links or a numbered pattern" />
+            <Button Grid.Column="2" x:Name="QueueButton" Content="Add to Queue" Click="Queue_Click" />
+            <Button Grid.Column="3" Content="Cancel" Click="Cancel_Click" />
+            <Button Grid.Column="4" x:Name="StartButton" Content="Start Download" Style="{StaticResource AccentButtonStyle}" Click="Start_Click" />
+        </Grid>
+    </Grid>
+</Window>

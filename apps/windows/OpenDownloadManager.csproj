@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Native Windows app: WinUI 3 (Windows App SDK) on the Rust engine,
+       loaded as odm_ffi.dll. Unpackaged and self-contained: the publish
+       folder runs on a clean Windows 10/11 without any runtime installed. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
+    <RootNamespace>OpenDownloadManager</RootNamespace>
+    <AssemblyName>OpenDownloadManager</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\src-tauri\icons\icon.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <SelfContained>true</SelfContained>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <!-- Program.cs has the entry point (single instance before any UI) -->
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <!-- one version for the whole project: the workspace's Cargo.toml -->
+    <OdmVersion>$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\..\Cargo.toml')), 'version = "([^"]+)"').Groups[1].Value)</OdmVersion>
+    <Version>$(OdmVersion)</Version>
+    <Product>Open Download Manager</Product>
+    <Company>Open Download Manager</Company>
+    <Copyright>© 2026 Open Download Manager. AGPL-3.0-only.</Copyright>
+    <!-- the engine DLL for this build: cargo build --release -p odm-ffi [--target ...] -->
+    <OdmFfiDll Condition="'$(OdmFfiDll)' == ''">..\..\target\release\odm_ffi.dll</OdmFfiDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.WindowsAppSDK" Version="2.5.1" />
+    <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.28000.2705" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="$(OdmFfiDll)" Link="odm_ffi.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\src-tauri\icons\icon.ico" Link="Assets\icon.ico" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\download-manager-ui\brand\dist\tray\windows-linux\*.ico" LinkBase="Assets\tray" CopyToOutputDirectory="PreserveNewest" />
+    <!-- the browser extension, when extension/build.sh has run -->
+    <Content Include="..\..\extension\dist\**\*" LinkBase="extension" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

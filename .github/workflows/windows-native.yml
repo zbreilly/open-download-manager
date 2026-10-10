@@ -1,0 +1,115 @@
+name: windows-native
+
+# The native Windows app (WinUI 3 on the Rust engine): built, packed into a
+# setup .exe, installed silently, launched, and used for a real download
+# through the browser bridge.
+
+on:
+  push:
+    branches: [main, "native-*"]
+    paths:
+      - "apps/windows/**"
+      - "crates/odm-core/**"
+      - "crates/odm-ffi/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "extension/**"
+      - "src-tauri/icons/**"
+      - "download-manager-ui/brand/dist/tray/**"
+      - "scripts/ci/**"
+      - ".github/workflows/windows-native.yml"
+  workflow_dispatch:
+  # the windows-linux workflow calls this for tagged releases
+  workflow_call:
+
+concurrency:
+  group: windows-native-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+          - arch: arm64
+            runner: windows-11-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: windows-native-${{ matrix.arch }}
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+      - name: Build app and installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force ci-out | Out-Null
+          & "C:\Program Files\Git\bin\bash.exe" extension/build.sh
+          apps\windows\build.ps1 -Arch ${{ matrix.arch }} -Installer 2>&1 | Tee-Object ci-out/build.log
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+      - name: Install silently, launch, download
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Get-ChildItem dist/windows-native/*-Setup.exe | Select-Object -First 1
+          Start-Process $setup.FullName -ArgumentList '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/LOG=ci-out\setup.log' -Wait
+          $app = "$env:LOCALAPPDATA\Programs\Open Download Manager\OpenDownloadManager.exe"
+          if (-not (Test-Path $app)) { Write-Error "installed app not found"; exit 1 }
+          "installed: $app" | Tee-Object ci-out/install.log
+          # the odm:// scheme points at the installed app
+          (Get-ItemProperty 'HKCU:\Software\Classes\odm\shell\open\command').'(default)' | Tee-Object -Append ci-out/install.log
+          $p = Start-Process $app -PassThru
+          Start-Sleep 15
+          if ($p.HasExited) {
+            Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-5)} -MaxEvents 20 -ErrorAction SilentlyContinue |
+              Format-List TimeCreated, ProviderName, Message | Out-File ci-out/crash.log
+            Get-Content ci-out/crash.log
+            Write-Error "app exited early ($($p.ExitCode))"; exit 1
+          }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("ci-out/$name")
+          }
+          Shot "01-main.png"
+          # a web deep link opens a pre-filled Add window in the running
+          # instance; it must not probe or start anything by itself
+          Start-Process $app -ArgumentList 'odm://add?url=http://127.0.0.1:9/never-fetched.bin' -Wait
+          Start-Sleep 4
+          Shot "02-add-from-link.png"
+          if (@(Get-Process OpenDownloadManager -ErrorAction SilentlyContinue).Count -ne 1) { Write-Error "second instance did not hand over and exit"; exit 1 }
+          $env:PYTHON = 'python'
+          $dl = "$($env:USERPROFILE -replace '\\','/')/Downloads"
+          & "C:\Program Files\Git\bin\bash.exe" scripts/ci/e2e-download.sh $dl 2>&1 | Tee-Object -Append ci-out/install.log
+          $rc = $LASTEXITCODE
+          Shot "03-after-download.png"
+          Stop-Process -Id $p.Id -Force
+          if ($rc -ne 0) { Write-Error "end-to-end download failed"; exit 1 }
+          "launch and download ok" | Tee-Object -Append ci-out/install.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-windows-native-${{ matrix.arch }}
+          path: ci-out/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: OpenDownloadManager-Windows-${{ matrix.arch }}
+          path: dist/windows-native/*-Setup.exe

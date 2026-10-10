@@ -28,6 +28,7 @@ serde_json = "1"
 windows-reactor = { git = "https://github.com/microsoft/windows-rs", rev = "d5b6a1f68f" }
 windows-sys = { version = "0.61", features = [
     "Win32_Foundation",
+    "Win32_Graphics_Gdi",
     "Win32_Security",
     "Win32_Storage_FileSystem",
     "Win32_System_DataExchange",
@@ -40,6 +41,10 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+windows-registry = "0.100"
+rfd = { version = "0.17", default-features = false }
+tauri-winrt-notification = "0.8"
 
 [target.'cfg(windows)'.build-dependencies]
 windows-reactor-setup = { git = "https://github.com/microsoft/windows-rs", rev = "d5b6a1f68f" }

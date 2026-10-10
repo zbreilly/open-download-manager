@@ -1,23 +1,28 @@
-name: windows-linux
+name: linux-webview
 
-# Windows (x64) installers and Linux .deb (Debian/Ubuntu) and .rpm
-# (Fedora) packages for x64 and ARM64. The Windows installer and each Linux
-# package (in a clean Debian or Fedora container on its own arch) are
-# installed, launched, and used for a real download through the browser
-# bridge. A v* tag also builds the macOS app and drafts a release.
+# The webview (Tauri) Linux packages, kept as the fallback for distributions
+# too old for the native apps: .deb (Debian/Ubuntu) and .rpm (Fedora) for
+# x64 and ARM64, each installed in a clean container, launched, and used for
+# a real download through the browser bridge.
+#
+# A v* tag also builds the native apps (macOS, Windows, Linux) through their
+# own workflows and drafts a release with everything.
 
 on:
   push:
     branches: [main]
     tags: ["v*"]
     paths-ignore:
-      - "apps/macos/**"
+      - "apps/**"
+      - "packaging/**"
       - ".github/workflows/macos-native.yml"
+      - ".github/workflows/windows-native.yml"
+      - ".github/workflows/linux-native.yml"
       - "**.md"
   workflow_dispatch:
 
 concurrency:
-  group: windows-linux-${{ github.ref }}
+  group: linux-webview-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -30,73 +35,6 @@ defaults:
 jobs:
   checks:
     uses: ./.github/workflows/checks.yml
-
-  windows:
-    needs: checks
-    runs-on: windows-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: 22
-      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-        with:
-          shared-key: windows
-      - name: Frontend and extension
-        run: |
-          npm --prefix ui ci
-          npm --prefix ui run build
-          bash extension/build.sh
-      - name: Bundle (NSIS + MSI)
-        working-directory: src-tauri
-        run: |
-          mkdir -p ../ci-out
-          # the CLI version is pinned in ui/package.json
-          ../ui/node_modules/.bin/tauri build --bundles nsis,msi 2>&1 | tee ../ci-out/build.log
-      - name: Install silently, launch, download
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $exe = Get-ChildItem target/release/bundle/nsis/*.exe | Select-Object -First 1
-          Start-Process $exe.FullName -ArgumentList '/S' -Wait
-          $app = Get-ChildItem "$env:LOCALAPPDATA\Open Download Manager\*.exe","$env:ProgramFiles\Open Download Manager\*.exe" -ErrorAction SilentlyContinue |
-                 Where-Object { $_.Name -notlike 'uninstall*' } | Select-Object -First 1
-          if (-not $app) { Write-Error "installed app not found"; exit 1 }
-          "installed: $($app.FullName)" | Tee-Object ci-out/install.log
-          $p = Start-Process $app.FullName -PassThru
-          Start-Sleep 15
-          if ($p.HasExited) { Write-Error "app exited early ($($p.ExitCode))"; exit 1 }
-          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          function Shot($name) {
-            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-            $bmp.Save("ci-out/$name")
-          }
-          Shot "windows.png"
-          $env:PYTHON = 'python'
-          $dl = "$($env:USERPROFILE -replace '\\','/')/Downloads"
-          & "C:\Program Files\Git\bin\bash.exe" scripts/ci/e2e-download.sh $dl 2>&1 | Tee-Object -Append ci-out/install.log
-          $rc = $LASTEXITCODE
-          Shot "windows-after-download.png"
-          Stop-Process -Id $p.Id -Force
-          if ($rc -ne 0) { Write-Error "end-to-end download failed"; exit 1 }
-          "launch and download ok" | Tee-Object -Append ci-out/install.log
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: ${{ !cancelled() }}
-        with:
-          name: logs-windows-x64
-          path: ci-out/
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: OpenDownloadManager-Windows-x64
-          path: |
-            target/release/bundle/nsis/*.exe
-            target/release/bundle/msi/*.msi
 
   linux:
     needs: checks
@@ -136,6 +74,13 @@ jobs:
           mkdir -p ../ci-out
           # the CLI version is pinned in ui/package.json
           ../ui/node_modules/.bin/tauri build --bundles deb,rpm 2>&1 | tee ../ci-out/build.log
+      - name: Name the packages as the webview fallback
+        run: |
+          # the native packages (linux-native workflow) are open-download-manager_*;
+          # both install the package "open-download-manager", so one replaces the other
+          for f in target/release/bundle/deb/*.deb target/release/bundle/rpm/*.rpm; do
+            mv "$f" "$(dirname "$f")/open-download-manager-webview-$(basename "$f" | sed 's/^Open Download Manager[_-]//')"
+          done
       - name: Package info
         run: |
           ls -l target/release/bundle/deb target/release/bundle/rpm | tee ci-out/packages.txt
@@ -212,8 +157,18 @@ jobs:
     with:
       universal: true
 
+  windows-native:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: checks
+    uses: ./.github/workflows/windows-native.yml
+
+  linux-native:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: checks
+    uses: ./.github/workflows/linux-native.yml
+
   report:
-    needs: [checks, windows, linux, install-test]
+    needs: [checks, linux, install-test]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     permissions:
@@ -228,7 +183,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SUMMARY: "checks=${{ needs.checks.result }} windows=${{ needs.windows.result }} linux=${{ needs.linux.result }} install-test=${{ needs.install-test.result }}"
+          SUMMARY: "checks=${{ needs.checks.result }} linux=${{ needs.linux.result }} install-test=${{ needs.install-test.result }}"
         run: |
           mkdir -p ci-out
           cd ci-out
@@ -243,7 +198,7 @@ jobs:
           git -c http.extraheader="AUTHORIZATION: basic $auth" push -q -f "https://github.com/$REPO.git" ci-output-desktop
 
   release:
-    needs: [windows, linux, install-test, macos]
+    needs: [linux, install-test, macos, windows-native, linux-native]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
@@ -264,7 +219,6 @@ jobs:
           draft: true
           files: |
             out/**/*.exe
-            out/**/*.msi
             out/**/*.deb
             out/**/*.rpm
             out/**/*.dmg

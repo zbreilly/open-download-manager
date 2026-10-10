@@ -111,6 +111,9 @@ pub struct Odm {
     power: Option<(String, String, Instant)>,
     clipboard: u32,
     last_tray: &'static str,
+    /// there is a taskbar, so the notification-area icon is declared and
+    /// closing the main window can leave the app running there
+    has_tray: bool,
     quitting: bool,
 }
 
@@ -274,6 +277,12 @@ impl Odm {
                 }
             }
         }
+        // the taskbar can come and go (Explorer restarting)
+        let has_tray = system::tray_available();
+        if has_tray != self.has_tray {
+            self.has_tray = has_tray;
+            self.revision += 1;
+        }
         let tray = self.store.borrow().tray_state();
         if tray != self.last_tray {
             self.last_tray = tray;
@@ -346,9 +355,9 @@ impl Odm {
                 self.revision += 1;
             }
             Action::MainClosed => {
-                // without "keep running in the notification area" closing
-                // the main window ends the app
-                if !self.quitting && !self.setting("minimizeToTray", true) {
+                // without "keep running in the notification area" (or an
+                // area to run in) closing the main window ends the app
+                if !self.quitting && !(self.setting("minimizeToTray", true) && self.has_tray) {
                     self.quit(context);
                 }
             }
@@ -399,9 +408,11 @@ impl Application for Odm {
             power: None,
             clipboard: system::clipboard_sequence(),
             last_tray: "idle",
+            has_tray: system::tray_available(),
             quitting: false,
         };
-        let minimized = incoming::parse(args).minimized;
+        // started at sign-in: stay in the notification area, if there is one
+        let minimized = incoming::parse(args).minimized && app.has_tray;
         if !minimized {
             context.show_window("main");
         }
@@ -451,6 +462,10 @@ impl Application for Odm {
                 format!("progress:{id}"),
                 progress_window::Input { shared: shared.clone(), id: id.as_str().into() },
             );
+        }
+        if !self.has_tray {
+            // creating the icon without a taskbar would fail the whole app
+            return view;
         }
         let line = st.activity_line();
         let limiter = if b(&st.settings, "globalLimitEnabled") { "Speed Limiter: On" } else { "Speed Limiter: Off" };

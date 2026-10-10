@@ -212,6 +212,12 @@ pub fn install_pump(sink: impl Fn(Posted) + 'static) {
     }
 }
 
+/// Is there a taskbar to put a notification-area icon in? (Not while
+/// Explorer is restarting, and not in sessions without a shell.)
+pub fn tray_available() -> bool {
+    !unsafe { FindWindowW(wide("Shell_TrayWnd").as_ptr(), std::ptr::null()) }.is_null()
+}
+
 // -------------------------------------------------------- sign-in, power
 
 fn exe_command() -> Option<String> {

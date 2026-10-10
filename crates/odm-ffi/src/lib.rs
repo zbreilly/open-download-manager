@@ -1,6 +1,8 @@
 //! C interface to the Open Download Manager engine.
 //!
-//! The native macOS app (SwiftUI) links this as a static library. Every
+//! The native macOS app (SwiftUI) links this as a static library, the
+//! native Windows app (WinUI) loads it as a DLL, and the native Linux apps
+//! (GTK, Kirigami) use the same contract from Rust through [`api`]. Every
 //! call takes a method name and JSON arguments and returns JSON, so the
 //! interface stays small and stable while the engine evolves.
 //!
@@ -40,7 +42,7 @@ const ON_ASYNC_THREAD: &str =
 pub(crate) struct Core {
     pub rt: tokio::runtime::Runtime,
     pub mgr: Manager,
-    /// events go to the "odm-events" thread, which calls the callback
+    /// events go to the "odm-events" thread, which calls the sink
     events: Option<Mutex<mpsc::Sender<(CString, CString)>>>,
     pub ext_seen: Mutex<std::collections::HashMap<String, std::time::Instant>>,
     /// stops the running extension bridge listener
@@ -105,15 +107,18 @@ fn on_async_thread() -> bool {
     tokio::runtime::Handle::try_current().is_ok()
 }
 
-/// Deliver events in order on one thread. NULL callback: no thread, no events.
-fn spawn_event_thread(cb: EventCb, ctx: usize) -> Option<Mutex<mpsc::Sender<(CString, CString)>>> {
-    let cb = cb?;
+/// Receives (event name, JSON payload).
+type Sink = Box<dyn Fn(&CStr, &CStr) + Send>;
+
+/// Deliver events in order on one thread. No sink: no thread, no events.
+fn spawn_event_thread(sink: Option<Sink>) -> Option<Mutex<mpsc::Sender<(CString, CString)>>> {
+    let sink = sink?;
     let (tx, rx) = mpsc::channel::<(CString, CString)>();
     std::thread::Builder::new()
         .name("odm-events".into())
         .spawn(move || {
             for (n, j) in rx {
-                let _ = catch_unwind(AssertUnwindSafe(|| cb(n.as_ptr(), j.as_ptr(), ctx as *mut c_void)));
+                let _ = catch_unwind(AssertUnwindSafe(|| sink(&n, &j)));
             }
         })
         .ok()?;
@@ -136,14 +141,6 @@ pub unsafe extern "C" fn odm_start(data_dir: *const c_char, cb: EventCb, ctx: *m
 }
 
 unsafe fn start(data_dir: *const c_char, cb: EventCb, ctx: usize) -> i32 {
-    let _once = START.lock();
-    if CORE.get().is_some() {
-        return 0;
-    }
-    if on_async_thread() {
-        set_error(format!("odm_start: {ON_ASYNC_THREAD}"));
-        return -6;
-    }
     if data_dir.is_null() {
         set_error("data_dir is null");
         return -1;
@@ -155,42 +152,52 @@ unsafe fn start(data_dir: *const c_char, cb: EventCb, ctx: usize) -> i32 {
             return -1;
         }
     };
-    if let Err(e) = std::fs::create_dir_all(&dir) {
-        set_error(format!("cannot create {}: {e}", dir.display()));
-        return -2;
+    let sink = cb.map(|cb| -> Sink {
+        Box::new(move |n: &CStr, j: &CStr| cb(n.as_ptr(), j.as_ptr(), ctx as *mut c_void))
+    });
+    match start_with(dir, sink) {
+        Ok(()) => 0,
+        Err((code, msg)) => {
+            set_error(msg);
+            code
+        }
     }
-    let rt = match tokio::runtime::Builder::new_multi_thread().enable_all().thread_name("odm-engine").build() {
-        Ok(r) => r,
-        Err(e) => {
-            set_error(format!("runtime: {e}"));
-            return -3;
-        }
-    };
-    let mgr = match rt.block_on(async { Manager::open(&dir.join("odm.db")) }) {
-        Ok(m) => m,
-        Err(e) => {
-            set_error(e.to_string());
-            return -4;
-        }
-    };
+}
+
+/// Start the engine once (later calls succeed and ignore their sink).
+fn start_with(dir: std::path::PathBuf, sink: Option<Sink>) -> Result<(), (i32, String)> {
+    let _once = START.lock();
+    if CORE.get().is_some() {
+        return Ok(());
+    }
+    if on_async_thread() {
+        return Err((-6, format!("odm_start: {ON_ASYNC_THREAD}")));
+    }
+    std::fs::create_dir_all(&dir).map_err(|e| (-2, format!("cannot create {}: {e}", dir.display())))?;
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .thread_name("odm-engine")
+        .build()
+        .map_err(|e| (-3, format!("runtime: {e}")))?;
+    let mgr = rt.block_on(async { Manager::open(&dir.join("odm.db")) }).map_err(|e| (-4, e.to_string()))?;
     let core = Core {
         rt,
         mgr: mgr.clone(),
-        events: spawn_event_thread(cb, ctx),
+        events: spawn_event_thread(sink),
         ext_seen: Mutex::new(Default::default()),
         bridge: Mutex::new(None),
         bridge_error: Mutex::new(None),
         shut_down: AtomicBool::new(false),
     };
     if CORE.set(core).is_err() {
-        return 0;
+        return Ok(());
     }
     let c = CORE.get().expect("core set");
     c.rt.block_on(async { c.mgr.start_background() });
     c.rt.spawn(forward_events());
     // a bind error is reported as a bridge_error event and in extension_status
     let _ = bridge::start(c.mgr.settings().extension_port);
-    0
+    Ok(())
 }
 
 async fn forward_events() {
@@ -236,7 +243,6 @@ pub unsafe extern "C" fn odm_call(method: *const c_char, args: *const c_char) ->
 }
 
 unsafe fn call(method: *const c_char, args: *const c_char) -> Result<Value, String> {
-    let c = core().ok_or("engine not started")?;
     if method.is_null() {
         return Err("method is null".into());
     }
@@ -251,6 +257,11 @@ unsafe fn call(method: *const c_char, args: *const c_char) -> Result<Value, Stri
             serde_json::from_str(s).map_err(|e| format!("bad args: {e}"))?
         }
     };
+    call_value(m, a)
+}
+
+fn call_value(m: &str, a: Value) -> Result<Value, String> {
+    let c = core().ok_or("engine not started")?;
     // decided before entering the runtime below
     let cx = Cx { c, can_block: !on_async_thread() };
     let _g = c.rt.enter();
@@ -278,6 +289,10 @@ pub extern "C" fn odm_last_error() -> *const c_char {
 /// then persist state. Runs once; later calls return at once.
 #[no_mangle]
 pub extern "C" fn odm_shutdown() {
+    shutdown_impl();
+}
+
+fn shutdown_impl() {
     let r = catch_unwind(AssertUnwindSafe(|| {
         let Some(c) = core() else { return };
         if c.shut_down.swap(true, Ordering::SeqCst) {
@@ -539,5 +554,44 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
         #[cfg(feature = "test-hooks")]
         "__panic" => panic!("test panic"),
         other => Err(format!("unknown method: {other}")),
+    }
+}
+
+/// The same contract as the C functions, for front ends written in Rust
+/// (the GTK and Kirigami apps). Method names, arguments, results and event
+/// payloads are exactly those of `odm_call` and the event callback.
+pub mod api {
+    use serde_json::Value;
+    use std::path::Path;
+
+    /// Start the engine and the browser bridge. `on_event(name, json)` runs
+    /// on the "odm-events" thread, one event at a time, in order; it may
+    /// call [`call`]. Later calls succeed and ignore their callback.
+    pub fn start(data_dir: &Path, on_event: impl Fn(&str, &str) + Send + 'static) -> Result<(), String> {
+        let sink: super::Sink = Box::new(move |n: &std::ffi::CStr, j: &std::ffi::CStr| {
+            on_event(&n.to_string_lossy(), &j.to_string_lossy())
+        });
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| super::start_with(data_dir.to_path_buf(), Some(sink))))
+            .map_err(|p| format!("internal error: {}", super::panic_text(&*p)))?
+            .map_err(|(_, msg)| msg)
+    }
+
+    /// Call an engine method (see `odm_call`). Blocking methods (probe_url,
+    /// grab, refresh_link) must not be called from the GUI thread if that
+    /// would freeze it, and are refused on engine threads.
+    pub fn call(method: &str, args: Value) -> Result<Value, String> {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| super::call_value(method, args)))
+            .unwrap_or_else(|p| Err(format!("internal error: {}", super::panic_text(&*p))))
+    }
+
+    /// Typed convenience over [`call`].
+    pub fn call_as<T: serde::de::DeserializeOwned>(method: &str, args: Value) -> Result<T, String> {
+        serde_json::from_value(call(method, args)?).map_err(|e| format!("{method}: unexpected reply: {e}"))
+    }
+
+    /// Stop the bridge and downloads, waiting up to 5 s for them to flush.
+    /// Runs once. Call it from a thread that doesn't run async code.
+    pub fn shutdown() {
+        super::odm_shutdown()
     }
 }

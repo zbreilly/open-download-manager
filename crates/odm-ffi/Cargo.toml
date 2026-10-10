@@ -3,10 +3,11 @@ name = "odm-ffi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "C interface to the Open Download Manager engine (used by the native macOS app)"
+description = "C interface to the Open Download Manager engine, used by the native macOS, Windows and Linux apps"
 
 [lib]
-crate-type = ["staticlib", "rlib"]
+# staticlib: macOS app; cdylib: Windows app (odm_ffi.dll); rlib: Linux apps
+crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 odm-core = { path = "../odm-core" }

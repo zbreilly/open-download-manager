@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/odm-core", "crates/odm-ffi", "src-tauri"]
+members = ["crates/odm-core", "crates/odm-ffi", "crates/odm-linux", "src-tauri"]
 
 [workspace.package]
 version = "0.2.0"

@@ -749,7 +749,7 @@
     <span>{summary}</span>
     <span class="mono">↓ {f.speed(store.totals?.speedBps)}</span>
     <span>Speed limit: {limitOn ? `${limitMB} MB/s total` : 'off'}</span>
-    <span class="ext"><span class="dot" class:ok={store.ext.connected}></span>{store.ext.connected ? `Browser extension connected${store.ext.browsers.length ? ` (${store.ext.browsers.join(', ')})` : ''}` : 'Browser extension not detected'}</span>
+    <span class="ext" title={store.ext.bridgeError ?? undefined}><span class="dot" class:ok={store.ext.connected && !store.ext.bridgeError} class:bad={!!store.ext.bridgeError}></span>{store.ext.bridgeError ? 'Browser bridge offline: port in use' : store.ext.connected ? `Browser extension connected${store.ext.browsers.length ? ` (${store.ext.browsers.join(', ')})` : ''}` : 'Browser extension not detected'}</span>
     <span class="spacer"></span>
     <span class="mono">{store.totals?.freeBytes != null ? `${f.bytes(store.totals.freeBytes)} free` : ''}</span>
   </footer>
@@ -874,6 +874,7 @@
   .ext { display: flex; align-items: center; gap: 6px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
   .dot.ok { background: var(--success); opacity: 1; }
+  .dot.bad { background: var(--danger); opacity: 1; }
 
   @media (max-height: 760px) { .details .dbody { display: none; } }
   @media (max-width: 1000px) { .side { width: 180px; } }

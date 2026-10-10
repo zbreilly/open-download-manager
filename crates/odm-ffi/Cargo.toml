@@ -21,3 +21,10 @@ url = "2"
 # adds a "__panic" method used by tests to check that panics never cross
 # the C boundary
 test-hooks = []
+
+[[test]]
+name = "c_boundary"
+required-features = ["test-hooks"]
+
+[dev-dependencies]
+tempfile = "3"

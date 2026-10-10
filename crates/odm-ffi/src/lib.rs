@@ -466,6 +466,8 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
             let s: Settings = arg(&a, "settings")?;
             let old_port = mgr.settings().extension_port;
             let new_port = s.extension_port;
+            // reject bad settings before anything changes
+            mgr.validate_settings(&s).map_err(|e| e.to_string())?;
             // listen on the new port first: if it is taken nothing is saved
             // and the old listener keeps running
             if old_port != new_port {

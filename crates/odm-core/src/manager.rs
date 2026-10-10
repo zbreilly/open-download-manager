@@ -375,6 +375,13 @@ impl Manager {
         self.inner.state.lock().settings.clone()
     }
 
+    /// Check that `save_settings` would accept `s` (e.g. the proxy parses),
+    /// without applying anything. Front ends call this before side effects
+    /// such as moving the browser bridge to a new port.
+    pub fn validate_settings(&self, s: &Settings) -> Result<(), CoreError> {
+        client::build_clients(s).map(|_| ())
+    }
+
     pub fn save_settings(&self, mut s: Settings) -> Result<(), CoreError> {
         if s.categories.is_empty() {
             s.categories = default_categories();
@@ -515,13 +522,17 @@ impl Manager {
     }
 
     /// Is the name taken, on disk or by another download in the list?
+    /// True when `dir`/`name` (or its part file) is on disk and the user
+    /// can choose to resume or overwrite it. A name held by another
+    /// unfinished download is not offered: `add` always gives the new
+    /// download a free variant of it instead.
     pub fn target_exists(&self, dir: &str, name: &str) -> bool {
         let p = Path::new(dir).join(name);
-        if p.exists() || util::part_path(&p).exists() {
-            return true;
+        if !(p.exists() || util::part_path(&p).exists()) {
+            return false;
         }
         let st = self.inner.state.lock();
-        claimed(&st, &p, None, false)
+        !claimed(&st, &p, None, true)
     }
 
     pub fn add(&self, req: AddRequest) -> Result<String, CoreError> {
@@ -571,7 +582,7 @@ impl Manager {
             let target = dir.join(&name);
             let target_part = util::part_path(&target);
             let mut placed = false;
-            if policy == "resume" && !claimed(&st, &target, None, false) && (target.exists() || target_part.exists()) {
+            if policy == "resume" && !claimed(&st, &target, None, true) && (target.exists() || target_part.exists()) {
                 // continue an existing partial file from its current size
                 if target_part.exists() {
                     adopted = Some("part".into());
@@ -659,6 +670,7 @@ impl Manager {
         };
         if let Some(s2) = settings_to_save {
             self.inner.store.save_settings(&s2);
+            self.emit(Event::SettingsChanged(s2));
         }
         self.persist(std::slice::from_ref(&id));
         if let Some(q) = &queue_id {
@@ -1372,6 +1384,8 @@ impl Manager {
                                     tracing::info!("{id}: file changed on server since the last run; starting over");
                                     e.d.segments.clear();
                                     e.d.received_bytes = 0;
+                                    // the adopted bytes are being replaced, so they are ours now
+                                    e.d.adopted = None;
                                     rt.segs.lock().clear();
                                 }
                                 e.d.total_bytes = p.total_bytes;

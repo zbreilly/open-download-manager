@@ -179,7 +179,14 @@ final class AppStore: ObservableObject {
                 applyAppearance()
             }
         case "extension_status":
-            if let x = e.decode(ExtensionStatus.self, data), x != ext { ext = x }
+            // the event carries connection state only; keep the bridge error
+            if var x = e.decode(ExtensionStatus.self, data) {
+                x.bridgeError = ext.bridgeError
+                if x != ext { ext = x }
+            }
+        case "bridge_error":
+            let msg = e.decode(BridgeErrorEvent.self, data)?.error
+            if ext.bridgeError != msg { ext.bridgeError = msg }
         case "download_completed":
             if let d = e.decode(Download.self, data) { completed(d) }
         case "download_failed":
@@ -312,7 +319,16 @@ final class AppStore: ObservableObject {
         }
         settings = s
         let v = Engine.shared.jsonValue(s)
-        act("save_settings", ["settings": v])
+        Engine.shared.runAsync("save_settings", ["settings": v]) { [weak self] msg in
+            guard let self else { return }
+            self.report(msg)
+            // nothing was stored (e.g. the new port is taken): go back to
+            // what the engine has so later saves don't repeat the bad value
+            if let real: AppSettings = try? Engine.shared.call("get_settings") {
+                self.settings = real
+                self.applyAppearance()
+            }
+        }
         applyAppearance()
     }
 

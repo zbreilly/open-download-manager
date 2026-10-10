@@ -21,10 +21,16 @@ use tauri_plugin_opener::OpenerExt;
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// Stop the bridge, release keep-awake and shut the engine down, waiting
-/// (bounded) for downloads to flush. Runs once; later calls return at once.
+/// (bounded) for downloads to flush. Runs once; a call made while another
+/// is in progress waits for it to finish.
 pub async fn shutdown_engine(app: &AppHandle) {
     let st = app.state::<AppState>();
     if st.shut_down.swap(true, Ordering::SeqCst) {
+        // someone else is shutting down: wait (bounded) until they're done
+        let until = Instant::now() + SHUTDOWN_TIMEOUT + Duration::from_secs(2);
+        while !shutdown_finished(&st) && Instant::now() < until {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
         return;
     }
     bridge::stop(app);
@@ -36,11 +42,24 @@ pub async fn shutdown_engine(app: &AppHandle) {
     {
         tracing::warn!("engine shutdown timed out");
     }
+    let (lock, cv) = &st.shut_down_done;
+    *lock.lock().unwrap_or_else(|e| e.into_inner()) = true;
+    cv.notify_all();
 }
 
-/// Blocking variant for the run loop's Exit event (no-op after quit()).
+fn shutdown_finished(st: &AppState) -> bool {
+    *st.shut_down_done.0.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Blocking variant for the run loop's Exit event. If quit() already
+/// finished this returns at once; if it is still flushing (e.g. the OS
+/// ends the session mid-quit) this waits for it.
 fn shutdown_engine_blocking(app: &AppHandle) {
-    if app.state::<AppState>().shut_down.load(Ordering::SeqCst) {
+    let st = app.state::<AppState>();
+    if st.shut_down.load(Ordering::SeqCst) {
+        let (lock, cv) = &st.shut_down_done;
+        let g = lock.lock().unwrap_or_else(|e| e.into_inner());
+        let _ = cv.wait_timeout_while(g, SHUTDOWN_TIMEOUT + Duration::from_secs(2), |done| !*done);
         return;
     }
     if tokio::runtime::Handle::try_current().is_ok() {

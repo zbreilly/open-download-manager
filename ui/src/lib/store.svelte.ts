@@ -7,7 +7,7 @@ export const store = $state({
   queues: [] as Queue[],
   settings: null as Settings | null,
   totals: null as Totals | null,
-  ext: { connected: false, browsers: [] as string[] },
+  ext: { connected: false, browsers: [] as string[], bridgeError: null as string | null },
   ready: false,
 });
 
@@ -97,7 +97,8 @@ export async function initStore(opts: { queues?: boolean; settings?: boolean } =
     }),
     on<Queue[]>('queues_changed', (q) => { queuesEvent = true; store.queues = q; }),
     on<Settings>('settings_changed', (s) => { settingsEvent = true; store.settings = s; }),
-    on<{ connected: boolean; browsers: string[] }>('extension_status', (e) => (store.ext = e)),
+    on<{ connected: boolean; browsers: string[] }>('extension_status', (e) => (store.ext = { ...store.ext, ...e })),
+    on<{ port: number; error: string } | null>('bridge_error', (e) => (store.ext = { ...store.ext, bridgeError: e?.error ?? null })),
   ]);
   const [list, queues, settings, totals, ext] = await Promise.all([
     api.listDownloads(),
@@ -114,7 +115,7 @@ export async function initStore(opts: { queues?: boolean; settings?: boolean } =
   if (!queuesEvent) store.queues = queues;
   if (!settingsEvent) store.settings = settings;
   if (!store.totals) store.totals = totals;
-  store.ext = { connected: ext.connected, browsers: ext.browsers };
+  store.ext = { connected: ext.connected, browsers: ext.browsers, bridgeError: ext.bridgeError ?? null };
   store.ready = true;
   void opts;
 }

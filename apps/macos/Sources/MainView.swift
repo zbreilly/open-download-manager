@@ -593,11 +593,14 @@ struct StatusBar: View {
             Text("↓ \(Fmt.speed(t.speedBps))").monospacedDigit()
             Text(t.limitOn ? String(format: "Limit %g MB/s", Fmt.mbps(t.limitBps)) : "No speed limit")
             HStack(spacing: 5) {
-                Circle().fill(store.ext.connected ? Color.green : Color.secondary.opacity(0.5)).frame(width: 7, height: 7)
-                Text(store.ext.connected
+                Circle().fill(store.ext.bridgeError != nil ? Color.red : store.ext.connected ? Color.green : Color.secondary.opacity(0.5)).frame(width: 7, height: 7)
+                Text(store.ext.bridgeError != nil
+                     ? "Browser bridge offline: port in use"
+                     : store.ext.connected
                      ? "Browser extension connected\(store.ext.browsers.isEmpty ? "" : " (\(store.ext.browsers.joined(separator: ", ")))")"
                      : "Browser extension not detected")
             }
+            .help(store.ext.bridgeError ?? "")
             Spacer()
             if let f = t.freeBytes { Text("\(Fmt.bytes(f)) free").monospacedDigit() }
         }

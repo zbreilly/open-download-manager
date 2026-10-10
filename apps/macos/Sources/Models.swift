@@ -242,6 +242,14 @@ struct FinalPath: Codable {
 struct ExtensionStatus: Codable, Equatable {
     var connected: Bool
     var browsers: [String]
+    /// why the browser bridge isn't listening (nil while it is)
+    var bridgeError: String? = nil
+}
+
+/// `bridge_error` event payload (the event is `null` once it listens again).
+struct BridgeErrorEvent: Codable {
+    var port: Int
+    var error: String
 }
 
 /// Parameters for an Add Download window (also used for extension handoff).

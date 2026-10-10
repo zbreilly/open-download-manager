@@ -279,6 +279,8 @@ pub async fn default_settings() -> R<Settings> {
 pub async fn save_settings(app: AppHandle, st: State<'_, AppState>, settings: Settings) -> R<()> {
     let old = st.mgr.settings();
     let mut settings = settings;
+    // reject bad settings before anything changes
+    st.mgr.validate_settings(&settings).map_err(err)?;
     // listen on the new port first: if it is taken nothing is saved and the
     // old listener keeps running
     if old.extension_port != settings.extension_port {

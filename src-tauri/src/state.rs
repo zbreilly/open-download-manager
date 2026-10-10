@@ -35,8 +35,10 @@ pub struct AppState {
     pub bridge_error: Mutex<Option<String>>,
     /// URLs handed to the app recently (deep link / argv), to handle each once
     pub recent_incoming: Mutex<HashMap<String, Instant>>,
-    /// set once the engine has been shut down for quitting
+    /// set when shutting the engine down for quitting starts
     pub shut_down: AtomicBool,
+    /// set (and waiters woken) when that shutdown has finished
+    pub shut_down_done: (std::sync::Mutex<bool>, std::sync::Condvar),
     pub awake: Awake,
 }
 
@@ -55,6 +57,7 @@ impl AppState {
             bridge_error: Mutex::new(None),
             recent_incoming: Mutex::new(HashMap::new()),
             shut_down: AtomicBool::new(false),
+            shut_down_done: (std::sync::Mutex::new(false), std::sync::Condvar::new()),
             awake: Awake::new(),
         }
     }

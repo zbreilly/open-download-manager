@@ -622,3 +622,55 @@ async fn save_queue_never_drops_members() {
         assert_eq!(m.get(id).unwrap().queue_id.as_deref(), Some(q.id.as_str()));
     }
 }
+
+// merge review -------------------------------------------------------------
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn target_exists_ignores_names_held_by_unfinished_downloads() {
+    let tmp = tempfile::tempdir().unwrap();
+    let m = mgr(tmp.path());
+    let dir = tmp.path().join("dl").join("held");
+    let dir_s = dir.to_string_lossy().into_owned();
+    // a paused download reserves x.bin (its empty part file is on disk)
+    m.add(AddRequest {
+        url: "http://127.0.0.1:9/x.bin".into(),
+        save_dir: Some(dir_s.clone()),
+        ..Default::default()
+    })
+    .unwrap();
+    assert!(dir.join("x.bin.odmpart").exists());
+    // resume/overwrite wouldn't apply, so no conflict is offered
+    assert!(!m.target_exists(&dir_s, "x.bin"));
+    // a file the user owns is offered
+    std::fs::write(dir.join("mine.bin"), b"abc").unwrap();
+    assert!(m.target_exists(&dir_s, "mine.bin"));
+    assert!(!m.target_exists(&dir_s, "nothing.bin"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn remembered_folder_emits_settings_changed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let m = mgr(tmp.path());
+    let mut rx = m.subscribe();
+    let dir = tmp.path().join("elsewhere").to_string_lossy().into_owned();
+    m.add(AddRequest {
+        url: "http://127.0.0.1:9/song.mp3".into(),
+        save_dir: Some(dir.clone()),
+        remember_folder: true,
+        ..Default::default()
+    })
+    .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        let left = deadline.saturating_duration_since(Instant::now());
+        match tokio::time::timeout(left, rx.recv()).await {
+            Ok(Ok(Event::SettingsChanged(s))) => {
+                let c = s.categories.iter().find(|c| c.id == "music").unwrap();
+                assert_eq!(c.folder.as_deref(), Some(dir.as_str()));
+                break;
+            }
+            Ok(Ok(_)) => continue,
+            other => panic!("no SettingsChanged: {other:?}"),
+        }
+    }
+}

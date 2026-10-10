@@ -154,7 +154,7 @@ export const api = {
   openWindow: (view: string, key?: string | null, params?: unknown) =>
     invoke<void>('open_window', { view, key: key ?? null, params: params ?? null }),
   takeParams: (token: string) => invoke<any>('take_params', { token }),
-  extensionStatus: () => invoke<{ connected: boolean; browsers: string[]; port: number }>('extension_status'),
+  extensionStatus: () => invoke<{ connected: boolean; browsers: string[]; port: number; bridgeError?: string | null }>('extension_status'),
   cancelPowerAction: () => invoke<void>('cancel_power_action'),
   getPowerCountdown: () => invoke<PowerCountdown | null>('get_power_countdown'),
   exportList: (path: string, onlyUnfinished: boolean) => invoke<number>('export_list', { path, onlyUnfinished }),

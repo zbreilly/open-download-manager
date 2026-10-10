@@ -32,7 +32,7 @@
    *  window) flow into it; fields the user edited are left alone. */
   let base: Settings | null = null;
   let busy = $state(false);
-  let ext = $state({ connected: false, browsers: [] as string[], port: 8901 });
+  let ext = $state({ connected: false, browsers: [] as string[], port: 8901, bridgeError: null as string | null });
 
   // MB/s editing helpers
   let globalMB = $state('25');
@@ -164,15 +164,17 @@
     (async () => {
     load(await api.getSettings());
     if (params?.page) page = params.page;
-    ext = await api.extensionStatus();
+    const st = await api.extensionStatus();
+    ext = { ...st, bridgeError: st.bridgeError ?? null };
     const un = await on<{ connected: boolean; browsers: string[] }>('extension_status', (e) => (ext = { ...ext, ...e }));
+    const unBridge = await on<{ port: number; error: string } | null>('bridge_error', (e) => (ext = { ...ext, bridgeError: e?.error ?? null }));
     const unSettings = await on<Settings>('settings_changed', merge);
     const k = (e: KeyboardEvent) => {
       if (e.key === 'Escape') win.close();
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key === 's') { e.preventDefault(); save(false); }
     };
     window.addEventListener('keydown', k);
-    cleanups.push(() => { un(); unSettings(); window.removeEventListener('keydown', k); });
+    cleanups.push(() => { un(); unBridge(); unSettings(); window.removeEventListener('keydown', k); });
     })();
     return () => cleanups.forEach((c) => c());
   });
@@ -235,8 +237,8 @@
             <h2>Browser integration</h2>
             <div class="group card">
               <div class="rowc">
-                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only browser-extension origins are accepted.</div></div>
-                <span class="status"><span class="dot" class:ok={ext.connected}></span>{ext.connected ? 'Connected' : 'Not detected'}</span>
+                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only browser-extension origins are accepted.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
+                <span class="status"><span class="dot" class:ok={ext.connected && !ext.bridgeError} class:bad={!!ext.bridgeError}></span>{ext.bridgeError ? 'Not listening' : ext.connected ? 'Connected' : 'Not detected'}</span>
               </div>
               <div class="rowc">
                 <div class="t"><div class="tt">Install the extension</div><div class="d">Chrome, Edge, Brave, Opera, Vivaldi: open the extensions page, turn on Developer mode, choose “Load unpacked” and pick the <span class="mono">chromium</span> folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → <span class="mono">firefox/manifest.json</span>.</div></div>
@@ -433,6 +435,8 @@
   .status { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
   .dot.ok { background: var(--success); opacity: 1; }
+  .dot.bad { background: var(--danger); opacity: 1; }
+  .bridge-err { color: var(--danger); }
   .path { flex: 2; min-width: 0; }
   .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .catcard { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }

@@ -197,9 +197,13 @@ private struct BrowserPane: View {
             Section {
                 LabeledContent("Extension") {
                     HStack(spacing: 6) {
-                        Circle().fill(store.ext.connected ? Color.green : Color.secondary.opacity(0.5)).frame(width: 8, height: 8)
-                        Text(store.ext.connected ? "Connected: \(store.ext.browsers.joined(separator: ", "))" : "Not detected")
+                        Circle().fill(store.ext.bridgeError != nil ? Color.red : store.ext.connected ? Color.green : Color.secondary.opacity(0.5)).frame(width: 8, height: 8)
+                        Text(store.ext.bridgeError != nil ? "Not listening" : store.ext.connected ? "Connected: \(store.ext.browsers.joined(separator: ", "))" : "Not detected")
                     }
+                }
+                if let err = store.ext.bridgeError {
+                    Text("\(err). Another app may be using this port; choose a different one under Advanced.")
+                        .font(.caption).foregroundStyle(.red)
                 }
                 Text("Chrome, Edge, Brave, Arc, Vivaldi, Opera: open the extensions page, turn on Developer mode, choose “Load unpacked” and select the chromium folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → firefox/manifest.json.")
                     .font(.caption).foregroundStyle(.secondary)

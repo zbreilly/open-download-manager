@@ -1938,15 +1938,6 @@ impl Manager {
         self.inner.store.checkpoint();
     }
 
-    /// Stop all downloads, wait (up to `timeout`) for their writers to
-    /// finish and flush, then persist state. No new downloads start
-    /// afterwards. Front ends call this on quit.
-    pub async fn shutdown_wait(&self, timeout: std::time::Duration) {
-        // Placeholder until the graceful version lands.
-        self.shutdown();
-        let _ = timeout;
-    }
-
     pub fn grab_client(&self) -> (reqwest::Client, Settings) {
         (self.client(), self.settings())
     }

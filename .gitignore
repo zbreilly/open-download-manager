@@ -6,3 +6,4 @@ src-tauri/gen/
 extension/dist/
 .DS_Store
 *.odmpart
+/.claude/

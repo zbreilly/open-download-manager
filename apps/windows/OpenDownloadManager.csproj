@@ -28,7 +28,7 @@
     <Product>Open Download Manager</Product>
     <Company>Open Download Manager</Company>
     <Copyright>© 2026 Open Download Manager. AGPL-3.0-only.</Copyright>
-    <!-- the engine DLL for this build: cargo build --release -p odm-ffi [--target ...] -->
+    <!-- the engine DLL for this build (apps\windows\build.ps1 builds it and passes its path) -->
     <OdmFfiDll Condition="'$(OdmFfiDll)' == ''">..\..\target\release\odm_ffi.dll</OdmFfiDll>
   </PropertyGroup>
 

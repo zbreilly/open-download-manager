@@ -1,5 +1,5 @@
-//! Text formatting shared by the Linux front ends (same rules as the macOS
-//! app and the design spec: base-1024 sizes, integer percent, short ETA).
+//! Text formatting shared by the front ends (same rules as the macOS app
+//! and the design spec: base-1024 sizes, integer percent, short ETA).
 use chrono::{DateTime, Datelike, Local, Timelike};
 use serde_json::Value;
 
@@ -139,6 +139,13 @@ pub fn extension(name: &str) -> String {
     }
 }
 
+/// The last path segment of a link, percent-decoded.
+pub fn url_file_name(link: &str) -> String {
+    let Ok(u) = url::Url::parse(link.trim()) else { return String::new() };
+    let last = u.path_segments().and_then(|mut p| p.next_back()).unwrap_or("");
+    percent_encoding::percent_decode_str(last).decode_utf8_lossy().into_owned()
+}
+
 /// "2 active · 1 paused · 3 queued" for the status bar.
 pub fn totals_summary(t: &Value) -> String {
     let n = |k: &str| t.get(k).and_then(Value::as_u64).unwrap_or(0);
@@ -217,5 +224,7 @@ mod tests {
         assert_eq!(extension("noext"), "");
         assert!(is_http("https://example.com/a"));
         assert!(!is_http("ftp://example.com/a"));
+        assert_eq!(url_file_name("https://x.example/dir/My%20File%2B1.zip?x=1"), "My File+1.zip");
+        assert_eq!(url_file_name("https://x.example/"), "");
     }
 }

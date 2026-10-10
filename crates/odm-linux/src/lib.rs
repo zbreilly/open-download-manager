@@ -13,8 +13,6 @@
 pub mod autostart;
 pub mod awake;
 pub mod desktop;
-pub mod fmt;
-pub mod incoming;
 pub mod instance;
 pub mod notify;
 pub mod open;
@@ -26,4 +24,7 @@ pub mod tray;
 /// Reverse-DNS application id: D-Bus name, desktop file, icon name.
 pub const APP_ID: &str = "app.opendm.Desktop";
 /// Human-readable name.
-pub const APP_NAME: &str = "Open Download Manager";
+pub use odm_ui::APP_NAME;
+/// Formatting, and links handed to the app: shared with the other front
+/// ends through `odm-ui`.
+pub use odm_ui::{fmt, incoming};

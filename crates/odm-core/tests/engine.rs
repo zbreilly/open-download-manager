@@ -143,10 +143,14 @@ async fn resume_after_restart() {
         let m = mgr(dir.path());
         id = add(&m, format!("{}/f/r.bin?size={size}&delay=30", srv.base), true, 4);
         wait_status(&m, &id, Status::Downloading, 10).await;
-        tokio::time::sleep(Duration::from_millis(400)).await;
+        let t = std::time::Instant::now();
+        while m.get(&id).unwrap().received_bytes == 0 && t.elapsed() < Duration::from_secs(10) {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        tokio::time::sleep(Duration::from_millis(200)).await;
         m.pause(std::slice::from_ref(&id));
-        tokio::time::sleep(Duration::from_millis(300)).await;
-        m.shutdown();
+        // what the apps do on quit: wait for writers to flush and sync
+        m.shutdown_wait(Duration::from_secs(10)).await;
     }
     let m = mgr(dir.path());
     let d = m.get(&id).unwrap();

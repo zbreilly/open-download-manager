@@ -25,7 +25,8 @@ const COLUMNS: [(SortKey, &str, f64); 7] = [
 ];
 
 fn column_widths() -> Vec<GridLength> {
-    std::iter::once(GridLength::STAR).chain(COLUMNS.iter().map(|c| GridLength::Pixel(c.2))).collect()
+    // the name column takes what is left, but never disappears
+    std::iter::once(GridLength::STAR.min(160.0)).chain(COLUMNS.iter().map(|c| GridLength::Pixel(c.2))).collect()
 }
 
 /// A question the window is asking.

@@ -114,6 +114,7 @@ pub struct Odm {
     /// there is a taskbar, so the notification-area icon is declared and
     /// closing the main window can leave the app running there
     has_tray: bool,
+    ticks: u64,
     quitting: bool,
 }
 
@@ -277,10 +278,10 @@ impl Odm {
                 }
             }
         }
-        // the taskbar can come and go (Explorer restarting)
-        let has_tray = system::tray_available();
-        if has_tray != self.has_tray {
-            self.has_tray = has_tray;
+        // a taskbar that wasn't there (Explorer starting) may appear later
+        self.ticks += 1;
+        if !self.has_tray && self.ticks % 10 == 0 && system::tray_available() {
+            self.has_tray = true;
             self.revision += 1;
         }
         let tray = self.store.borrow().tray_state();
@@ -409,6 +410,7 @@ impl Application for Odm {
             clipboard: system::clipboard_sequence(),
             last_tray: "idle",
             has_tray: system::tray_available(),
+            ticks: 0,
             quitting: false,
         };
         // started at sign-in: stay in the notification area, if there is one

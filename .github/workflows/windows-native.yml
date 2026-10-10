@@ -20,7 +20,7 @@ on:
       - "scripts/ci/**"
       - ".github/workflows/windows-native.yml"
   workflow_dispatch:
-  # the windows-linux workflow calls this for tagged releases
+  # the linux-webview workflow calls this for tagged releases
   workflow_call:
 
 concurrency:
@@ -103,6 +103,8 @@ jobs:
           & "C:\Program Files\Git\bin\bash.exe" scripts/ci/e2e-download.sh $dl 2>&1 | Tee-Object -Append ci-out/install.log
           $rc = $LASTEXITCODE
           Shot "03-after-download.png"
+          if (Test-Path $errorLog) { "app error: $(Get-Content $errorLog -Raw)" | Tee-Object -Append ci-out/install.log }
+          if ($p.HasExited) { Write-Error "the app exited during the download ($($p.ExitCode))"; exit 1 }
           Stop-Process -Id $p.Id -Force
           if ($rc -ne 0) { Write-Error "end-to-end download failed"; exit 1 }
           "launch and download ok" | Tee-Object -Append ci-out/install.log

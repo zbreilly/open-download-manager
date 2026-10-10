@@ -212,10 +212,27 @@ pub fn install_pump(sink: impl Fn(Posted) + 'static) {
     }
 }
 
-/// Is there a taskbar to put a notification-area icon in? (Not while
-/// Explorer is restarting, and not in sessions without a shell.)
+/// Can a notification-area icon be added right now? Not while Explorer is
+/// restarting, and not in sessions without a working shell. Tried for real
+/// (add, then remove, a throwaway icon), because a taskbar window existing
+/// doesn't mean it accepts icons, and a failed add would end the app.
 pub fn tray_available() -> bool {
-    !unsafe { FindWindowW(wide("Shell_TrayWnd").as_ptr(), std::ptr::null()) }.is_null()
+    use windows_sys::Win32::UI::Shell::{Shell_NotifyIconW, NIF_MESSAGE, NIM_ADD, NIM_DELETE, NOTIFYICONDATAW};
+    let hwnd = PUMP_WINDOW.load(Ordering::SeqCst) as HWND;
+    if hwnd.is_null() || unsafe { FindWindowW(wide("Shell_TrayWnd").as_ptr(), std::ptr::null()) }.is_null() {
+        return false;
+    }
+    unsafe {
+        let mut data: NOTIFYICONDATAW = std::mem::zeroed();
+        data.cbSize = std::mem::size_of::<NOTIFYICONDATAW>() as u32;
+        data.hWnd = hwnd;
+        data.uID = 0x0D4D;
+        data.uFlags = NIF_MESSAGE;
+        data.uCallbackMessage = WM_APP + 42;
+        let added = Shell_NotifyIconW(NIM_ADD, &data) != 0;
+        Shell_NotifyIconW(NIM_DELETE, &data);
+        added
+    }
 }
 
 // -------------------------------------------------------- sign-in, power

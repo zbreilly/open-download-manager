@@ -1,12 +1,14 @@
 #!/bin/bash
-# Build Open Download Manager for macOS: .app (+ .dmg), signed with your
-# Developer ID when one is in the keychain, ad-hoc otherwise.
+# Build the Tauri version of Open Download Manager for macOS: .app (+ .dmg),
+# signed with your Developer ID when one is in the keychain (or the identity
+# in ODM_SIGN_IDENTITY), ad-hoc otherwise. The native app is built by
+# scripts/build-macos.sh instead.
 #
-#   scripts/build-macos.sh               # .app + .dmg for this Mac's CPU
-#   scripts/build-macos.sh --install     # ...and copy the app to /Applications, then open it
-#   scripts/build-macos.sh --universal   # Apple silicon + Intel in one binary
-#   scripts/build-macos.sh --notarize    # submit the DMG to Apple (keychain profile ODM_NOTARY) and staple
-#   scripts/build-macos.sh --no-dmg      # .app only (fastest)
+#   scripts/build-macos-tauri.sh               # .app + .dmg for this Mac's CPU
+#   scripts/build-macos-tauri.sh --install     # ...and copy the app to /Applications, then open it
+#   scripts/build-macos-tauri.sh --universal   # Apple silicon + Intel in one binary
+#   scripts/build-macos-tauri.sh --notarize    # submit the DMG to Apple (keychain profile ODM_NOTARY) and staple
+#   scripts/build-macos-tauri.sh --no-dmg      # .app only (fastest)
 #
 # Needs: Rust (rustup) and Xcode Command Line Tools. Node is optional: the
 # prebuilt frontend in ui/dist is used when npm is not installed.
@@ -138,10 +140,13 @@ printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 # ---------------------------------------------------------------- sign
 step "Code signing"
-IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | grep 'Developer ID Application' | head -1 | awk '{print $2}' || true)"
+IDENTITY="${ODM_SIGN_IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null | grep 'Developer ID Application' | head -1 | awk '{print $2}' || true)}"
+# the hardened runtime needs the Apple Events entitlement for "shut down
+# when the queue finishes" (osascript → System Events)
+ENTITLEMENTS="apps/macos/entitlements.plist"
 if [ -n "$IDENTITY" ]; then
-  codesign --force --timestamp --options runtime -s "$IDENTITY" "$APP/Contents/MacOS/$BIN"
-  codesign --force --timestamp --options runtime -s "$IDENTITY" "$APP"
+  codesign --force --timestamp --options runtime --entitlements "$ENTITLEMENTS" -s "$IDENTITY" "$APP/Contents/MacOS/$BIN"
+  codesign --force --timestamp --options runtime --entitlements "$ENTITLEMENTS" -s "$IDENTITY" "$APP"
   echo "signed with Developer ID ($IDENTITY)"
 else
   codesign --force -s - "$APP/Contents/MacOS/$BIN"
@@ -205,14 +210,23 @@ APPLESCRIPT
   if [ -n "$IDENTITY" ]; then codesign --force --timestamp -s "$IDENTITY" "$DMG_OUT"; fi
   echo "built $DMG_OUT ($(du -h "$DMG_OUT" | cut -f1))"
 
-  if [ "$NOTARIZE" = 1 ]; then
-    step "Notarizing (profile $NOTARY_PROFILE)"
-    [ -n "$IDENTITY" ] || die "notarization needs a Developer ID Application certificate"
+fi
+
+# ---------------------------------------------------------------- notarize
+if [ "$NOTARIZE" = 1 ]; then
+  step "Notarizing (profile $NOTARY_PROFILE)"
+  [ -n "$IDENTITY" ] || die "notarization needs a Developer ID Application certificate"
+  if [ "$DMG" = 1 ]; then
     xcrun notarytool submit "$DMG_OUT" --keychain-profile "$NOTARY_PROFILE" --wait --timeout 30m
     xcrun stapler staple "$DMG_OUT"
-    xcrun stapler staple "$APP" || true
     spctl -a -t open --context context:primary-signature -v "$DMG_OUT" || true
+  else
+    ZIP="$OUT/odm-notarize.zip"
+    ditto -c -k --keepParent "$APP" "$ZIP"
+    xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --timeout 30m
+    rm -f "$ZIP"
   fi
+  xcrun stapler staple "$APP" || true
 fi
 
 # ---------------------------------------------------------------- install

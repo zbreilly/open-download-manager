@@ -1,13 +1,15 @@
 # Open Download Manager
 
-A cross-platform download manager modeled on Internet Download Manager. It runs on macOS, Windows and Linux from one codebase: a Rust engine with a Tauri 2 + Svelte 5 interface.
+A cross-platform download manager modeled on Internet Download Manager. One Rust engine drives a native SwiftUI app on macOS and a Tauri 2 + Svelte 5 app on Windows and Linux.
 
 ## Platforms
 
 | Platform | Interface | Build |
 |---|---|---|
-| macOS 13+ | Native SwiftUI/AppKit (`apps/macos`) | `scripts/build-macos.sh --install` |
-| Windows, Linux | Tauri 2 + Svelte (`src-tauri`, `ui`) | `.github/workflows/build.yml` |
+| macOS 13+ (Apple silicon, Intel) | Native SwiftUI/AppKit (`apps/macos`) | `scripts/build-macos.sh --install`, or the `macos-native` workflow (DMG) |
+| Windows 10/11 (x64) | Tauri 2 + Svelte (`src-tauri`, `ui`) | `windows-linux` workflow (NSIS `.exe` and `.msi`) |
+| Debian / Ubuntu (x64, ARM64) | Tauri 2 + Svelte | `windows-linux` workflow (`.deb`) |
+| Fedora (x64, ARM64) | Tauri 2 + Svelte | `windows-linux` workflow (`.rpm`) |
 
 All of them use the same Rust engine (`crates/odm-core`). The macOS app links it as a static library through a small C interface (`crates/odm-ffi`).
 
@@ -77,20 +79,39 @@ The extension talks to the app on `127.0.0.1:8901`. The app only accepts request
 
 ## Development
 
+On Linux, install the system libraries first (Debian/Ubuntu names):
+
 ```bash
+sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+```
+
+```bash
+bash extension/build.sh                 # the app bundles extension/dist
+npm --prefix ui ci
 # terminal 1: UI with hot reload
-npm --prefix ui install && npm --prefix ui run dev
+npm --prefix ui run dev
 # terminal 2: app pointing at the dev server
 cargo run -p open-download-manager
 ```
 
-Engine tests run a local HTTP server that supports ranges and can simulate failures:
+Tests and lints (the `checks` workflow runs the same on every pull request):
 
 ```bash
-cargo test -p odm-core
+cargo test -p odm-core                       # engine, against a local HTTP server that can simulate failures
+cargo test -p odm-ffi --features test-hooks  # C interface
+cargo clippy -p odm-core -p odm-ffi --all-targets -- -D warnings
+npm --prefix ui run check
 ```
 
-To build installers for every platform, push a `v*` tag or run the **build** workflow by hand (`.github/workflows/build.yml`). It produces a DMG (universal), NSIS/MSI installers, and deb/rpm/AppImage packages.
+`ui/dist` is committed so the macOS Tauri script works without Node. After changing the UI, run `npm --prefix ui run build` and commit `ui/dist` too; CI fails if it is stale.
+
+### CI and releases
+
+- **`windows-linux`** (every push to `main`): builds the Windows installers and the Linux `.deb`/`.rpm` packages for x64 and ARM64. Each package is installed (in clean Debian and Fedora containers for Linux), launched, and used for a real download through the browser bridge, which is checked byte for byte. The Tauri CLI version is pinned in `ui/package.json`.
+- **`macos-native`** (pushes that touch the macOS app or the engine): type-checks and builds the native app and DMG, then runs the same download check.
+- **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The workflow builds everything (a universal macOS DMG included) and creates a draft release with all of the installers attached.
+
+Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one.
 
 ## Layout
 
@@ -102,7 +123,7 @@ crates/odm-core/     engine: task.rs (segmented downloader), manager.rs (list, q
 src-tauri/           desktop shell: IPC commands, windows, tray, extension bridge (bridge.rs), power actions
 ui/                  Svelte 5 frontend (one bundle, routed per window); ui/dist is the prebuilt copy
 extension/           browser extension source (src/), manifests, build.sh -> extension/dist
-scripts/             build-macos.sh
+scripts/             build-macos.sh (native), build-macos-tauri.sh, ci/ (test server and checks used by CI)
 download-manager-ui/ design spec (HANDOFF.md), tokens, reference screens, brand assets
 legacy/              the earlier prototype (std-only engine, Swift shell, v1 extension), kept for reference
 ```

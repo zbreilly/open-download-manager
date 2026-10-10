@@ -2936,7 +2936,7 @@ name = "odm-core"
 version = "0.2.0"
 dependencies = [
  "chrono",
- "dirs 6.0.0",
+ "dirs 7.0.0",
  "fs4",
  "futures-util",
  "libc",

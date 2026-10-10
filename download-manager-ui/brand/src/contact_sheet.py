@@ -5,7 +5,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 DIST, OUT = sys.argv[1], sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
-font = ImageFont.truetype("/home/claude/fonts/Plex-Medium.otf", 12)
+# IBM Plex Sans Medium (OFL); set PLEX_MEDIUM or put it in src/fonts/
+font = ImageFont.truetype(os.environ.get("PLEX_MEDIUM", os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "IBMPlexSans-Medium.otf")), 12)
 manifest = json.load(open(f"{DIST}/icons/manifest.json"))
 
 # Icon sheet: each icon at 48 / 24 / 16 on dark, label below

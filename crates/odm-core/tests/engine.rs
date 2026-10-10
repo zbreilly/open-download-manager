@@ -74,13 +74,13 @@ async fn pause_and_resume() {
     let id = add(&m, format!("{}/f/p.bin?size={size}&delay=30", srv.base), true, 4);
     wait_status(&m, &id, Status::Downloading, 10).await;
     tokio::time::sleep(Duration::from_millis(400)).await;
-    m.pause(&[id.clone()]);
+    m.pause(std::slice::from_ref(&id));
     tokio::time::sleep(Duration::from_millis(300)).await;
     let d = m.get(&id).unwrap();
     assert_eq!(d.status, Status::Paused);
     assert!(d.received_bytes > 0 && d.received_bytes < size, "received {}", d.received_bytes);
     let before = d.received_bytes;
-    m.resume(&[id.clone()]);
+    m.resume(std::slice::from_ref(&id));
     let d = wait_status(&m, &id, Status::Complete, 60).await;
     assert!(std::fs::read(d.final_path()).unwrap() == common::expected(size));
     assert!(before > 0);
@@ -144,7 +144,7 @@ async fn resume_after_restart() {
         id = add(&m, format!("{}/f/r.bin?size={size}&delay=30", srv.base), true, 4);
         wait_status(&m, &id, Status::Downloading, 10).await;
         tokio::time::sleep(Duration::from_millis(400)).await;
-        m.pause(&[id.clone()]);
+        m.pause(std::slice::from_ref(&id));
         tokio::time::sleep(Duration::from_millis(300)).await;
         m.shutdown();
     }
@@ -153,7 +153,7 @@ async fn resume_after_restart() {
     assert_eq!(d.status, Status::Paused);
     assert!(d.received_bytes > 0);
     let hits_before = srv.hits.load(std::sync::atomic::Ordering::SeqCst);
-    m.resume(&[id.clone()]);
+    m.resume(std::slice::from_ref(&id));
     let d = wait_status(&m, &id, Status::Complete, 60).await;
     assert!(std::fs::read(d.final_path()).unwrap() == common::expected(size));
     assert!(srv.hits.load(std::sync::atomic::Ordering::SeqCst) > hits_before);
@@ -297,11 +297,11 @@ async fn file_changed_on_server_restarts() {
     let id = add(&m, format!("{}/f/c.bin?size={size}&delay=5&etag=1", srv.base), true, 2);
     wait_status(&m, &id, Status::Downloading, 10).await;
     tokio::time::sleep(Duration::from_millis(400)).await;
-    m.pause(&[id.clone()]);
+    m.pause(std::slice::from_ref(&id));
     tokio::time::sleep(Duration::from_millis(300)).await;
     // the stored etag no longer matches what the server reports for If-Range
     m.refresh_link(&id, &format!("{}/f/c.bin?size={size}&etag=2", srv.base)).await.unwrap();
-    m.resume(&[id.clone()]);
+    m.resume(std::slice::from_ref(&id));
     let d = wait_status(&m, &id, Status::Complete, 60).await;
     assert!(std::fs::read(d.final_path()).unwrap() == common::expected(size));
 }
@@ -336,7 +336,7 @@ async fn delete_removes_part_files() {
     let d = wait_status(&m, &id, Status::Downloading, 10).await;
     let part = odm_core::util::part_path(&d.final_path());
     assert!(part.exists());
-    m.delete(&[id.clone()], true);
+    m.delete(std::slice::from_ref(&id), true);
     tokio::time::sleep(Duration::from_millis(800)).await;
     assert!(m.get(&id).is_none());
     assert!(!part.exists());

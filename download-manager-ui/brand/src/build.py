@@ -13,7 +13,8 @@ from fontTools.pens.transformPen import TransformPen
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "dist")
-PLEX = os.environ.get("PLEX_SEMIBOLD", "/home/claude/fonts/Plex-SemiBold.otf")
+# IBM Plex Sans SemiBold (OFL), e.g. from https://github.com/IBM/plex
+PLEX = os.environ.get("PLEX_SEMIBOLD", os.path.join(HERE, "fonts", "IBMPlexSans-SemiBold.otf"))
 
 # Brand colors (match design/tokens.css)
 ACCENT = "#5B9DFF"

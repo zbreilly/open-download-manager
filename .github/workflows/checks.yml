@@ -1,0 +1,70 @@
+name: checks
+
+# Tests and lints. Runs on pull requests, and is called by the
+# windows-linux workflow before it builds installers.
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  rust:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: checks
+      - name: Engine and FFI tests
+        run: |
+          mkdir -p ci-out
+          { cargo test -p odm-core && cargo test -p odm-ffi --features test-hooks; } 2>&1 | tee ci-out/test.log
+      - name: Clippy
+        run: cargo clippy -p odm-core -p odm-ffi --all-targets -- -D warnings 2>&1 | tee ci-out/clippy.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-checks-rust
+          path: ci-out/
+
+  ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Type-check
+        run: |
+          npm --prefix ui ci
+          npm --prefix ui run check
+      - name: Committed ui/dist matches the source
+        run: |
+          npm --prefix ui run build
+          if [ -n "$(git status --porcelain ui/dist)" ]; then
+            git status --short ui/dist
+            echo "ui/dist is stale: run 'npm --prefix ui run build' and commit it"
+            exit 1
+          fi
+      - name: Extension
+        run: |
+          bash extension/build.sh
+          for f in extension/src/*.js; do node --check "$f"; done
+      - name: Versions agree
+        run: scripts/ci/check-versions.sh

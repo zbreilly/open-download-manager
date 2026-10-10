@@ -9,11 +9,20 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "extension/**"
+      - "src-tauri/icons/**"
+      - "download-manager-ui/brand/dist/browser-extension/**"
+      - "scripts/ci/**"
       - ".github/workflows/macos-native.yml"
   workflow_dispatch:
     inputs:
       universal:
         description: "Build a universal (Apple silicon + Intel) binary"
+        type: boolean
+        default: false
+  # the windows-linux workflow calls this for tagged releases
+  workflow_call:
+    inputs:
+      universal:
         type: boolean
         default: false
 
@@ -22,14 +31,20 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   build:
     runs-on: macos-15
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Toolchain info
         run: |
@@ -41,75 +56,106 @@ jobs:
           mkdir -p ci-out
           apps/macos/build.sh --typecheck 2>&1 | tee ci-out/typecheck.log
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
         with:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: macos-native
 
       - name: Engine tests
-        run: cargo test -p odm-core
+        run: cargo test -p odm-core 2>&1 | tee ci-out/test.log
 
       - name: Build app
+        env:
+          UNIVERSAL: ${{ inputs.universal }}
         run: |
-          mkdir -p ci-out
           bash extension/build.sh
-          if [ "${{ inputs.universal }}" = "true" ]; then
+          if [ "$UNIVERSAL" = "true" ]; then
             apps/macos/build.sh --dmg --universal 2>&1 | tee ci-out/build.log
           else
             apps/macos/build.sh --dmg 2>&1 | tee ci-out/build.log
           fi
 
-      - name: Smoke test and screenshots
+      - name: Smoke test, download, screenshots
         run: |
           set -x
           APP="$PWD/dist/macos-native/Open Download Manager.app"
-          mkdir -p ci-out
           open "$APP"
           sleep 8
           pgrep -fl OpenDownloadManager || { echo "app exited early"; exit 1; }
           screencapture -x ci-out/01-main.png || true
-          open "odm://add?url=https://proof.ovh.net/files/100Mb.dat"
-          sleep 6
-          screencapture -x ci-out/02-add.png || true
+          # a web deep link opens a pre-filled Add window but must not
+          # probe or start anything by itself
+          open "odm://add?url=http://127.0.0.1:9/never-fetched.bin"
+          sleep 5
+          screencapture -x ci-out/02-add-from-link.png || true
           osascript -e 'tell application "System Events" to keystroke return' || true
+          sleep 2
+          screencapture -x ci-out/02b-after-return.png || true
+          osascript -e 'tell application "System Events" to key code 53' || true
+          # real download handed over the browser bridge, checked byte for byte
+          bash scripts/ci/e2e-download.sh "$HOME/Downloads" > ci-out/e2e.log 2>&1 &
+          E2E=$!
           sleep 6
           screencapture -x ci-out/03-downloading.png || true
-          osascript -e 'tell application "Open Download Manager" to activate' -e 'tell application "System Events" to keystroke "n" using command down' || true
-          sleep 3
-          screencapture -x ci-out/03b-add-menu.png || true
-          osascript -e 'tell application "System Events" to key code 53' || true
+          wait $E2E || { cat ci-out/e2e.log; exit 1; }
+          cat ci-out/e2e.log
+          screencapture -x ci-out/03b-downloaded.png || true
           osascript -e 'tell application "Open Download Manager" to activate' -e 'tell application "System Events" to keystroke "," using command down' || true
           sleep 3
           screencapture -x ci-out/04-settings.png || true
-          log show --last 2m --predicate 'process == "OpenDownloadManager"' --style compact > ci-out/app.log 2>/dev/null || true
-          pkill -f OpenDownloadManager || true
+          log show --last 3m --predicate 'process == "OpenDownloadManager"' --style compact > ci-out/app.log 2>/dev/null || true
+          osascript -e 'tell application "Open Download Manager" to quit' || true
+          sleep 3
+          pgrep -fl OpenDownloadManager && { echo "app did not quit"; pkill -f OpenDownloadManager; } || true
 
-      - name: Publish CI output to the ci-output branch
-        if: always()
-        run: |
-          [ -d ci-out ] || exit 0
-          cd ci-out
-          printf '%s\n' "run ${{ github.run_id }} · commit ${{ github.sha }} · ${{ job.status }}" > RUN.txt
-          git init -q
-          git checkout -q -b ci-output
-          git config user.name "ci"
-          git config user.email "ci@users.noreply.github.com"
-          git add -A
-          git commit -q -m "CI output for ${{ github.sha }}"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-output
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-macos
+          path: ci-out/
 
       - name: Zip app
         run: |
           cd dist/macos-native
           ditto -c -k --keepParent "Open Download Manager.app" OpenDownloadManager-macOS.zip
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: OpenDownloadManager-macOS
           path: |
             dist/macos-native/*.dmg
             dist/macos-native/*.zip
           retention-days: 14
+
+  report:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        continue-on-error: true
+        with:
+          name: logs-macos
+          path: ci-out
+      - name: Publish CI output to the ci-output branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RESULT: ${{ needs.build.result }}
+        run: |
+          mkdir -p ci-out
+          cd ci-out
+          printf '%s\n' "run $GITHUB_RUN_ID · commit $GITHUB_SHA · $RESULT" > RUN.txt
+          git init -q
+          git checkout -q -b ci-output
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CI output for $GITHUB_SHA"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic $auth" push -q -f "https://github.com/$REPO.git" ci-output

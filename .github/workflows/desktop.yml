@@ -1,8 +1,10 @@
 name: windows-linux
 
 # Windows (x64) installers and Linux .deb (Debian/Ubuntu) and .rpm
-# (Fedora) packages for x64 and ARM64. Each Linux package is installed
-# and launched in a clean Debian or Fedora container on its own arch.
+# (Fedora) packages for x64 and ARM64. The Windows installer and each Linux
+# package (in a clean Debian or Fedora container on its own arch) are
+# installed, launched, and used for a real download through the browser
+# bridge. A v* tag also builds the macOS app and drafts a release.
 
 on:
   push:
@@ -19,44 +21,46 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  test:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo test -p odm-core
+  checks:
+    uses: ./.github/workflows/checks.yml
 
   windows:
-    needs: test
+    needs: checks
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with: { shared-key: windows }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: windows
       - name: Frontend and extension
-        shell: bash
         run: |
           npm --prefix ui ci
           npm --prefix ui run build
           bash extension/build.sh
       - name: Bundle (NSIS + MSI)
-        shell: bash
         working-directory: src-tauri
         run: |
           mkdir -p ../ci-out
-          npx --yes @tauri-apps/cli@2 build --bundles nsis,msi 2>&1 | tee ../ci-out/build.log
-          exit ${PIPESTATUS[0]}
-      - name: Install silently and launch
+          # the CLI version is pinned in ui/package.json
+          ../ui/node_modules/.bin/tauri build --bundles nsis,msi 2>&1 | tee ../ci-out/build.log
+      - name: Install silently, launch, download
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Stop'
           $exe = Get-ChildItem target/release/bundle/nsis/*.exe | Select-Object -First 1
           Start-Process $exe.FullName -ArgumentList '/S' -Wait
           $app = Get-ChildItem "$env:LOCALAPPDATA\Open Download Manager\*.exe","$env:ProgramFiles\Open Download Manager\*.exe" -ErrorAction SilentlyContinue |
@@ -67,18 +71,27 @@ jobs:
           Start-Sleep 15
           if ($p.HasExited) { Write-Error "app exited early ($($p.ExitCode))"; exit 1 }
           Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-          $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
-          $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
-          [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
-          $bmp.Save("ci-out/windows.png")
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("ci-out/$name")
+          }
+          Shot "windows.png"
+          $env:PYTHON = 'python'
+          $dl = "$($env:USERPROFILE -replace '\\','/')/Downloads"
+          & "C:\Program Files\Git\bin\bash.exe" scripts/ci/e2e-download.sh $dl 2>&1 | Tee-Object -Append ci-out/install.log
+          $rc = $LASTEXITCODE
+          Shot "windows-after-download.png"
           Stop-Process -Id $p.Id -Force
-          "launch ok" | Tee-Object -Append ci-out/install.log
-      - uses: actions/upload-artifact@v4
-        if: always()
+          if ($rc -ne 0) { Write-Error "end-to-end download failed"; exit 1 }
+          "launch and download ok" | Tee-Object -Append ci-out/install.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
         with:
           name: logs-windows-x64
           path: ci-out/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: OpenDownloadManager-Windows-x64
           path: |
@@ -86,7 +99,7 @@ jobs:
             target/release/bundle/msi/*.msi
 
   linux:
-    needs: test
+    needs: checks
     strategy:
       fail-fast: false
       matrix:
@@ -98,11 +111,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
         with:
           shared-key: linux-${{ matrix.arch }}
       - name: Build dependencies
@@ -118,19 +134,19 @@ jobs:
         working-directory: src-tauri
         run: |
           mkdir -p ../ci-out
-          npx --yes @tauri-apps/cli@2 build --bundles deb,rpm 2>&1 | tee ../ci-out/build.log
-          exit ${PIPESTATUS[0]}
+          # the CLI version is pinned in ui/package.json
+          ../ui/node_modules/.bin/tauri build --bundles deb,rpm 2>&1 | tee ../ci-out/build.log
       - name: Package info
         run: |
           ls -l target/release/bundle/deb target/release/bundle/rpm | tee ci-out/packages.txt
           dpkg-deb -I target/release/bundle/deb/*.deb | tee -a ci-out/packages.txt
           rpm -qpR target/release/bundle/rpm/*.rpm | tee -a ci-out/packages.txt
-      - uses: actions/upload-artifact@v4
-        if: always()
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
         with:
           name: logs-build-linux-${{ matrix.arch }}
           path: ci-out/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: OpenDownloadManager-Linux-${{ matrix.arch }}
           path: |
@@ -148,7 +164,7 @@ jobs:
     container: ${{ matrix.distro == 'debian' && 'debian:stable' || 'fedora:latest' }}
     timeout-minutes: 20
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: OpenDownloadManager-Linux-${{ matrix.arch }}
           path: pkg
@@ -157,61 +173,93 @@ jobs:
           mkdir -p ci-out
           if [ "${{ matrix.distro }}" = debian ]; then
             apt-get update
-            apt-get install -y ./pkg/deb/*.deb xvfb xauth imagemagick dbus-x11 procps 2>&1 | tee ci-out/install.log
+            apt-get install -y ./pkg/deb/*.deb xvfb xauth imagemagick dbus-x11 procps curl python3 git 2>&1 | tee ci-out/install.log
           else
-            dnf install -y ./pkg/rpm/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-x11 procps-ng 2>&1 | tee ci-out/install.log
+            dnf install -y ./pkg/rpm/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-x11 procps-ng curl python3 git 2>&1 | tee ci-out/install.log
           fi
           command -v open-download-manager | tee -a ci-out/install.log
-      - name: Launch and screenshot
+      # only the e2e scripts are needed (the container job has no source)
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts/ci
+          path: src
+      - name: Launch, download, screenshot
         run: |
           Xvfb :99 -screen 0 1440x900x24 &
           sleep 2
           export DISPLAY=:99 HOME=/root
           dbus-launch open-download-manager > ci-out/app.log 2>&1 &
-          sleep 20
+          sleep 15
           pgrep -f open-download-manage[r] || { echo "app exited early"; cat ci-out/app.log; exit 1; }
           import -display :99 -window root ci-out/screen.png || true
+          bash src/scripts/ci/e2e-download.sh /root/Downloads 2>&1 | tee -a ci-out/install.log
+          import -display :99 -window root ci-out/screen-after-download.png || true
           pkill -f open-download-manage[r] || true
-          echo "launch ok" >> ci-out/install.log
-      - uses: actions/upload-artifact@v4
-        if: always()
+          echo "launch and download ok" >> ci-out/install.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
         with:
           name: logs-${{ matrix.distro }}-${{ matrix.arch }}
           path: ci-out/
 
+  macos:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: checks
+    permissions:
+      contents: write
+    uses: ./.github/workflows/macos-native.yml
+    with:
+      universal: true
+
   report:
-    needs: [windows, linux, install-test]
-    if: always()
+    needs: [checks, windows, linux, install-test]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        continue-on-error: true
         with:
           pattern: logs-*
           path: ci-out
       - name: Publish logs to the ci-output-desktop branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SUMMARY: "checks=${{ needs.checks.result }} windows=${{ needs.windows.result }} linux=${{ needs.linux.result }} install-test=${{ needs.install-test.result }}"
         run: |
+          mkdir -p ci-out
           cd ci-out
-          printf '%s\n' "run ${{ github.run_id }} · commit ${{ github.sha }}" \
-            "windows=${{ needs.windows.result }} linux=${{ needs.linux.result }} install-test=${{ needs.install-test.result }}" > RUN.txt
+          printf '%s\n' "run $GITHUB_RUN_ID · commit $GITHUB_SHA" "$SUMMARY" > RUN.txt
           git init -q
           git checkout -q -b ci-output-desktop
           git config user.name "ci"
           git config user.email "ci@users.noreply.github.com"
           git add -A
-          git commit -q -m "CI output for ${{ github.sha }}"
-          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-output-desktop
+          git commit -q -m "CI output for $GITHUB_SHA"
+          auth=$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)
+          git -c http.extraheader="AUTHORIZATION: basic $auth" push -q -f "https://github.com/$REPO.git" ci-output-desktop
 
   release:
-    needs: [windows, linux, install-test]
+    needs: [windows, linux, install-test, macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Tag matches the version
+        run: scripts/ci/check-versions.sh "$GITHUB_REF_NAME"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           pattern: OpenDownloadManager-*
           path: out
           merge-multiple: true
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           draft: true
           files: |
@@ -219,3 +267,4 @@ jobs:
             out/**/*.msi
             out/**/*.deb
             out/**/*.rpm
+            out/**/*.dmg

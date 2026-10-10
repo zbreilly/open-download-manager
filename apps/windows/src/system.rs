@@ -235,6 +235,63 @@ pub fn tray_available() -> bool {
     }
 }
 
+// ------------------------------------------------------------ context menu
+
+/// One entry of a context menu.
+pub enum PopupItem {
+    Item { key: String, label: String, enabled: bool },
+    Separator,
+    Submenu { label: String, items: Vec<PopupItem> },
+}
+
+impl PopupItem {
+    pub fn item(key: impl Into<String>, label: impl Into<String>, enabled: bool) -> Self {
+        PopupItem::Item { key: key.into(), label: label.into(), enabled }
+    }
+}
+
+/// Fill a Win32 menu; `keys[id - 1]` is the key of the item with that id.
+unsafe fn fill_menu(menu: HMENU, items: &[PopupItem], keys: &mut Vec<String>) {
+    for item in items {
+        match item {
+            PopupItem::Separator => {
+                unsafe { AppendMenuW(menu, MF_SEPARATOR, 0, std::ptr::null()) };
+            }
+            PopupItem::Item { key, label, enabled } => {
+                keys.push(key.clone());
+                let flags = if *enabled { MF_STRING } else { MF_STRING | MF_GRAYED };
+                unsafe { AppendMenuW(menu, flags, keys.len(), wide(label).as_ptr()) };
+            }
+            PopupItem::Submenu { label, items } => unsafe {
+                let sub = CreatePopupMenu();
+                fill_menu(sub, items, keys);
+                // the parent menu owns (and destroys) the submenu
+                AppendMenuW(menu, MF_POPUP, sub as usize, wide(label).as_ptr());
+            },
+        }
+    }
+}
+
+/// Show a context menu at the pointer and wait for the choice: the key of
+/// the chosen item, or None. `window` is the window the menu belongs to.
+pub fn popup_menu(window: *mut c_void, items: &[PopupItem]) -> Option<String> {
+    let mut keys = vec![];
+    unsafe {
+        let menu = CreatePopupMenu();
+        if menu.is_null() {
+            return None;
+        }
+        fill_menu(menu, items, &mut keys);
+        let mut at = POINT { x: 0, y: 0 };
+        GetCursorPos(&mut at);
+        // the menu closes on a click elsewhere only when its owner is in front
+        SetForegroundWindow(window as HWND);
+        let chosen = TrackPopupMenu(menu, TPM_RIGHTBUTTON | TPM_RETURNCMD, at.x, at.y, 0, window as HWND, std::ptr::null());
+        DestroyMenu(menu);
+        keys.get((chosen as usize).wrapping_sub(1)).cloned()
+    }
+}
+
 // -------------------------------------------------------- sign-in, power
 
 fn exe_command() -> Option<String> {

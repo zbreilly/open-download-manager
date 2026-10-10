@@ -2,6 +2,7 @@
 //! download list, a details panel and a status bar.
 use crate::app::{act, limit_label, toggle_limit, Action, Shared};
 use crate::widgets::*;
+use crate::system::PopupItem;
 use crate::{engine, system};
 use odm_ui::store::{Row, SortKey, Store};
 use odm_ui::{b, fmt, n, opt_n, s};
@@ -86,7 +87,6 @@ struct RowInput {
     row: Row,
     selected: bool,
     sender: LocalSender<Msg>,
-    menu: Menu,
 }
 
 impl PartialEq for RowInput {
@@ -139,21 +139,12 @@ impl Component for RowView {
             .on_pointer_pressed(input.sender.callback(move |info: PointerEventInfo| Msg::Press(id.clone(), info)))
             .content(cells)
             .tooltip(&r.name)
-            .menu(input.menu.clone())
     }
 }
 
 /// A menu or toolbar choice, by its key.
 fn command(key: Key) -> Msg {
     Msg::Command(key.as_str().unwrap_or("").to_string())
-}
-
-fn item(key: &str, label: &str, enabled: bool) -> MenuItem {
-    if enabled {
-        MenuItem::item(key, label)
-    } else {
-        MenuItem::disabled(key, label)
-    }
 }
 
 impl MainWindow {
@@ -179,46 +170,40 @@ impl MainWindow {
     }
 
     /// The right-click menu for the current selection.
-    fn row_menu(&self, store: &Store, sender: &LocalSender<Msg>) -> Menu {
+    fn row_menu(&self, store: &Store) -> Vec<PopupItem> {
         let rows = self.selected_records(store);
         let one = rows.len() == 1;
         let status = |d: &Value| s(d, "status").to_string();
         let first_complete = rows.first().map(|d| status(d) == "complete").unwrap_or(false);
         let ext = rows.first().map(|d| fmt::extension(s(d, "fileName"))).unwrap_or_default();
-        let queues: Vec<MenuItem> = store
-            .queues
-            .iter()
-            .map(|q| MenuItem::item(format!("queue:{}", s(q, "id")), s(q, "name")))
-            .chain([MenuItem::separator("qs"), MenuItem::item("queue:", "Remove from Queue")])
-            .collect();
+        let mut queues: Vec<PopupItem> = store.queues.iter().map(|q| PopupItem::item(format!("queue:{}", s(q, "id")), s(q, "name"), true)).collect();
+        queues.push(PopupItem::Separator);
+        queues.push(PopupItem::item("queue:", "Remove from Queue", true));
         let categories = store.categories();
+        let choices = |prefix: &str| categories.iter().map(|c| PopupItem::item(format!("{prefix}:{}", s(c, "id")), s(c, "name"), true)).collect::<Vec<_>>();
         let mut items = vec![
-            item("open", "Open", one && first_complete),
-            item("reveal", "Show in Folder", one),
-            item("progress", "Show Progress Window", one && !first_complete),
-            MenuItem::separator("s1"),
-            item("resume", "Resume", rows.iter().any(|d| matches!(status(d).as_str(), "paused" | "error" | "queued"))),
-            item("pause", "Pause", rows.iter().any(|d| fmt::is_active(&status(d)) || status(d) == "queued")),
-            item("redownload", "Redownload", one),
-            item("refresh", "Refresh Link…", one && !first_complete),
-            item("copy", "Copy Link", one),
-            MenuItem::separator("s2"),
-            MenuItem::submenu("queues", "Move to Queue", queues),
-            MenuItem::submenu("categories", "Category", categories.iter().map(|c| MenuItem::item(format!("category:{}", s(c, "id")), s(c, "name")))),
+            PopupItem::item("open", "Open", one && first_complete),
+            PopupItem::item("reveal", "Show in Folder", one),
+            PopupItem::item("progress", "Show Progress Window", one && !first_complete),
+            PopupItem::Separator,
+            PopupItem::item("resume", "Resume", rows.iter().any(|d| matches!(status(d).as_str(), "paused" | "error" | "queued"))),
+            PopupItem::item("pause", "Pause", rows.iter().any(|d| fmt::is_active(&status(d)) || status(d) == "queued")),
+            PopupItem::item("redownload", "Redownload", one),
+            PopupItem::item("refresh", "Refresh Link…", one && !first_complete),
+            PopupItem::item("copy", "Copy Link", one),
+            PopupItem::Separator,
+            PopupItem::Submenu { label: "Move to Queue".into(), items: queues },
+            PopupItem::Submenu { label: "Category".into(), items: choices("category") },
         ];
         if one && !ext.is_empty() {
-            items.push(MenuItem::submenu(
-                "always",
-                format!("Always Put .{ext} Files In"),
-                categories.iter().map(|c| MenuItem::item(format!("always:{}", s(c, "id")), s(c, "name"))),
-            ));
+            items.push(PopupItem::Submenu { label: format!("Always Put .{ext} Files In"), items: choices("always") });
         }
-        items.push(MenuItem::separator("s3"));
-        items.push(MenuItem::item("delete", if one { "Delete…".to_string() } else { format!("Delete {} Downloads…", rows.len()) }));
-        Menu::new(items, sender.callback(command))
+        items.push(PopupItem::Separator);
+        items.push(PopupItem::item("delete", if one { "Delete…".to_string() } else { format!("Delete {} Downloads…", rows.len()) }, true));
+        items
     }
 
-    fn press(&mut self, id: String, info: PointerEventInfo) {
+    fn press(&mut self, id: String, info: PointerEventInfo, context: &ComponentContext<Self>) {
         let store = self.shared.store.clone();
         let store = store.borrow();
         if info.is_right_button_pressed {
@@ -227,6 +212,10 @@ impl MainWindow {
                 self.selected = vec![id.clone()];
                 self.anchor = Some(id);
             }
+            // a native context menu at the pointer; its choice comes back
+            // as a command
+            let items = self.row_menu(&store);
+            let _ = context.run_window(move |window| Msg::Command(system::popup_menu(window.as_raw(), &items).unwrap_or_default()));
             return;
         }
         let double = self.last_press.as_ref().map(|(last, at)| *last == id && at.elapsed() < Duration::from_millis(450)).unwrap_or(false);
@@ -534,7 +523,6 @@ impl MainWindow {
             r.id.hash(&mut hasher);
         }
         let sender = context.sender();
-        let menu = self.row_menu(store, &sender);
         let selected: std::collections::HashSet<String> = self.selected.iter().cloned().collect();
         let rows = Rc::new(rows);
         let keys = rows.clone();
@@ -545,7 +533,7 @@ impl MainWindow {
             move |i| {
                 let row = rows[i].clone();
                 let selected = selected.contains(&row.id);
-                View::component::<RowView>(RowInput { row, selected, sender: sender.clone(), menu: menu.clone() })
+                View::component::<RowView>(RowInput { row, selected, sender: sender.clone() })
             },
         );
         ScrollViewer::new().content(ItemsRepeater::new().virtual_source(source)).into()
@@ -739,7 +727,7 @@ impl Component for MainWindow {
                 self.descending = self.sort == key && !self.descending;
                 self.sort = key;
             }
-            Msg::Press(id, info) => self.press(id, info),
+            Msg::Press(id, info) => self.press(id, info, context),
             Msg::Command(key) => {
                 // the details panel's buttons name their download
                 if let Some((command, id)) = key.strip_prefix("detail-").and_then(|k| k.split_once(':')) {

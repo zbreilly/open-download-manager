@@ -4,6 +4,7 @@
 //! * `manager`  — download list, queues, scheduler, limits, events
 //! * `store`    — SQLite persistence
 //! * `grabber`  — site grabber (link extraction)
+//! * `pairing`  — sealed messages between the app and its browser extension
 //! * `util`     — names, categories, batch patterns, hashing
 
 pub mod client;
@@ -11,6 +12,7 @@ pub mod grabber;
 pub mod limiter;
 pub mod manager;
 pub mod model;
+pub mod pairing;
 pub mod store;
 pub mod task;
 pub mod util;

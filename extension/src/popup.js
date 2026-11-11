@@ -9,7 +9,14 @@ async function render() {
   $("port").value = st.port;
   const dot = $("dot");
   dot.className = "dot";
-  if (!st.connected) {
+  if (st.link === "unpaired" || st.link === "wrongkey") {
+    dot.classList.add("warn");
+    $("status").textContent = st.link === "unpaired"
+      ? "Not paired — paste the pairing code from the app below"
+      : "The pairing code doesn't match the app — paste it again";
+    $("capture-box").hidden = true;
+    $("connection").open = true;
+  } else if (!st.connected) {
     $("status").textContent = "App not running — start Open Download Manager";
     $("capture-box").hidden = true;
   } else {
@@ -60,6 +67,16 @@ $("add").onclick = async () => {
   else $("status").textContent = "Couldn't reach the app";
 };
 $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") $("add").click(); });
+$("pair").onclick = async () => {
+  const r = await B.runtime.sendMessage({ type: "odm-set-pairing", code: $("code").value });
+  if (r?.error) { $("pair-note").textContent = r.error; return; }
+  $("code").value = "";
+  $("pair-note").textContent = r?.connected ? "Paired." : r?.link === "wrongkey"
+    ? "That code doesn't match the running app. Copy it again from the app."
+    : "Saved. Start the app to finish.";
+  render();
+};
+$("code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("pair").click(); });
 $("save").onclick = async () => { await B.runtime.sendMessage({ type: "odm-set-port", port: $("port").value }); render(); };
 
 (async () => {

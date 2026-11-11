@@ -68,6 +68,7 @@ QQC2.ApplicationWindow {
             anchors.fill: parent
             anchors.margins: Kirigami.Units.smallSpacing
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: win.s === null ? "" : win.s.error.length > 0 ? win.s.error : win.e ? win.e.summary : ""
                 color: win.s !== null && win.s.error.length > 0 ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
@@ -149,10 +150,12 @@ QQC2.ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.margins: Kirigami.Units.largeSpacing
                     Kirigami.Heading {
+                        textFormat: Text.PlainText
                         level: 2
                         text: win.e ? win.e.name : ""
                     }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         visible: win.e !== null && win.e.running
                         text: "● Running"
                         color: Kirigami.Theme.positiveTextColor
@@ -196,7 +199,7 @@ QQC2.ApplicationWindow {
                             value: win.e ? win.e.startHour : 0
                             onValueModified: win.send("time", { "field": "startTime", "hour": value, "minute": win.e.startMinute })
                         }
-                        QQC2.Label { text: ":" }
+                        QQC2.Label { textFormat: Text.PlainText; text: ":" }
                         QQC2.SpinBox {
                             from: 0
                             to: 59
@@ -218,7 +221,7 @@ QQC2.ApplicationWindow {
                             value: win.e ? win.e.stopHour : 0
                             onValueModified: win.send("time", { "field": "stopTime", "hour": value, "minute": win.e.stopMinute })
                         }
-                        QQC2.Label { text: ":" }
+                        QQC2.Label { textFormat: Text.PlainText; text: ":" }
                         QQC2.SpinBox {
                             from: 0
                             to: 59
@@ -247,6 +250,7 @@ QQC2.ApplicationWindow {
                         }
                     }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         Kirigami.FormData.label: "Next run:"
                         visible: win.e !== null && win.e.nextRun !== null
                         text: visible ? win.e.nextRun : ""
@@ -282,6 +286,7 @@ QQC2.ApplicationWindow {
                         onChosen: id => win.send("on-finish", id)
                     }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         visible: win.e !== null && win.e.countdownNote
                         text: "A 60-second countdown with a Cancel button appears first."
                         font: Kirigami.Theme.smallFont
@@ -295,6 +300,7 @@ QQC2.ApplicationWindow {
                 }
 
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.margins: Kirigami.Units.largeSpacing
                     visible: win.e !== null && win.e.order.length === 0
@@ -312,11 +318,13 @@ QQC2.ApplicationWindow {
                         Layout.leftMargin: Kirigami.Units.largeSpacing
                         Layout.rightMargin: Kirigami.Units.largeSpacing
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: item.modelData.name
                             elide: Text.ElideMiddle
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             text: item.modelData.info
                             font: Kirigami.Theme.smallFont
                             opacity: 0.7

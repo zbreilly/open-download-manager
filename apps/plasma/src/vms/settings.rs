@@ -186,6 +186,18 @@ impl Vm for Settings {
                 }
                 None => backend::report("The extension isn't installed with this build. Run extension/build.sh in the source folder and load extension/dist/chromium.".into()),
             },
+            "copy-pairing" | "new-pairing" => {
+                let fresh = action == "new-pairing";
+                match api::call_as::<String>(if fresh { "reset_pairing" } else { "pairing_code" }, Value::Null) {
+                    Ok(code) => {
+                        backend::copy_text(&code);
+                        if fresh {
+                            backend::report("New pairing code copied. Paste it into the extension in each browser; the old code no longer works.".into());
+                        }
+                    }
+                    Err(e) => backend::report(e),
+                }
+            }
             "category-name" => {
                 let name = s(payload, "value").trim().to_string();
                 if !name.is_empty() {

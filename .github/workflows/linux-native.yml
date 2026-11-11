@@ -129,6 +129,8 @@ jobs:
           GSK_RENDERER: cairo
           QT_QUICK_BACKEND: software
           LIBGL_ALWAYS_SOFTWARE: "1"
+          # the app downloads this once the e2e script serves it
+          ODM_E2E_URL: http://127.0.0.1:8919/odm-ci-e2e.bin
         run: |
           UI=$([ "$XDG_CURRENT_DESKTOP" = KDE ] && echo odm-plasma || echo odm-gnome)
           Xvfb :99 -screen 0 1440x900x24 &

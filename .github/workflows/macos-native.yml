@@ -82,7 +82,8 @@ jobs:
         run: |
           set -x
           APP="$PWD/dist/macos-native/Open Download Manager.app"
-          open "$APP"
+          # the app downloads this once the e2e script serves it
+          open --env ODM_E2E_URL=http://127.0.0.1:8919/odm-ci-e2e.bin "$APP"
           sleep 8
           pgrep -fl OpenDownloadManager || { echo "app exited early"; exit 1; }
           screencapture -x ci-out/01-main.png || true
@@ -95,7 +96,7 @@ jobs:
           sleep 2
           screencapture -x ci-out/02b-after-return.png || true
           osascript -e 'tell application "System Events" to key code 53' || true
-          # real download handed over the browser bridge, checked byte for byte
+          # real download (ODM_E2E_URL above), checked byte for byte
           bash scripts/ci/e2e-download.sh "$HOME/Downloads" > ci-out/e2e.log 2>&1 &
           E2E=$!
           sleep 6

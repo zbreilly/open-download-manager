@@ -140,6 +140,11 @@ pub fn shell_event(ev: ShellEvent) {
     deliver(ev);
 }
 
+/// Put text on the clipboard (GUI thread).
+pub fn copy_text(text: &str) {
+    ffi::copy_to_clipboard(&QString::from(text));
+}
+
 /// Tell the user something went wrong (from any thread).
 pub fn report(message: String) {
     deliver(ShellEvent::Error(message));

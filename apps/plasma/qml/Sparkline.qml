@@ -19,12 +19,14 @@ ColumnLayout {
     RowLayout {
         Layout.fillWidth: true
         QQC2.Label {
+            textFormat: Text.PlainText
             Layout.fillWidth: true
             text: "Speed, last 60 s"
             font: Kirigami.Theme.smallFont
             color: Kirigami.Theme.disabledTextColor
         }
         QQC2.Label {
+            textFormat: Text.PlainText
             text: "peak " + spark.peak
             font: Kirigami.Theme.smallFont
             color: Kirigami.Theme.disabledTextColor

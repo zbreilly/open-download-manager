@@ -331,6 +331,21 @@ impl Prefs {
         });
         self.ext_status.add_suffix(&show);
         ext.add(&self.ext_status);
+        let pair = adw::ActionRow::builder().title("Pairing code").subtitle("Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends.").build();
+        for (label, method, done) in [("Copy", "pairing_code", "Pairing code copied."), ("New Code", "reset_pairing", "New pairing code copied. Paste it into the extension in each browser; the old code no longer works.")] {
+            let button = gtk::Button::builder().label(label).valign(gtk::Align::Center).build();
+            button.connect_clicked(move |_| match odm_ffi::api::call_as::<String>(method, Value::Null) {
+                Ok(code) => {
+                    if let Some(d) = gtk::gdk::Display::default() {
+                        d.clipboard().set_text(&code);
+                    }
+                    odm().report(done);
+                }
+                Err(e) => odm().report(&e),
+            });
+            pair.add_suffix(&button);
+        }
+        ext.add(&pair);
         ext.add(&self.ext_error);
         page.add(&ext);
 

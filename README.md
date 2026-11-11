@@ -70,7 +70,15 @@ The webview packages for older distributions have the same package name (`open-d
 - **Chrome / Edge / Brave / Opera / Vivaldi**: open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and pick `extension/dist/chromium`.
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. A permanent install needs the add-on to be signed through addons.mozilla.org.
 
-The extension talks to the app on `127.0.0.1:8901`. The app only accepts requests that come from browser-extension origins, so web pages cannot queue downloads.
+Then pair it with the app, once per browser: in the app, **Settings → Browser → Pairing code → Copy**; in the extension's popup, open **Connection**, paste the code and click **Pair**. **New Code** in the app replaces the code and unpairs every browser.
+
+The extension talks to the app on `127.0.0.1:8901`. Every message in both directions is encrypted and authenticated (AES-256-GCM) with the pairing code, so:
+
+- a program that takes the app's port can't read what the extension sends (links and their cookies) and can't answer it;
+- web pages, other extensions and other programs can't make the app do anything;
+- a request from the extension only opens the Add window. Nothing starts until you confirm it.
+
+Cookies, passwords and credential headers are erased from a download's record when it completes, and the database is readable only by your account.
 
 ## Features
 

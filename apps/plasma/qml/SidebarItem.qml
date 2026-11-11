@@ -24,12 +24,14 @@ QQC2.ItemDelegate {
             implicitHeight: Kirigami.Units.iconSizes.smallMedium
         }
         QQC2.Label {
+            textFormat: Text.PlainText
             Layout.fillWidth: true
             text: item.text
             elide: Text.ElideRight
             color: item.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
         }
         QQC2.Label {
+            textFormat: Text.PlainText
             visible: item.count > 0
             text: item.count
             font: Kirigami.Theme.smallFont

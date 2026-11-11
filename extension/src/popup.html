@@ -28,8 +28,11 @@
     <ul id="media"></ul>
   </section>
 
-  <details>
+  <details id="connection">
     <summary>Connection</summary>
+    <div class="label">Pairing code</div>
+    <div class="row"><input id="code" type="password" placeholder="Paste from the app" spellcheck="false" autocomplete="off"><button id="pair" class="sec">Pair</button></div>
+    <div class="d" id="pair-note">In the app: Settings → Browser integration → Pairing code → Copy. It keeps other programs from reading what this extension sends.</div>
     <div class="row"><input id="port" inputmode="numeric" style="width:90px;flex:none"><button id="save" class="sec">Save port</button></div>
     <div class="d">Must match Settings → Advanced → Extension port in the app.</div>
   </details>

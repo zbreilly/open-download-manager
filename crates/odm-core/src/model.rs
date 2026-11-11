@@ -143,7 +143,21 @@ fn default_when_finished() -> String {
     "notify".into()
 }
 
+/// Request headers that carry credentials.
+pub fn is_secret_header(name: &str) -> bool {
+    matches!(name.trim().to_ascii_lowercase().as_str(), "authorization" | "proxy-authorization" | "cookie")
+}
+
 impl Download {
+    /// Forget what was only needed to fetch the file: cookies, the password
+    /// and credential headers. Called when the download is complete, so they
+    /// don't stay in the database.
+    pub fn forget_secrets(&mut self) {
+        self.cookies = None;
+        self.password = None;
+        self.headers.retain(|(k, _)| !is_secret_header(k));
+    }
+
     pub fn final_path(&self) -> std::path::PathBuf {
         std::path::Path::new(&self.save_dir).join(&self.file_name)
     }
@@ -496,4 +510,27 @@ pub struct GrabbedLink {
     pub ext: String,
     pub category: String,
     pub source: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_finished_download_forgets_its_secrets() {
+        let mut d: Download = serde_json::from_value(serde_json::json!({
+            "id": "1", "url": "https://x.example/a.zip", "fileName": "a.zip", "ext": "ZIP", "category": "general",
+            "queueId": null, "saveDir": "/dl", "totalBytes": 1, "receivedBytes": 1, "status": "complete",
+            "resumable": true, "maxConnections": 1, "error": null, "addedAt": "", "completedAt": null,
+            "cookies": "sid=1", "username": "me", "password": "pw", "referrer": "https://x.example/",
+            "headers": [["Authorization", "Bearer t"], ["X-Plain", "1"], [" cookie ", "a=b"]]
+        }))
+        .unwrap();
+        d.forget_secrets();
+        assert_eq!((d.cookies, d.password), (None, None));
+        assert_eq!(d.headers, vec![("X-Plain".to_string(), "1".to_string())]);
+        // what identifies the download stays
+        assert_eq!(d.username.as_deref(), Some("me"));
+        assert_eq!(d.referrer.as_deref(), Some("https://x.example/"));
+    }
 }

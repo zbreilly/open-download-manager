@@ -392,14 +392,14 @@ impl MainWindow {
         me.update_details();
         MainWindow::refresh_empty(&inner);
         if let Some(e) = app.start_error.borrow().as_ref() {
-            inner.engine_error.set_title(&format!("The download engine failed to start: {e}"));
+            inner.engine_error.set_title(&glib::markup_escape_text(&format!("The download engine failed to start: {e}")));
             inner.engine_error.set_revealed(true);
         }
         me
     }
 
     pub fn toast(&self, msg: &str) {
-        self.inner.toasts.add_toast(adw::Toast::builder().title(msg).timeout(6).build());
+        self.inner.toasts.add_toast(adw::Toast::builder().title(glib::markup_escape_text(msg)).timeout(6).build());
     }
 
     // -------------------------------------------------------------- columns
@@ -1066,7 +1066,7 @@ impl MainWindow {
             "shutdown" => "Shutting down",
             _ => "Quitting",
         };
-        self.inner.power.set_title(&format!("“{}” finished. {verb} in {left}s.", p.queue));
+        self.inner.power.set_title(&glib::markup_escape_text(&format!("“{}” finished. {verb} in {left}s.", p.queue)));
         self.inner.power.set_revealed(true);
     }
 

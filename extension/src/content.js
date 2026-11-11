@@ -78,7 +78,8 @@
     root.querySelector("button").addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (!current) return;
+      // only a real click by the user, never one a page script made up
+      if (!e.isTrusted || !current) return;
       const src = current.currentSrc || current.src || current.querySelector("source")?.src || "";
       // streamed (blob:) video: the background offers the media this tab
       // loaded, each with its own cookies, or says none was found

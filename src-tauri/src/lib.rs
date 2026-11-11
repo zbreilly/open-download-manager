@@ -319,6 +319,8 @@ pub fn run() {
             let handle = app.handle().clone();
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
+            // the app's own folder: it holds the database (cookies, passwords, the pairing key)
+            odm_core::store::private_dir(&data_dir);
             let engine = Engine::open(&data_dir.join("odm.db")).map_err(|e| e.to_string())?;
             app.manage(AppState::new(engine.clone()));
 
@@ -420,6 +422,7 @@ pub fn run() {
             commands::open_window,
             commands::take_params,
             commands::extension_status,
+            commands::reset_pairing,
             commands::cancel_power_action,
             commands::get_power_countdown,
             commands::export_list,

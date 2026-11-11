@@ -9,12 +9,15 @@ use std::path::Path;
 use std::sync::atomic::{AtomicIsize, AtomicU32, Ordering};
 use std::sync::Mutex;
 use windows_sys::Win32::Foundation::*;
-use windows_sys::Win32::Storage::FileSystem::{ReadFile, PIPE_ACCESS_INBOUND};
+use windows_sys::Win32::Security::Authorization::{ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1};
+use windows_sys::Win32::Security::SECURITY_ATTRIBUTES;
+use windows_sys::Win32::Storage::FileSystem::{ReadFile, FILE_FLAG_FIRST_PIPE_INSTANCE, PIPE_ACCESS_INBOUND};
 use windows_sys::Win32::System::DataExchange::*;
 use windows_sys::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GMEM_MOVEABLE};
 use windows_sys::Win32::System::Pipes::*;
 use windows_sys::Win32::System::Power::{SetSuspendState, SetThreadExecutionState, ES_CONTINUOUS, ES_SYSTEM_REQUIRED};
-use windows_sys::Win32::System::Threading::CreateMutexW;
+use windows_sys::Win32::System::RemoteDesktop::ProcessIdToSessionId;
+use windows_sys::Win32::System::Threading::{CreateMutexW, GetCurrentProcessId};
 use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use windows_sys::Win32::UI::WindowsAndMessaging::*;
 
@@ -70,7 +73,11 @@ pub fn single_instance(args: &[String]) -> bool {
     // the first instance may still be starting its listener
     for _ in 0..30 {
         if let Ok(mut pipe) = std::fs::OpenOptions::new().write(true).open(pipe_name()) {
-            let _ = pipe.write_all(args.join("\n").as_bytes());
+            // only to the app running in this sign-in session: another
+            // account that took the pipe's name gets nothing
+            if served_by_this_session(&pipe) {
+                let _ = pipe.write_all(args.join("\n").as_bytes());
+            }
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
@@ -78,20 +85,49 @@ pub fn single_instance(args: &[String]) -> bool {
     false
 }
 
+/// Is the process serving this pipe in the same sign-in session as we are?
+fn served_by_this_session(pipe: &std::fs::File) -> bool {
+    use std::os::windows::io::AsRawHandle;
+    let (mut server, mut theirs, mut ours) = (0u32, 0u32, 0u32);
+    unsafe {
+        GetNamedPipeServerProcessId(pipe.as_raw_handle() as HANDLE, &mut server) != 0
+            && ProcessIdToSessionId(server, &mut theirs) != 0
+            && ProcessIdToSessionId(GetCurrentProcessId(), &mut ours) != 0
+            && theirs == ours
+    }
+}
+
+/// Security for the pipe: its owner (this user) and nobody else. Kept for
+/// the life of the process. None if Windows refuses to build it; the pipe
+/// then gets the default security, which lets only this user write.
+fn owner_only() -> Option<SECURITY_ATTRIBUTES> {
+    let mut descriptor = std::ptr::null_mut();
+    let built = unsafe {
+        ConvertStringSecurityDescriptorToSecurityDescriptorW(wide("D:P(A;;GA;;;OW)").as_ptr(), SDDL_REVISION_1, &mut descriptor, std::ptr::null_mut())
+    };
+    (built != 0).then_some(SECURITY_ATTRIBUTES {
+        nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+        lpSecurityDescriptor: descriptor,
+        bInheritHandle: 0,
+    })
+}
+
 fn listen() {
     let name = wide(&pipe_name());
+    let security = owner_only();
     loop {
-        // inbound only; the default security lets only this user write
+        // inbound only, and only as the first pipe of this name: if someone
+        // else already serves it, we don't join them
         let pipe = unsafe {
             CreateNamedPipeW(
                 name.as_ptr(),
-                PIPE_ACCESS_INBOUND,
+                PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE,
                 PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS,
                 1,
                 0,
                 4096,
                 0,
-                std::ptr::null(),
+                security.as_ref().map_or(std::ptr::null(), |s| s as *const SECURITY_ATTRIBUTES),
             )
         };
         if pipe == INVALID_HANDLE_VALUE {

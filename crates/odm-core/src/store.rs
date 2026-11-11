@@ -31,6 +31,39 @@ fn stored(d: &Download) -> Download {
     d
 }
 
+/// Make an existing file readable and writable by its owner only. Windows
+/// keeps per-user data private through the profile folder's own permissions.
+pub fn private_file(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if path.exists() {
+            if let Err(e) = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)) {
+                tracing::warn!("could not restrict {}: {e}", path.display());
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
+}
+
+/// Make the app's own data folder accessible to its owner only.
+pub fn private_dir(path: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Err(e) = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)) {
+            tracing::warn!("could not restrict {}: {e}", path.display());
+        }
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
+}
+
 const UPSERT_DOWNLOAD: &str = "INSERT INTO downloads (id, added, data) VALUES (?1, ?2, ?3)
      ON CONFLICT(id) DO UPDATE SET data = excluded.data";
 
@@ -40,6 +73,14 @@ impl Store {
             let _ = std::fs::create_dir_all(d);
         }
         let conn = Connection::open(path)?;
+        // the database holds cookies and passwords: only its owner may read
+        // it. SQLite gives its -wal and -shm files the same permissions.
+        private_file(path);
+        for suffix in ["-wal", "-shm"] {
+            let mut side = path.as_os_str().to_os_string();
+            side.push(suffix);
+            private_file(Path::new(&side));
+        }
         Self::init(conn)
     }
 

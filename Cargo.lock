@@ -3519,6 +3519,7 @@ dependencies = [
 name = "odm-core"
 version = "0.2.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "dirs 7.0.0",
  "fs4",
@@ -3528,6 +3529,7 @@ dependencies = [
  "parking_lot",
  "percent-encoding",
  "reqwest",
+ "ring",
  "rusqlite",
  "rustls",
  "scraper",

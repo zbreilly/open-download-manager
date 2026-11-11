@@ -110,12 +110,17 @@ struct Inner {
     bg: CancellationToken,
     /// download runs and file operations
     tracker: TaskTracker,
+    /// the key shared with paired browser extensions
+    pairing: crate::pairing::Pairing,
 }
 
 #[derive(Clone)]
 pub struct Manager {
     inner: Arc<Inner>,
 }
+
+/// Where the pairing code is kept (not reachable through `kv_get`'s `ui.` keys).
+const PAIRING_KEY: &str = "bridge.pairing";
 
 fn now_iso() -> String {
     Local::now().to_rfc3339()
@@ -176,6 +181,11 @@ impl Manager {
                     d.manual = false;
                 }
             }
+            if d.status == Status::Complete && (d.cookies.is_some() || d.password.is_some() || d.headers.iter().any(|(k, _)| is_secret_header(k))) {
+                // finished before completed downloads forgot their secrets
+                d.forget_secrets();
+                store.save_download(&d);
+            }
             order.push(d.id.clone());
             entries.insert(d.id.clone(), Entry::new(d));
         }
@@ -186,6 +196,10 @@ impl Manager {
         let clients = client::build_clients(&settings)?;
         let global = Limiter::new(if settings.global_limit_enabled { settings.global_limit_bps } else { 0 });
         let (tx, _) = broadcast::channel(4096);
+        let (pairing, fresh) = crate::pairing::Pairing::load(store.get_kv(PAIRING_KEY).as_deref()).map_err(CoreError::Other)?;
+        if fresh {
+            store.set_kv(PAIRING_KEY, &pairing.code());
+        }
         Ok(Self {
             inner: Arc::new(Inner {
                 store,
@@ -207,6 +221,7 @@ impl Manager {
                 background_started: AtomicBool::new(false),
                 bg: CancellationToken::new(),
                 tracker: TaskTracker::new(),
+                pairing,
             }),
         })
     }
@@ -230,6 +245,26 @@ impl Manager {
         h.spawn(async move { m.scheduler().await });
         // finish completions that were interrupted by the last exit
         self.pump();
+        self.start_test_download(&h);
+    }
+
+    /// Automated end-to-end runs: `ODM_E2E_URL` (a link on this machine,
+    /// `http://127.0.0.1:…`, set in the environment the app is started
+    /// with) is downloaded as soon as its server answers. Nothing reaching
+    /// the app from outside (a link, the browser bridge) can set this.
+    fn start_test_download(&self, h: &Handle) {
+        let Some(url) = std::env::var("ODM_E2E_URL").ok().and_then(|u| url::Url::parse(u.trim()).ok()) else { return };
+        let (Some("127.0.0.1"), Some(port), "http") = (url.host_str(), url.port_or_known_default(), url.scheme()) else { return };
+        let m = self.clone();
+        h.spawn(async move {
+            for _ in 0..600 {
+                if tokio::net::TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
+                    let _ = m.add(AddRequest { url: url.to_string(), start: true, ..Default::default() });
+                    return;
+                }
+                tokio::time::sleep(Duration::from_secs(1)).await;
+            }
+        });
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
@@ -478,6 +513,19 @@ impl Manager {
             }
         }
         self.save_settings(s)
+    }
+
+    /// Sealed messages to and from paired browser extensions.
+    pub fn pairing(&self) -> &crate::pairing::Pairing {
+        &self.inner.pairing
+    }
+
+    /// Replace the pairing key and return the new pairing code. Every
+    /// browser extension must be paired again.
+    pub fn reset_pairing(&self) -> Result<String, CoreError> {
+        let code = self.inner.pairing.reset().map_err(CoreError::Other)?;
+        self.inner.store.set_kv(PAIRING_KEY, &code);
+        Ok(code)
     }
 
     pub fn kv_get(&self, key: &str) -> Option<String> {
@@ -1719,6 +1767,7 @@ impl Manager {
                         e.d.completed_at = Some(now_iso());
                         e.d.status = Status::Complete;
                         e.d.error = None;
+                        e.d.forget_secrets();
                     }
                     let q = e.d.queue_id.clone().filter(|_| !e.d.manual);
                     e.d.manual = false;

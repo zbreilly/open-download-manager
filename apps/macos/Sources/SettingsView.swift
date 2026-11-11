@@ -186,6 +186,7 @@ private struct BrowserPane: View {
     @EnvironmentObject var store: AppStore
     @Binding var s: AppSettings
     @State private var extText = ""
+    @State private var pairingNote: String?
 
     private var paused: Bool {
         guard let until = s.capturePausedUntil else { return false }
@@ -208,6 +209,15 @@ private struct BrowserPane: View {
                 Text("Chrome, Edge, Brave, Arc, Vivaldi, Opera: open the extensions page, turn on Developer mode, choose “Load unpacked” and select the chromium folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → firefox/manifest.json.")
                     .font(.caption).foregroundStyle(.secondary)
                 Button("Show Extension Folder") { revealExtension() }
+                LabeledContent("Pairing code") {
+                    HStack(spacing: 8) {
+                        Button("Copy") { copyPairingCode(new: false) }
+                        Button("New Code") { copyPairingCode(new: true) }
+                        if let note = pairingNote { Text(note).font(.caption).foregroundStyle(.secondary) }
+                    }
+                }
+                Text("Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             Section("Capture") {
                 Toggle("Take over browser downloads", isOn: $s.captureEnabled)
@@ -243,6 +253,18 @@ private struct BrowserPane: View {
         }
         .formStyle(.grouped)
         .onAppear { extText = s.captureExtensions.joined(separator: " ") }
+    }
+
+    /// Put the pairing code (a new one when asked) on the clipboard.
+    private func copyPairingCode(new: Bool) {
+        do {
+            let code: String = try Engine.shared.call(new ? "reset_pairing" : "pairing_code")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(code, forType: .string)
+            pairingNote = new ? "New code copied. Pair each browser again." : "Copied."
+        } catch {
+            store.report(error.localizedDescription)
+        }
     }
 
     private func revealExtension() {

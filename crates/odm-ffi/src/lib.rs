@@ -174,6 +174,8 @@ fn start_with(dir: std::path::PathBuf, sink: Option<Sink>) -> Result<(), (i32, S
         return Err((-6, format!("odm_start: {ON_ASYNC_THREAD}")));
     }
     std::fs::create_dir_all(&dir).map_err(|e| (-2, format!("cannot create {}: {e}", dir.display())))?;
+    // the app's own folder: it holds the database (cookies, passwords, the pairing key)
+    store::private_dir(&dir);
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("odm-engine")
@@ -520,7 +522,17 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
                 "browsers": b,
                 "port": mgr.settings().extension_port,
                 "bridgeError": c.bridge_error.lock().clone(),
+                "pairingCode": mgr.pairing().code(),
             }))
+        }
+        // pasted into the browser extension once, to pair it with this app
+        "pairing_code" => ok(mgr.pairing().code()),
+        // a new pairing code: every browser extension must be paired again
+        "reset_pairing" => {
+            let code = mgr.reset_pairing().map_err(|e| e.to_string())?;
+            c.ext_seen.lock().clear();
+            c.emit("extension_status", &json!({ "connected": false, "browsers": [] }));
+            ok(code)
         }
         "export_list" => {
             let path: String = arg(&a, "path")?;

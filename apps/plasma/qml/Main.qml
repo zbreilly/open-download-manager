@@ -623,12 +623,14 @@ Kirigami.ApplicationWindow {
                                     implicitHeight: Kirigami.Units.iconSizes.small
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     id: nameLabel
                                     Layout.fillWidth: true
                                     text: row.name
                                     elide: Text.ElideMiddle
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.preferredWidth: root.columns[0].width
                                     text: row.size
                                     horizontalAlignment: Text.AlignRight
@@ -644,34 +646,40 @@ Kirigami.ApplicationWindow {
                                         value: row.percent
                                     }
                                     QQC2.Label {
+                                        textFormat: Text.PlainText
                                         Layout.preferredWidth: Kirigami.Units.gridUnit * 2
                                         text: row.percent + "%"
                                         horizontalAlignment: Text.AlignRight
                                     }
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.preferredWidth: root.columns[2].width
                                     text: row.speed
                                     horizontalAlignment: Text.AlignRight
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.preferredWidth: root.columns[3].width
                                     text: row.eta
                                     horizontalAlignment: Text.AlignRight
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.preferredWidth: root.columns[4].width
                                     text: "● " + row.statusLabel
                                     color: root.statusColor(row.status)
                                     elide: Text.ElideRight
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.preferredWidth: root.columns[5].width
                                     text: row.queue
                                     opacity: 0.7
                                     elide: Text.ElideRight
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.preferredWidth: root.columns[6].width
                                     text: row.added
                                     opacity: 0.7
@@ -719,6 +727,7 @@ Kirigami.ApplicationWindow {
                             }
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             text: detailsPane.d ? "● " + detailsPane.d.statusLabel : ""
                             color: detailsPane.d ? root.statusColor(detailsPane.d.status) : Kirigami.Theme.textColor
                         }
@@ -777,11 +786,13 @@ Kirigami.ApplicationWindow {
                                         anchors.right: parent.right
                                         spacing: Kirigami.Units.largeSpacing
                                         QQC2.Label {
+                                            textFormat: Text.PlainText
                                             Layout.preferredWidth: Kirigami.Units.gridUnit * 6
                                             text: modelData[0]
                                             opacity: 0.7
                                         }
                                         QQC2.Label {
+                                            textFormat: Text.PlainText
                                             Layout.fillWidth: true
                                             text: modelData[1]
                                             elide: Text.ElideMiddle
@@ -796,12 +807,14 @@ Kirigami.ApplicationWindow {
                             RowLayout {
                                 Layout.fillWidth: true
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.fillWidth: true
                                     text: "Segments"
                                     font: Kirigami.Theme.smallFont
                                     opacity: 0.7
                                 }
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     text: detailsPane.d ? detailsPane.d.percent + "%" : ""
                                     font: Kirigami.Theme.smallFont
                                     opacity: 0.7
@@ -833,10 +846,11 @@ Kirigami.ApplicationWindow {
                     spacing: Kirigami.Units.gridUnit
                     opacity: 0.8
 
-                    QQC2.Label { text: root.s ? root.s.status.summary : ""; font: Kirigami.Theme.smallFont }
-                    QQC2.Label { text: root.s ? root.s.status.speed : ""; font: Kirigami.Theme.smallFont }
-                    QQC2.Label { text: root.s ? root.s.status.limit : ""; font: Kirigami.Theme.smallFont }
+                    QQC2.Label { textFormat: Text.PlainText; text: root.s ? root.s.status.summary : ""; font: Kirigami.Theme.smallFont }
+                    QQC2.Label { textFormat: Text.PlainText; text: root.s ? root.s.status.speed : ""; font: Kirigami.Theme.smallFont }
+                    QQC2.Label { textFormat: Text.PlainText; text: root.s ? root.s.status.limit : ""; font: Kirigami.Theme.smallFont }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         text: root.s ? (root.s.status.ext.state === "idle" ? "○ " : "● ") + root.s.status.ext.text : ""
                         font: Kirigami.Theme.smallFont
                         color: root.s ? root.statusColor(root.s.status.ext.state) : Kirigami.Theme.textColor
@@ -845,7 +859,7 @@ Kirigami.ApplicationWindow {
                         HoverHandler { id: extHover }
                     }
                     Item { Layout.fillWidth: true }
-                    QQC2.Label { text: root.s ? root.s.status.free : ""; font: Kirigami.Theme.smallFont }
+                    QQC2.Label { textFormat: Text.PlainText; text: root.s ? root.s.status.free : ""; font: Kirigami.Theme.smallFont }
                 }
             }
         }

@@ -402,7 +402,18 @@ pub async fn extension_status(st: State<'_, AppState>) -> R<Value> {
         "port": st.mgr.settings().extension_port,
         // why the bridge isn't listening (port taken), or null
         "bridgeError": st.bridge_error.lock().clone(),
+        // pasted into the browser extension once, to pair it with this app
+        "pairingCode": st.mgr.pairing().code(),
     }))
+}
+
+/// A new pairing code: every browser extension must be paired again.
+#[tauri::command]
+pub async fn reset_pairing(app: AppHandle, st: State<'_, AppState>) -> R<String> {
+    let code = st.mgr.reset_pairing().map_err(|e| e.to_string())?;
+    st.ext_seen.lock().clear();
+    let _ = app.emit("extension_status", json!({ "connected": false, "browsers": [] }));
+    Ok(code)
 }
 
 #[tauri::command]

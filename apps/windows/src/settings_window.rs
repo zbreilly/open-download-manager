@@ -33,6 +33,8 @@ pub enum Msg {
     PauseCapture(bool),
     CaptureTypes(String),
     ShowExtension,
+    /// copy the pairing code (true: make a new one first)
+    Pairing(bool),
     /// pick a folder for a setting, or for a category (its id)
     Browse(Option<String>, &'static str),
     Picked(Option<String>, &'static str, Option<String>),
@@ -199,6 +201,17 @@ impl SettingsWindow {
                 )),
             ),
         ];
+        rows.push(
+            row(
+                "Pairing code",
+                Some("Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends."),
+                StackPanel::new().orientation(Orientation::Horizontal).spacing(10.0).children((
+                    View::from(Button::new().content("Copy").on_click(c.callback(|()| Msg::Pairing(false)))),
+                    View::from(Button::new().content("New Code").on_click(c.callback(|()| Msg::Pairing(true)))),
+                )),
+            )
+            .into(),
+        );
         if let Some(e) = error {
             rows.push(error_text(format!("{e}. Another app may be using this port; choose a different one under Advanced.")).into());
         }
@@ -396,6 +409,19 @@ impl Component for SettingsWindow {
                 }
                 None => self.shared.report("The extension isn't bundled in this build. Run extension/build.sh in the source folder and load extension/dist/chromium."),
             },
+            Msg::Pairing(fresh) => {
+                let code = crate::engine::call(if fresh { "reset_pairing" } else { "pairing_code" }, Value::Null);
+                match code.as_ref().map(|v| v.as_str().unwrap_or_default()) {
+                    Ok(code) if !code.is_empty() => {
+                        system::set_clipboard_text(code);
+                        if fresh {
+                            self.shared.report("New pairing code copied. Paste it into the extension in each browser; the old code no longer works.");
+                        }
+                    }
+                    Ok(_) => self.shared.report("The pairing code isn't available."),
+                    Err(e) => self.shared.report(e.clone()),
+                }
+            }
             Msg::Browse(category, key) => {
                 let start = match &category {
                     Some(id) => self.categories().iter().find(|c| s(c, "id") == id).map(|c| c.get("folder").and_then(Value::as_str).map(String::from).unwrap_or_else(|| self.default_folder(c))).unwrap_or_default(),

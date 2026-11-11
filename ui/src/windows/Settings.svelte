@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { open as openDialog } from '@tauri-apps/plugin-dialog';
+  import { writeText } from '@tauri-apps/plugin-clipboard-manager';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
   import Switch from '../components/Switch.svelte';
@@ -237,8 +238,13 @@
             <h2>Browser integration</h2>
             <div class="group card">
               <div class="rowc">
-                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only browser-extension origins are accepted.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
+                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only an extension paired with this app is accepted.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
                 <span class="status"><span class="dot" class:ok={ext.connected && !ext.bridgeError} class:bad={!!ext.bridgeError}></span>{ext.bridgeError ? 'Not listening' : ext.connected ? 'Connected' : 'Not detected'}</span>
+              </div>
+              <div class="rowc">
+                <div class="t"><div class="tt">Pairing code</div><div class="d">Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends.</div></div>
+                <button class="btn sm" onclick={async () => { await writeText((await api.extensionStatus()).pairingCode); toast('Pairing code copied'); }}>Copy</button>
+                <button class="btn sm" onclick={async () => { await writeText(await api.resetPairing()); toast('New pairing code copied. Pair each browser again.'); }}>New code</button>
               </div>
               <div class="rowc">
                 <div class="t"><div class="tt">Install the extension</div><div class="d">Chrome, Edge, Brave, Opera, Vivaldi: open the extensions page, turn on Developer mode, choose “Load unpacked” and pick the <span class="mono">chromium</span> folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → <span class="mono">firefox/manifest.json</span>.</div></div>

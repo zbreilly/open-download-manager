@@ -133,6 +133,7 @@ QQC2.ApplicationWindow {
                     onEdited: text => win.text("url", text)
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     visible: win.s !== null && win.s.urlError
                     text: "Enter a full http:// or https:// address."
                     color: Kirigami.Theme.negativeTextColor
@@ -150,11 +151,13 @@ QQC2.ApplicationWindow {
                         Layout.fillWidth: true
                         spacing: 0
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: win.s !== null && win.s.info !== null ? win.s.info.title : ""
                             wrapMode: Text.Wrap
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             visible: text.length > 0
                             text: win.s !== null && win.s.info !== null ? win.s.info.detail : ""
@@ -180,6 +183,7 @@ QQC2.ApplicationWindow {
                     onTextChanged: if (activeFocus) win.text("batchText", text)
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Kirigami.FormData.label: "Files:"
                     visible: win.s !== null && win.s.batch
                     text: win.s ? win.s.batchCount : ""

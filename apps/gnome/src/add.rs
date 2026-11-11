@@ -369,9 +369,9 @@ impl Add {
         self.category.row.set_visible(!batch);
         let ext = self.name_ext();
         let cat = self.category_name();
-        self.always.set_title(&format!("Always put .{ext} files in {cat}"));
+        self.always.set_title(&glib::markup_escape_text(&format!("Always put .{ext} files in {cat}")));
         self.always.set_visible(!batch && !ext.is_empty() && self.category.value() != *self.auto_category.borrow());
-        self.remember.set_title(&format!("Remember this folder for {cat}"));
+        self.remember.set_title(&glib::markup_escape_text(&format!("Remember this folder for {cat}")));
         self.remember.set_visible(!batch);
         self.verify.set_visible(!batch);
         self.checksum.set_visible(!batch && self.verify.is_active());

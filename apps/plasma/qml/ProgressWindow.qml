@@ -90,6 +90,7 @@ QQC2.ApplicationWindow {
                 onClicked: win.send("hide")
             }
             QQC2.Label {
+                textFormat: Text.PlainText
                 text: win.s !== null && win.s.closing ? win.s.closing : ""
                 font: Kirigami.Theme.smallFont
                 opacity: 0.7
@@ -154,12 +155,14 @@ QQC2.ApplicationWindow {
                         Layout.fillWidth: true
                         spacing: 0
                         Kirigami.Heading {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             level: 3
                             text: win.s !== null && win.s.exists ? win.s.name : ""
                             elide: Text.ElideMiddle
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: win.s !== null && win.s.exists ? win.s.place : ""
                             font: Kirigami.Theme.smallFont
@@ -168,6 +171,7 @@ QQC2.ApplicationWindow {
                         }
                     }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         text: win.s !== null && win.s.exists ? "● " + win.s.statusLabel : ""
                         color: win.s !== null && win.s.exists ? win.statusColor(win.s.status) : Kirigami.Theme.textColor
                     }
@@ -176,6 +180,7 @@ QQC2.ApplicationWindow {
                 RowLayout {
                     spacing: Kirigami.Units.gridUnit * 2
                     Kirigami.Heading {
+                        textFormat: Text.PlainText
                         level: 1
                         text: win.s !== null && win.s.exists ? win.s.percentText : ""
                     }
@@ -185,11 +190,13 @@ QQC2.ApplicationWindow {
                             required property var modelData
                             spacing: 0
                             QQC2.Label {
+                                textFormat: Text.PlainText
                                 text: modelData[0]
                                 font: Kirigami.Theme.smallFont
                                 opacity: 0.7
                             }
                             QQC2.Label {
+                                textFormat: Text.PlainText
                                 text: modelData[1]
                             }
                         }
@@ -204,6 +211,7 @@ QQC2.ApplicationWindow {
                     wrapMode: Text.Wrap
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     visible: win.s !== null && win.s.exists && win.s.verified
                     text: "✓ Checksum verified"
                     color: Kirigami.Theme.positiveTextColor
@@ -212,12 +220,14 @@ QQC2.ApplicationWindow {
                 RowLayout {
                     Layout.fillWidth: true
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         Layout.fillWidth: true
                         text: win.s !== null && win.s.exists ? win.s.segmentsTitle : ""
                         font: Kirigami.Theme.smallFont
                         opacity: 0.7
                     }
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         text: "Faded = segment done · light edge = write position"
                         font: Kirigami.Theme.smallFont
                         opacity: 0.7
@@ -251,19 +261,23 @@ QQC2.ApplicationWindow {
                                     Layout.fillWidth: true
                                     spacing: Kirigami.Units.largeSpacing
                                     QQC2.Label {
+                                        textFormat: Text.PlainText
                                         text: modelData.number
                                         opacity: 0.7
                                     }
                                     QQC2.Label {
+                                        textFormat: Text.PlainText
                                         Layout.fillWidth: true
                                         text: modelData.received
                                         elide: Text.ElideRight
                                     }
                                     QQC2.Label {
+                                        textFormat: Text.PlainText
                                         Layout.preferredWidth: Kirigami.Units.gridUnit * 6
                                         text: modelData.state
                                     }
                                     QQC2.Label {
+                                        textFormat: Text.PlainText
                                         Layout.preferredWidth: Kirigami.Units.gridUnit * 5
                                         text: modelData.speed
                                         horizontalAlignment: Text.AlignRight
@@ -299,6 +313,7 @@ QQC2.ApplicationWindow {
                                 onAccepted: win.send("apply-limit")
                             }
                             QQC2.Label {
+                                textFormat: Text.PlainText
                                 text: "MB/s"
                                 opacity: 0.7
                             }
@@ -308,6 +323,7 @@ QQC2.ApplicationWindow {
                             }
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             visible: text.length > 0
                             text: win.s !== null && win.s.exists ? win.s.limitError : ""
@@ -316,11 +332,13 @@ QQC2.ApplicationWindow {
                             wrapMode: Text.Wrap
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             text: "Overrides the per-download setting."
                             font: Kirigami.Theme.smallFont
                             opacity: 0.7
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             text: "When finished"
                         }
                         StateChoice {

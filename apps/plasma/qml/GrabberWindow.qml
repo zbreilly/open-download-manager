@@ -139,6 +139,7 @@ QQC2.ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             QQC2.Label {
+                textFormat: Text.PlainText
                 text: win.s ? win.s.count : ""
                 opacity: 0.7
             }
@@ -186,11 +187,13 @@ QQC2.ApplicationWindow {
                     contentItem: RowLayout {
                         spacing: Kirigami.Units.largeSpacing
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.preferredWidth: Kirigami.Units.gridUnit * 16
                             text: link.modelData.name
                             elide: Text.ElideMiddle
                         }
                         QQC2.Label {
+                            textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: link.modelData.url
                             font: Kirigami.Theme.smallFont
@@ -205,10 +208,12 @@ QQC2.ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             QQC2.Label {
+                textFormat: Text.PlainText
                 text: "Save to"
                 opacity: 0.7
             }
             QQC2.Label {
+                textFormat: Text.PlainText
                 Layout.fillWidth: true
                 text: win.s ? win.s.dirLabel : ""
                 elide: Text.ElideMiddle
@@ -224,6 +229,7 @@ QQC2.ApplicationWindow {
                 onClicked: win.send("dir", "")
             }
             QQC2.Label {
+                textFormat: Text.PlainText
                 text: "Queue"
                 opacity: 0.7
             }

@@ -106,6 +106,7 @@ QQC2.ApplicationWindow {
                 Toggle { key: "minimizeToTray"; text: "Keep running in the system tray when the window is closed" }
                 Toggle { key: "clipboardMonitor"; text: "Watch the clipboard for download links" }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     text: "Copying a link to a file type listed under Browser opens the Add window."
                     font: Kirigami.Theme.smallFont
                     opacity: 0.7
@@ -135,6 +136,7 @@ QQC2.ApplicationWindow {
                     to: 32
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 26
                     text: "Files are split dynamically: a connection that finishes takes over half of the largest remaining piece."
                     font: Kirigami.Theme.smallFont
@@ -148,6 +150,7 @@ QQC2.ApplicationWindow {
                     to: 64
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     text: "Outside of queues. Each queue sets its own limit."
                     font: Kirigami.Theme.smallFont
                     opacity: 0.7
@@ -163,13 +166,14 @@ QQC2.ApplicationWindow {
                         value: win.s ? win.s.globalLimit.text : ""
                         onEdited: text => win.send("speed", { "key": "globalLimitBps", "text": text })
                     }
-                    QQC2.Label { text: "MB/s"; opacity: 0.7 }
+                    QQC2.Label { textFormat: Text.PlainText; text: "MB/s"; opacity: 0.7 }
                     QQC2.Switch {
                         checked: win.v.globalLimitEnabled === true
                         onToggled: win.set("globalLimitEnabled", checked)
                     }
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     visible: text.length > 0
                     text: win.s ? win.s.globalLimit.error : ""
                     color: Kirigami.Theme.negativeTextColor
@@ -182,13 +186,14 @@ QQC2.ApplicationWindow {
                         value: win.s ? win.s.perDownloadLimit.text : ""
                         onEdited: text => win.send("speed", { "key": "perDownloadLimitBps", "text": text })
                     }
-                    QQC2.Label { text: "MB/s"; opacity: 0.7 }
+                    QQC2.Label { textFormat: Text.PlainText; text: "MB/s"; opacity: 0.7 }
                     QQC2.Switch {
                         checked: win.v.perDownloadLimitEnabled === true
                         onToggled: win.set("perDownloadLimitEnabled", checked)
                     }
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     visible: text.length > 0
                     text: win.s ? win.s.perDownloadLimit.error : ""
                     color: Kirigami.Theme.negativeTextColor
@@ -206,6 +211,7 @@ QQC2.ApplicationWindow {
                 RowLayout {
                     Kirigami.FormData.label: "Extension:"
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         text: win.s ? (win.s.extension.state === "idle" ? "○ " : "● ") + win.s.extension.text : ""
                         color: win.s === null ? Kirigami.Theme.textColor
                              : win.s.extension.state === "error" ? Kirigami.Theme.negativeTextColor
@@ -218,7 +224,29 @@ QQC2.ApplicationWindow {
                         onClicked: win.send("show-extension")
                     }
                 }
+                RowLayout {
+                    Kirigami.FormData.label: "Pairing code:"
+                    QQC2.Button {
+                        text: "Copy"
+                        icon.name: "edit-copy"
+                        onClicked: win.send("copy-pairing")
+                    }
+                    QQC2.Button {
+                        text: "New Code"
+                        icon.name: "view-refresh"
+                        onClicked: win.send("new-pairing")
+                    }
+                }
                 QQC2.Label {
+                    textFormat: Text.PlainText
+                    Layout.maximumWidth: Kirigami.Units.gridUnit * 28
+                    text: "Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends."
+                    font: Kirigami.Theme.smallFont
+                    color: Kirigami.Theme.disabledTextColor
+                    wrapMode: Text.Wrap
+                }
+                QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 28
                     visible: win.s !== null && win.s.extension.error !== null
                     text: visible ? win.s.extension.error : ""
@@ -227,6 +255,7 @@ QQC2.ApplicationWindow {
                     wrapMode: Text.Wrap
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 28
                     text: "Chrome, Edge, Brave, Vivaldi, Opera: open the extensions page, turn on Developer mode, choose “Load unpacked” and select the chromium folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → firefox/manifest.json."
                     font: Kirigami.Theme.smallFont
@@ -274,6 +303,7 @@ QQC2.ApplicationWindow {
                 spacing: Kirigami.Units.largeSpacing
 
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.fillWidth: true
                     Layout.margins: Kirigami.Units.largeSpacing
                     text: "Each category has its own file types and folder."
@@ -290,6 +320,7 @@ QQC2.ApplicationWindow {
 
                         contentItem: Kirigami.FormLayout {
                             Kirigami.Heading {
+                                textFormat: Text.PlainText
                                 level: 4
                                 text: card.modelData.name + " — " + card.modelData.summary
                             }
@@ -301,6 +332,7 @@ QQC2.ApplicationWindow {
                                 onEditingFinished: win.send("category-name", { "id": card.modelData.id, "value": text })
                             }
                             QQC2.Label {
+                                textFormat: Text.PlainText
                                 Layout.maximumWidth: Kirigami.Units.gridUnit * 26
                                 visible: card.modelData.general
                                 text: "General holds every file type no other category claims, and saves to your download folder."
@@ -312,6 +344,7 @@ QQC2.ApplicationWindow {
                                 Kirigami.FormData.label: "Folder:"
                                 Layout.fillWidth: true
                                 QQC2.Label {
+                                    textFormat: Text.PlainText
                                     Layout.fillWidth: true
                                     text: card.modelData.folder
                                     opacity: card.modelData.ownFolder ? 1 : 0.7
@@ -407,6 +440,7 @@ QQC2.ApplicationWindow {
                 RowLayout {
                     Kirigami.FormData.label: "Download folder:"
                     QQC2.Label {
+                        textFormat: Text.PlainText
                         Layout.maximumWidth: Kirigami.Units.gridUnit * 20
                         text: win.v.defaultFolder || ""
                         elide: Text.ElideMiddle
@@ -421,6 +455,7 @@ QQC2.ApplicationWindow {
                     }
                 }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 26
                     text: "Each category saves to a subfolder of this folder unless you choose another under File Types."
                     font: Kirigami.Theme.smallFont
@@ -448,6 +483,7 @@ QQC2.ApplicationWindow {
                 }
                 Toggle { key: "verifyTls"; text: "Verify TLS certificates" }
                 QQC2.Label {
+                    textFormat: Text.PlainText
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 26
                     visible: win.s !== null && win.s.tlsWarning
                     text: "Certificate checks are off. Anyone on the network path can alter what you download."

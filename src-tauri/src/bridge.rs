@@ -2,19 +2,21 @@
 //!
 //! * The `Host` header must be `127.0.0.1:<port>` or `localhost:<port>`, so
 //!   a web page cannot reach the bridge through DNS rebinding.
+//! * Every request is sealed with the pairing key (see
+//!   `odm_core::pairing`), and so is every answer: a caller without the key
+//!   is refused, and nothing readable is sent to one.
 //! * Requests from web pages are refused: a request carrying an `Origin`
-//!   header must come from a browser-extension origin. Requests without an
-//!   Origin (local tools, curl) are allowed — they already run as the user —
-//!   but `silent` (add and start without asking) is only honored for
-//!   browser-extension origins.
+//!   header must come from a browser-extension origin.
+//! * A request never starts a download: it opens the Add window (or the
+//!   link list), where the user decides.
 
 use crate::state::{AppState, BridgeHandle};
 use crate::windows;
 use axum::extract::State;
 use axum::http::{header, HeaderMap, HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, get, post};
-use axum::{Json, Router};
+use axum::routing::{any, post};
+use axum::Router;
 use serde::Deserialize;
 use serde_json::json;
 use std::collections::HashSet;
@@ -58,25 +60,15 @@ fn with_cors(mut r: Response, origin: Option<String>) -> Response {
         if let Ok(v) = HeaderValue::from_str(&o) {
             r.headers_mut().insert("access-control-allow-origin", v);
         }
-        r.headers_mut().insert("access-control-allow-headers", HeaderValue::from_static("content-type, x-odm-browser"));
-        r.headers_mut().insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, OPTIONS"));
+        r.headers_mut().insert("access-control-allow-headers", HeaderValue::from_static("content-type"));
+        r.headers_mut().insert("access-control-allow-methods", HeaderValue::from_static("POST, OPTIONS"));
     }
     r
 }
 
-fn note_browser(app: &AppHandle, h: &HeaderMap) {
-    // only real extensions count as "connected" (not curl / local tools)
-    let from_ext = h.get("origin").is_some() || h.get("x-odm-browser").is_some();
-    if !from_ext {
-        return;
-    }
-    let name = h
-        .get("x-odm-browser")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("Browser")
-        .chars()
-        .take(40)
-        .collect::<String>();
+/// A paired extension was heard from: remember its browser.
+fn note_browser(app: &AppHandle, name: Option<&str>) {
+    let name: String = name.filter(|n| !n.trim().is_empty()).unwrap_or("Browser").chars().take(40).collect();
     let st = app.state::<AppState>();
     let was = st.extension_browsers();
     st.ext_seen.lock().insert(name, Instant::now());
@@ -112,12 +104,6 @@ pub fn chrono_now() -> i64 {
         .unwrap_or(0)
 }
 
-async fn ping(State(c): State<Ctx>, h: HeaderMap) -> Response {
-    let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    note_browser(&c.app, &h);
-    with_cors(Json(capture_info(&c.app)).into_response(), origin)
-}
-
 async fn preflight(h: HeaderMap) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
     with_cors(StatusCode::NO_CONTENT.into_response(), origin)
@@ -136,8 +122,6 @@ struct AddBody {
     url: String,
     /// several links, each with the cookies for that URL
     items: Vec<AddItem>,
-    /// several links without cookies (older extensions)
-    urls: Vec<String>,
     referrer: Option<String>,
     file_name: Option<String>,
     /// cookies for `url` (or, in the older form, for the first link)
@@ -167,15 +151,6 @@ fn collect_links(b: &AddBody) -> Vec<(String, Option<String>)> {
     for it in &b.items {
         push(&it.url, nz(&it.cookies));
     }
-    for u in &b.urls {
-        push(u, None);
-    }
-    // older extensions sent the first link's cookies at the top level
-    if let Some(first) = out.first_mut() {
-        if first.1.is_none() {
-            first.1 = nz(&b.cookies);
-        }
-    }
     out
 }
 
@@ -189,70 +164,34 @@ fn links_json(links: &[(String, Option<String>)]) -> Vec<serde_json::Value> {
         .collect()
 }
 
-async fn add(State(c): State<Ctx>, h: HeaderMap, Json(b): Json<AddBody>) -> Response {
-    let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    if !h
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v.starts_with("application/json"))
-        .unwrap_or(false)
-    {
-        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
-    }
-    note_browser(&c.app, &h);
-    let app = c.app.clone();
+/// Hand links to the UI. Nothing is added or started here.
+fn add(app: &AppHandle, b: AddBody) -> serde_json::Value {
     let links = collect_links(&b);
     if links.is_empty() {
-        return with_cors((StatusCode::BAD_REQUEST, "no valid URL").into_response(), origin);
+        return json!({ "ok": false, "error": "no valid URL" });
     }
-    // no app setting allows starting captures without asking, so only a
-    // browser extension (never a local client without Origin) may do it
-    let silent = b.silent && origin.is_some();
-    if links.len() > 1 {
-        let params = json!({ "links": links_json(&links), "referrer": b.referrer, "userAgent": b.user_agent });
-        let a2 = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            let _ = windows::open(&a2, "grabber", None, Some(params));
-        });
-    } else if silent {
-        let (url, cookies) = links.into_iter().next().unwrap_or_default();
-        let mgr = app.state::<AppState>().mgr.clone();
-        let req = odm_core::AddRequest {
-            url,
-            file_name: b.file_name.clone(),
-            referrer: b.referrer.clone(),
-            cookies,
-            user_agent: b.user_agent.clone(),
-            total_bytes: b.total_bytes,
-            mime: b.mime.clone(),
-            start: true,
-            ..Default::default()
-        };
-        if let Err(e) = mgr.add(req) {
-            return with_cors((StatusCode::BAD_REQUEST, e.to_string()).into_response(), origin);
-        }
+    let (window, params) = if links.len() > 1 {
+        ("grabber", json!({ "links": links_json(&links), "referrer": b.referrer, "userAgent": b.user_agent }))
     } else {
         let (url, cookies) = links.into_iter().next().unwrap_or_default();
-        let params = json!({
-            "url": url,
-            "fileName": b.file_name,
-            "referrer": b.referrer,
-            "cookies": cookies,
-            "userAgent": b.user_agent,
-            "totalBytes": b.total_bytes,
-            "mime": b.mime,
-        });
-        let a2 = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            let _ = windows::open(&a2, "add", None, Some(params));
-        });
-    }
-    with_cors(Json(json!({ "ok": true })).into_response(), origin)
-}
-
-#[derive(Deserialize)]
-struct PauseBody {
-    minutes: i64,
+        (
+            "add",
+            json!({
+                "url": url,
+                "fileName": b.file_name,
+                "referrer": b.referrer,
+                "cookies": cookies,
+                "userAgent": b.user_agent,
+                "totalBytes": b.total_bytes,
+                "mime": b.mime,
+            }),
+        )
+    };
+    let a2 = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let _ = windows::open(&a2, window, None, Some(params));
+    });
+    json!({ "ok": true })
 }
 
 /// End of a capture pause of `minutes` (clamped to 0..=1440) from `now`.
@@ -264,13 +203,50 @@ fn pause_until(now: i64, minutes: i64) -> Option<i64> {
     m.checked_mul(60_000).and_then(|ms| now.checked_add(ms))
 }
 
-async fn pause_capture(State(c): State<Ctx>, h: HeaderMap, Json(b): Json<PauseBody>) -> Response {
-    let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    let mgr = c.app.state::<AppState>().mgr.clone();
+fn pause_capture(app: &AppHandle, minutes: i64) -> serde_json::Value {
+    let mgr = app.state::<AppState>().mgr.clone();
     let mut s = mgr.settings();
-    s.capture_paused_until = pause_until(chrono_now(), b.minutes);
+    s.capture_paused_until = pause_until(chrono_now(), minutes);
     let _ = mgr.save_settings(s);
-    with_cors(Json(capture_info(&c.app)).into_response(), origin)
+    capture_info(app)
+}
+
+/// One opened request: `{op, browser, ...}`.
+fn handle(app: &AppHandle, req: &serde_json::Value) -> serde_json::Value {
+    note_browser(app, req.get("browser").and_then(|v| v.as_str()));
+    match req.get("op").and_then(|v| v.as_str()) {
+        Some("ping") => capture_info(app),
+        Some("add") => match serde_json::from_value::<AddBody>(req.get("body").cloned().unwrap_or_default()) {
+            Ok(b) => add(app, b),
+            Err(_) => json!({ "ok": false, "error": "bad request" }),
+        },
+        Some("pause") => pause_capture(app, req.get("minutes").and_then(|v| v.as_i64()).unwrap_or(0)),
+        _ => json!({ "ok": false, "error": "unknown request" }),
+    }
+}
+
+/// The bridge's one endpoint: a sealed request in, a sealed answer out.
+async fn sealed(State(c): State<Ctx>, h: HeaderMap, body: axum::body::Bytes) -> Response {
+    let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
+    if !h
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.starts_with("application/json"))
+        .unwrap_or(false)
+    {
+        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
+    }
+    let mgr = c.app.state::<AppState>().mgr.clone();
+    let req = match mgr.pairing().open_request(&body, chrono_now()) {
+        Ok(r) => r,
+        // the same answer for every failure: a caller without the key learns nothing
+        Err(_) => return with_cors(StatusCode::UNAUTHORIZED.into_response(), origin),
+    };
+    let id = req.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+    let answer = mgr.pairing().seal_response(&id, handle(&c.app, &req));
+    let mut r = answer.into_response();
+    r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
+    with_cors(r, origin)
 }
 
 fn is_http(u: &str) -> bool {
@@ -280,9 +256,8 @@ fn is_http(u: &str) -> bool {
 fn router(app: AppHandle, port: u16) -> Router {
     let ctx = Ctx { app };
     Router::new()
-        .route("/api/ping", get(ping).post(ping))
-        .route("/api/add", post(add))
-        .route("/api/capture-pause", post(pause_capture))
+        .route("/api/v2", post(sealed))
+        .layer(axum::extract::DefaultBodyLimit::max(odm_core::pairing::MAX_REQUEST_BYTES))
         .route(
             "/{*rest}",
             any(|m: Method, h: HeaderMap| async move {
@@ -380,30 +355,18 @@ mod tests {
     #[test]
     fn links_per_url_cookies() {
         let b = AddBody {
+            url: "https://c/3".into(),
             items: vec![
                 AddItem { url: "https://a/1".into(), cookies: Some("a=1".into()) },
                 AddItem { url: "https://b/2".into(), cookies: None },
                 AddItem { url: "https://a/1".into(), cookies: Some("dup".into()) },
+                AddItem { url: "javascript:x".into(), cookies: None },
             ],
-            urls: vec!["https://b/2".into(), "https://c/3".into(), "javascript:x".into()],
             ..Default::default()
         };
-        let l = collect_links(&b);
         assert_eq!(
-            l,
-            vec![
-                ("https://a/1".into(), Some("a=1".into())),
-                ("https://b/2".into(), None),
-                ("https://c/3".into(), None)
-            ]
+            collect_links(&b),
+            vec![("https://c/3".into(), None), ("https://a/1".into(), Some("a=1".into())), ("https://b/2".into(), None)]
         );
-        let old = AddBody {
-            urls: vec!["https://x/1".into(), "https://y/2".into()],
-            cookies: Some("x=1".into()),
-            ..Default::default()
-        };
-        let l = collect_links(&old);
-        assert_eq!(l[0].1.as_deref(), Some("x=1"));
-        assert_eq!(l[1].1, None);
     }
 }

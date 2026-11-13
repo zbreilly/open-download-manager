@@ -575,6 +575,13 @@ impl Manager {
         pass: Option<String>,
     ) -> Result<ProbeResult, CoreError> {
         let s = self.settings();
+        if crate::ftp::is_ftp(url) {
+            let ep = crate::ftp::Endpoint::new(url, user.as_deref(), pass.as_deref(), &s)?;
+            return tokio::select! {
+                _ = self.inner.bg.cancelled() => Err(CoreError::Other("shutting down".into())),
+                r = crate::ftp::probe(&ep, url, &s.categories) => r,
+            };
+        }
         let h = client::request_headers(
             &s.user_agent,
             referrer.as_deref(),
@@ -587,7 +594,7 @@ impl Manager {
         let c = self.clients().probe;
         tokio::select! {
             _ = self.inner.bg.cancelled() => Err(CoreError::Other("shutting down".into())),
-            r = client::probe_with(&c, url, &hs, &s.categories) => r,
+            r = probe_http(&c, url, &hs, &s.categories) => r,
         }
     }
 
@@ -610,12 +617,34 @@ impl Manager {
         !claimed(&st, &p, None, true)
     }
 
-    pub fn add(&self, req: AddRequest) -> Result<String, CoreError> {
+    pub fn add(&self, mut req: AddRequest) -> Result<String, CoreError> {
         let url = req.url.trim().to_string();
         let parsed = url::Url::parse(&url).map_err(|_| CoreError::BadUrl(util::redact_url(&url)))?;
-        if !matches!(parsed.scheme(), "http" | "https") {
+        let ftp = crate::ftp::is_ftp(&url);
+        if !ftp && !matches!(parsed.scheme(), "http" | "https") {
             return Err(CoreError::BadUrl(format!("unsupported scheme: {}", parsed.scheme())));
         }
+        // a user name and password in an FTP link are kept with the
+        // download's other credentials (stored sealed), not in its URL
+        let url = if ftp {
+            let (clean, user, pass) = crate::ftp::split_credentials(&url);
+            if req.username.as_deref().unwrap_or("").is_empty() {
+                req.username = user;
+                if req.password.as_deref().unwrap_or("").is_empty() {
+                    req.password = pass;
+                }
+            }
+            req.stream = None;
+            clean
+        } else {
+            if req.stream.is_none() {
+                // a playlist link is downloaded as the video it describes
+                if let Some(k) = crate::stream::manifest_kind(&url, req.mime.as_deref()) {
+                    req.stream = Some(StreamChoice { kind: k.name().into(), ..Default::default() });
+                }
+            }
+            url
+        };
         let s = self.settings();
         let (mut name, auto_name) = match req.file_name.as_deref().map(str::trim).filter(|n| !n.is_empty()) {
             Some(n) => (util::sanitize_filename(n), false),
@@ -727,6 +756,14 @@ impl Manager {
                 auto_dir,
                 restarts: 0,
                 adopted,
+                stream: req.stream.clone().map(|mut c| {
+                    if c.kind.is_empty() {
+                        c.kind = "hls".into();
+                    }
+                    c
+                }),
+                notice: None,
+                extra_files: vec![],
             };
             if let Some(q) = &queue_id {
                 if let Some(q) = st.queues.iter_mut().find(|x| &x.id == q) {
@@ -867,6 +904,9 @@ impl Manager {
                     tracing::warn!("cannot remove {}: {err}", part.display());
                 }
             }
+            let _ = std::fs::remove_dir_all(crate::stream::work_dir(&part));
+            e.d.notice = None;
+            e.d.extra_files.clear();
             e.d.segments.clear();
             e.d.received_bytes = 0;
             e.d.total_bytes = None;
@@ -912,6 +952,7 @@ impl Manager {
                 adopted: e.d.adopted.clone(),
                 complete: e.d.status == Status::Complete,
                 delete_files,
+                extra: e.d.extra_files.iter().map(|n| Path::new(&e.d.save_dir).join(n)).collect(),
             };
             match e.rt.clone() {
                 Some(rt) => {
@@ -970,7 +1011,7 @@ impl Manager {
         } else {
             self.probe(new_url, d.referrer.clone(), None, vec![], None, None).await?
         };
-        if let (Some(a), Some(b)) = (d.total_bytes, p.total_bytes) {
+        if let (Some(a), Some(b), None) = (d.total_bytes, p.total_bytes, &d.stream) {
             if a != b {
                 return Err(CoreError::Other(format!(
                     "the new link points to a different file ({b} bytes, expected {a})"
@@ -1444,12 +1485,16 @@ impl Manager {
             }
         }
 
+        if let Some(choice) = d.stream.clone() {
+            self.drive_stream(&id, &rt, d, choice).await;
+            return;
+        }
+
         // probe when the size or the direct link are unknown
         if d.final_url.is_none() || d.total_bytes.is_none() {
-            let hs = HeaderSet::for_download(&d, &s);
             let probed = tokio::select! {
                 _ = rt.cancel.cancelled() => None,
-                p = client::probe_with(&clients.probe, &d.url, &hs, &s.categories) => Some(p),
+                p = probe_download(&clients, &d, &s) => Some(p),
             };
             match probed {
                 None => {
@@ -1533,7 +1578,19 @@ impl Manager {
         let part = util::part_path(&d.final_path());
         let url = d.final_url.clone().unwrap_or_else(|| d.url.clone());
         let via_final = url != d.url;
+        let ftp = if crate::ftp::is_ftp(&d.url) {
+            match crate::ftp::Endpoint::new(&d.url, d.username.as_deref(), d.password.as_deref(), &s) {
+                Ok(ep) => Some(Arc::new(ep)),
+                Err(e) => {
+                    self.fail(&id, &rt, e.to_string());
+                    return;
+                }
+            }
+        } else {
+            None
+        };
         let ctx = Arc::new(TaskCtx {
+            ftp,
             client: clients.segment,
             url,
             headers: HeaderSet::for_download(&d, &s),
@@ -1559,6 +1616,108 @@ impl Manager {
             }
             Err(TaskError::Http(code)) => self.fail(&id, &rt, client::status_message(code)),
             Err(TaskError::Fatal(msg)) => self.fail(&id, &rt, msg),
+        }
+    }
+
+    /// Run an HLS/DASH download: resolve the chosen quality, fetch and
+    /// join its pieces, then complete like any other download.
+    async fn drive_stream(&self, id: &str, rt: &Arc<Runtime>, mut d: Download, choice: StreamChoice) {
+        let s = self.settings();
+        let clients = self.clients();
+        let hs = HeaderSet::for_download(&d, &s);
+        let plan = tokio::select! {
+            _ = rt.cancel.cancelled() => None,
+            p = crate::stream::resolve(&clients.probe, &hs, &d.url, &choice) => Some(p),
+        };
+        let plan = match plan {
+            None => return self.finish_run(id, rt, None),
+            Some(Err(e)) => return self.fail(id, rt, e.to_string()),
+            Some(Ok(p)) => p,
+        };
+        // a name that came from the playlist link gets the real extension
+        let applied = {
+            let mut st = self.inner.state.lock();
+            let rename = match st.entries.get_mut(id) {
+                Some(e) if e.current(rt) => {
+                    e.d.protocol = Some(plan.kind.name().to_ascii_uppercase());
+                    e.d.resumable = true;
+                    if e.d.total_bytes.is_none() {
+                        e.d.total_bytes = plan.est_bytes;
+                    }
+                    let ext = util::extension(&e.d.file_name);
+                    let playlist_name = matches!(ext.as_str(), "m3u8" | "m3u" | "mpd");
+                    (e.d.received_bytes == 0 && ext != plan.ext && (e.d.auto_name || playlist_name)).then(|| {
+                        let stem = match e.d.file_name.rfind('.') {
+                            Some(i) if i > 0 => e.d.file_name[..i].to_string(),
+                            _ => e.d.file_name.clone(),
+                        };
+                        let name = format!("{stem}.{}", plan.ext);
+                        if e.d.category == "general" {
+                            e.d.category = util::category_for(&name, &s.categories);
+                        }
+                        let dir = if e.d.auto_dir { category_folder(&s, &e.d.category) } else { e.d.save_dir.clone() };
+                        (dir, name)
+                    })
+                }
+                _ => return self.finish_run(id, rt, None),
+            };
+            if let Some((dir, name)) = rename {
+                relocate(&mut st, id, &dir, &name);
+            }
+            st.entries.get(id).map(|e| e.d.clone())
+        };
+        if let Some(nd) = applied {
+            d = nd;
+        }
+        self.changed(id);
+
+        let part = util::part_path(&d.final_path());
+        let ctx = crate::stream::StreamCtx {
+            client: clients.segment,
+            headers: hs,
+            part: part.clone(),
+            max_conn: d.max_connections.max(1),
+            global: self.inner.global.clone(),
+            max_retries: s.max_retries,
+            retry_delay: Duration::from_millis((s.retry_delay_secs * 1000).max(200)),
+            choice,
+            rt: rt.clone(),
+        };
+        match crate::stream::download(ctx, plan).await {
+            Ok(out) => {
+                if let Some((file, ext)) = out.companion {
+                    self.place_companion(id, rt, &file, ext, &d);
+                }
+                self.complete(id, rt, out.total, Some(part)).await
+            }
+            Err(TaskError::Cancelled) => self.finish_run(id, rt, None),
+            Err(TaskError::Http(code)) => self.fail(id, rt, client::status_message(code)),
+            Err(TaskError::Fatal(msg)) | Err(TaskError::Restart { reason: msg, .. }) => self.fail(id, rt, msg),
+        }
+    }
+
+    /// Put a stream's separate audio track beside the video and say so.
+    fn place_companion(&self, id: &str, rt: &Arc<Runtime>, file: &Path, ext: &str, d: &Download) {
+        let stem = match d.file_name.rfind('.') {
+            Some(i) if i > 0 => &d.file_name[..i],
+            _ => d.file_name.as_str(),
+        };
+        let dir = PathBuf::from(&d.save_dir);
+        let mut st = self.inner.state.lock();
+        let name = reserve_name(&st, &dir, &format!("{stem} (audio).{ext}"), Some(id), false, false);
+        let dest = dir.join(&name);
+        if let Err(e) = std::fs::rename(file, &dest) {
+            tracing::warn!("cannot move the audio track into place: {e}");
+            return;
+        }
+        util::mark_downloaded(&dest, &d.url, d.referrer.as_deref());
+        if let Some(e) = st.entries.get_mut(id) {
+            if e.current(rt) {
+                e.d.extra_files = vec![name.clone()];
+                e.d.notice = Some(format!(
+                    "This stream's audio is a separate track that can't be joined with the video, so it was saved beside it as \"{name}\"."
+                ));
+            }
         }
     }
 
@@ -2058,6 +2217,48 @@ impl Manager {
 }
 
 /// Segment views of a finished run, all marked done.
+/// Probe an HTTP(S) link; an HLS/DASH manifest also lists its qualities.
+async fn probe_http(c: &reqwest::Client, url: &str, hs: &HeaderSet, cats: &[Category]) -> Result<ProbeResult, CoreError> {
+    let mut p = client::probe_with(c, url, hs, cats).await?;
+    if crate::stream::manifest_kind(&p.final_url, p.mime.as_deref()).is_none()
+        && crate::stream::manifest_kind(url, None).is_none()
+    {
+        return Ok(p);
+    }
+    let (final_url, text) = crate::stream::fetch_text(c, url, hs).await?;
+    if crate::stream::sniff(&text).is_none() {
+        // named like a manifest, but it isn't one: an ordinary file
+        return Ok(p);
+    }
+    let (kind, info) = crate::stream::inspect(c, hs, &final_url, &text).await?;
+    let best = info.variants.first();
+    let ext = best.map(|v| v.ext.clone()).unwrap_or_else(|| "mp4".into());
+    let stem = match p.file_name.rfind('.') {
+        Some(i) if i > 0 => p.file_name[..i].to_string(),
+        _ => p.file_name.clone(),
+    };
+    p.file_name = format!("{stem}.{ext}");
+    p.category = util::category_for(&p.file_name, cats);
+    p.total_bytes = best.and_then(|v| v.est_bytes);
+    p.resumable = true;
+    p.mime = None;
+    p.protocol = format!("{} · {}", kind.name().to_ascii_uppercase(), p.protocol);
+    p.etag = None;
+    p.last_modified = None;
+    p.stream = Some(info);
+    Ok(p)
+}
+
+/// Probe a download's link (HTTP(S) or FTP) with its own credentials.
+async fn probe_download(clients: &Clients, d: &Download, s: &Settings) -> Result<ProbeResult, CoreError> {
+    if crate::ftp::is_ftp(&d.url) {
+        let ep = crate::ftp::Endpoint::new(&d.url, d.username.as_deref(), d.password.as_deref(), s)?;
+        return crate::ftp::probe(&ep, &d.url, &s.categories).await;
+    }
+    let hs = HeaderSet::for_download(d, s);
+    probe_http(&clients.probe, &d.url, &hs, &s.categories).await
+}
+
 fn done_segments(rt: &Runtime, total: u64) -> Vec<SegmentView> {
     let mut v = rt.views();
     if v.is_empty() {
@@ -2200,6 +2401,8 @@ struct Cleanup {
     adopted: Option<String>,
     complete: bool,
     delete_files: bool,
+    /// files written beside the main one (a stream's separate audio)
+    extra: Vec<PathBuf>,
 }
 
 impl Cleanup {
@@ -2226,15 +2429,21 @@ impl Cleanup {
             Some(_) => {}
             None => remove(&part),
         }
+        // the pieces of an unfinished stream download
+        let work = crate::stream::work_dir(&part);
+        let work_left = work.is_dir() && std::fs::remove_dir_all(&work).is_err();
         if self.delete_files {
             if self.complete {
                 remove(&self.final_path);
+                for p in &self.extra {
+                    remove(p);
+                }
             }
             if let Some(p) = placed {
                 remove(p);
             }
         }
-        ok
+        ok && !work_left
     }
 
     /// Retry for a while (files may still be held open, e.g. by a virus

@@ -23,6 +23,8 @@ pub enum Info {
     Failed { error: String },
     /// "48.0 MB · application/zip" and "Resumable · byte ranges · HTTP/2"
     Probed { summary: String, detail: String, resumable: bool },
+    /// the link can't be downloaded (a DRM-protected or live stream)
+    Blocked { reason: String },
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -58,6 +60,9 @@ pub struct AddForm {
     pub probe: Option<Value>,
     pub probe_error: String,
     pub probing: bool,
+    /// HLS/DASH: the chosen quality (variant id) and audio track id
+    pub quality: String,
+    pub audio: String,
     /// the name, folder and category the form filled in by itself; a field
     /// that still equals its value here was not touched by the user
     auto_name: String,
@@ -129,13 +134,92 @@ impl AddForm {
         if self.batch {
             !self.batch_urls.is_empty()
         } else {
-            fmt::is_http(self.link())
+            fmt::is_link(self.link()) && self.blocked().is_none()
         }
+    }
+
+    /// What an HLS/DASH manifest offers (the probe's `stream`).
+    pub fn stream(&self) -> Option<&Value> {
+        if self.batch {
+            return None;
+        }
+        self.probe.as_ref().and_then(|p| p.get("stream")).filter(|v| v.is_object())
+    }
+
+    /// Why the link can't be downloaded (a protected or live stream).
+    pub fn blocked(&self) -> Option<String> {
+        self.stream().map(|st| s(st, "blocked").to_string()).filter(|r| !r.is_empty())
+    }
+
+    fn variants(&self) -> Vec<&Value> {
+        self.stream().and_then(|st| st.get("variants")).and_then(Value::as_array).map(|a| a.iter().collect()).unwrap_or_default()
+    }
+
+    /// The qualities to choose from: `(id, label)`, best first, with the
+    /// estimated size.
+    pub fn qualities(&self) -> Vec<(String, String)> {
+        self.variants()
+            .into_iter()
+            .map(|v| {
+                let label = match opt_n(v, "estBytes") {
+                    Some(b) => format!("{} — about {}", s(v, "label"), fmt::bytes(Some(b))),
+                    None => s(v, "label").to_string(),
+                };
+                (s(v, "id").to_string(), label)
+            })
+            .collect()
+    }
+
+    /// Separate audio tracks to choose from: `(id, label)`.
+    pub fn audio_tracks(&self) -> Vec<(String, String)> {
+        self.stream()
+            .and_then(|st| st.get("audio"))
+            .and_then(Value::as_array)
+            .map(|a| a.iter().map(|t| (s(t, "id").to_string(), s(t, "label").to_string())).collect())
+            .unwrap_or_default()
+    }
+
+    /// Show the quality selector (more than one choice and not blocked).
+    pub fn shows_quality(&self) -> bool {
+        self.blocked().is_none() && self.variants().len() > 1
+    }
+
+    pub fn shows_audio(&self) -> bool {
+        self.blocked().is_none() && self.audio_tracks().len() > 1
+    }
+
+    fn chosen_variant(&self) -> Option<&Value> {
+        let v = self.variants();
+        v.iter().find(|x| s(x, "id") == self.quality).or(v.first()).copied()
+    }
+
+    /// The user picked a quality: the name follows its file type.
+    pub fn choose_quality(&mut self, id: &str) {
+        self.quality = id.to_string();
+        let ext = self.chosen_variant().map(|v| s(v, "ext").to_string()).unwrap_or_default();
+        if !ext.is_empty() && self.name_ext() != ext && !self.name.trim().is_empty() {
+            // a page title such as "Ep. 5 The End" has no extension to replace
+            let cur = self.name_ext();
+            let has_ext = !cur.is_empty() && cur.len() <= 5 && cur.chars().all(|c| c.is_ascii_alphanumeric());
+            let stem = match self.name.rfind('.') {
+                Some(i) if i > 0 && has_ext => self.name[..i].to_string(),
+                _ => self.name.trim().to_string(),
+            };
+            let touched = self.name_touched();
+            self.name = format!("{stem}.{ext}");
+            if !touched {
+                self.auto_name = self.name.clone();
+            }
+        }
+    }
+
+    pub fn choose_audio(&mut self, id: &str) {
+        self.audio = id.to_string();
     }
 
     /// The URL field holds something that is not a usable address.
     pub fn url_error(&self) -> bool {
-        !self.batch && !self.link().is_empty() && !fmt::is_http(self.link())
+        !self.batch && !self.link().is_empty() && !fmt::is_link(self.link())
     }
 
     /// Offer "Always put .ext files in <category>".
@@ -151,12 +235,14 @@ impl AddForm {
 
     /// Should a change of the link be probed automatically?
     pub fn wants_probe(&self) -> bool {
-        !self.batch && !self.from_web && fmt::is_http(self.link())
+        !self.batch && !self.from_web && fmt::is_link(self.link())
     }
 
     /// The link changed: forget what was known about the old one.
     pub fn link_changed(&mut self) {
         self.probe = None;
+        self.quality.clear();
+        self.audio.clear();
         self.probe_error.clear();
         self.probing = self.wants_probe();
     }
@@ -211,6 +297,20 @@ impl AddForm {
             self.connections = nearest_connections(default_connections);
         }
         self.probe = Some(p);
+        // a stream starts at its best quality and default audio
+        self.quality = self.variants().first().map(|v| s(v, "id").to_string()).unwrap_or_default();
+        self.audio = self
+            .stream()
+            .and_then(|st| st.get("audio"))
+            .and_then(Value::as_array)
+            .and_then(|a| a.iter().find(|t| b(t, "default")).or(a.first()))
+            .map(|t| s(t, "id").to_string())
+            .unwrap_or_default();
+        // a name given with the link (a page title) gets the stream's file type
+        if self.stream().is_some() {
+            let q = self.quality.clone();
+            self.choose_quality(&q);
+        }
     }
 
     /// The probe failed: the download can still be added, named after the
@@ -218,6 +318,8 @@ impl AddForm {
     pub fn probe_failed(&mut self, error: String) {
         self.probing = false;
         self.probe = None;
+        self.quality.clear();
+        self.audio.clear();
         self.probe_error = error;
         let last = fmt::url_file_name(self.link());
         if !self.name_touched() && !last.is_empty() {
@@ -227,10 +329,30 @@ impl AddForm {
     }
 
     pub fn info(&self) -> Info {
-        if self.batch || !fmt::is_http(self.link()) {
+        if self.batch || !fmt::is_link(self.link()) {
             Info::Hidden
         } else if self.probing {
             Info::Checking
+        } else if let Some(reason) = self.blocked() {
+            Info::Blocked { reason }
+        } else if let (Some(p), Some(st)) = (&self.probe, self.stream()) {
+            let kind = s(st, "kind").to_ascii_uppercase();
+            let size = self.chosen_variant().and_then(|v| opt_n(v, "estBytes"));
+            let n = self.variants().len();
+            let audio = if self.chosen_variant().is_some_and(|v| b(v, "separateAudio")) { " · separate audio track" } else { "" };
+            Info::Probed {
+                summary: match size {
+                    Some(b) => format!("{kind} stream · about {}", fmt::bytes(Some(b))),
+                    None => format!("{kind} stream"),
+                },
+                detail: format!(
+                    "{} {}{audio} · resumable · {}",
+                    n,
+                    if n == 1 { "quality" } else { "qualities" },
+                    s(p, "protocol")
+                ),
+                resumable: true,
+            }
         } else if let Some(p) = &self.probe {
             let mime = p.get("mime").and_then(Value::as_str).map(|m| format!(" · {m}")).unwrap_or_default();
             let resumable = b(p, "resumable");
@@ -257,10 +379,10 @@ impl AddForm {
         self.batch_text.split_whitespace().map(|l| (l.to_string(), is_pattern(l))).collect()
     }
 
-    /// The batch field expanded to links (keeps valid http(s) ones, at
-    /// most 10,000).
+    /// The batch field expanded to links (keeps valid http(s) and FTP
+    /// ones, at most 10,000).
     pub fn set_batch_urls(&mut self, links: Vec<String>) {
-        self.batch_urls = links.into_iter().filter(|u| fmt::is_http(u)).take(10_000).collect();
+        self.batch_urls = links.into_iter().filter(|u| fmt::is_link(u)).take(10_000).collect();
     }
 
     /// The engine's `AddRequest` for one link.
@@ -289,9 +411,20 @@ impl AddForm {
             "checksum": if !batch && self.verify && !checksum.is_empty() { json!({ "algo": "", "expected": checksum }) } else { Value::Null },
             "onExists": on_exists.unwrap_or("rename"),
             "rememberFolder": !batch && self.remember && dir_touched,
-            "totalBytes": from_probe("totalBytes"),
+            "totalBytes": match (self.stream(), self.chosen_variant()) {
+                (Some(_), Some(v)) => v.get("estBytes").cloned().unwrap_or(Value::Null),
+                _ => from_probe("totalBytes"),
+            },
             "resumable": from_probe("resumable"),
             "mime": from_probe("mime"),
+            "stream": match self.stream() {
+                Some(st) => json!({
+                    "kind": s(st, "kind"),
+                    "variant": opt(&self.quality),
+                    "audio": opt(&self.audio),
+                }),
+                None => Value::Null,
+            },
         })
     }
 
@@ -366,11 +499,73 @@ mod tests {
     }
 
     #[test]
+    fn streams_offer_qualities() {
+        let mut f = AddForm::new(&json!({ "url": "https://x.example/master.m3u8" }), 16, "/dl");
+        f.link_changed();
+        let p = json!({
+            "fileName": "master.ts", "category": "video", "resumable": true, "totalBytes": 3_000_000, "protocol": "HLS · HTTP/1.1",
+            "stream": {
+                "kind": "hls", "protected": false, "live": false,
+                "variants": [
+                    { "id": "5000000-1080", "label": "1080p · 5.0 Mbps", "estBytes": 3_000_000, "separateAudio": true, "ext": "ts" },
+                    { "id": "800000-360", "label": "360p · 800 kbps", "estBytes": 500_000, "separateAudio": true, "ext": "ts" }
+                ],
+                "audio": [
+                    { "id": "English|en", "label": "English", "default": true },
+                    { "id": "Español|es", "label": "Español", "default": false }
+                ]
+            }
+        });
+        f.probed(p, 16, |c| Some(format!("/dl/{c}")));
+        assert!(f.shows_quality() && f.shows_audio() && f.valid());
+        assert_eq!(f.quality, "5000000-1080");
+        assert_eq!(f.audio, "English|en");
+        assert_eq!(f.qualities()[1].1, "360p · 800 kbps — about 488.3 KB");
+        f.choose_quality("800000-360");
+        f.choose_audio("Español|es");
+        let r = f.request(true, f.link(), None);
+        assert_eq!(r["stream"], json!({ "kind": "hls", "variant": "800000-360", "audio": "Español|es" }));
+        assert_eq!(r["totalBytes"], 500_000);
+        match f.info() {
+            Info::Probed { summary, detail, .. } => {
+                assert!(summary.starts_with("HLS stream · about"), "{summary}");
+                assert!(detail.starts_with("2 qualities · separate audio track"), "{detail}");
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn page_titles_get_the_stream_file_type() {
+        let stream = json!({ "kind": "hls", "variants": [{ "id": "a", "label": "720p", "ext": "ts" }, { "id": "b", "label": "1080p", "ext": "mp4" }], "audio": [] });
+        let mut f = AddForm::new(&json!({ "url": "https://x.example/m.m3u8", "fileName": "Ep. 5 The End" }), 16, "/dl");
+        f.probed(json!({ "fileName": "m.ts", "category": "video", "resumable": true, "stream": stream }), 16, |_| None);
+        assert_eq!(f.name, "Ep. 5 The End.ts");
+        f.choose_quality("b");
+        assert_eq!(f.name, "Ep. 5 The End.mp4");
+    }
+
+    #[test]
+    fn protected_streams_cannot_be_added() {
+        let mut f = AddForm::new(&json!({ "url": "https://x.example/a.mpd" }), 16, "/dl");
+        let p = json!({ "fileName": "a.mp4", "category": "video", "resumable": true,
+            "stream": { "kind": "dash", "protected": true, "blocked": "This stream is protected with DRM", "variants": [{ "id": "v", "label": "720p", "ext": "mp4" }], "audio": [] } });
+        f.probed(p, 16, |_| None);
+        assert!(!f.valid() && !f.shows_quality());
+        assert_eq!(f.info(), Info::Blocked { reason: "This stream is protected with DRM".into() });
+        // plain links have no stream part
+        let mut g = AddForm::new(&json!({ "url": "ftp://files.example/a.iso" }), 16, "/dl");
+        assert!(g.valid() && g.wants_probe());
+        g.probed(json!({ "fileName": "a.iso", "category": "programs", "resumable": true }), 16, |_| None);
+        assert_eq!(g.request(true, g.link(), None)["stream"], Value::Null);
+    }
+
+    #[test]
     fn batches() {
         let mut f = AddForm::new(&json!({ "batch": true }), 16, "/dl");
         f.batch_text = "https://x.example/a[1-3].jpg\nhttps://x.example/b.zip".into();
         assert_eq!(f.batch_lines().iter().map(|l| l.1).collect::<Vec<_>>(), [true, false]);
-        f.set_batch_urls(vec!["https://x.example/b.zip".into(), "ftp://x".into()]);
+        f.set_batch_urls(vec!["https://x.example/b.zip".into(), "mailto:x@y".into()]);
         assert!(f.valid());
         assert_eq!(f.requests(true, None).len(), 1);
         assert_eq!(nearest_connections(12), 8);

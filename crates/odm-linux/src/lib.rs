@@ -27,4 +27,4 @@ pub const APP_ID: &str = "app.opendm.Desktop";
 pub use odm_ui::APP_NAME;
 /// Formatting, and links handed to the app: shared with the other front
 /// ends through `odm-ui`.
-pub use odm_ui::{fmt, incoming};
+pub use odm_ui::{add, fmt, incoming};

@@ -210,6 +210,13 @@ QQC2.ApplicationWindow {
                     color: Kirigami.Theme.negativeTextColor
                     wrapMode: Text.Wrap
                 }
+                Kirigami.SelectableLabel {
+                    Layout.fillWidth: true
+                    visible: win.s !== null && win.s.exists && win.s.notice !== null
+                    text: visible ? win.s.notice : ""
+                    opacity: 0.7
+                    wrapMode: Text.Wrap
+                }
                 QQC2.Label {
                     textFormat: Text.PlainText
                     visible: win.s !== null && win.s.exists && win.s.verified

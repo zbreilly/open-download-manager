@@ -132,7 +132,7 @@ QQC2.ApplicationWindow {
                     Kirigami.FormData.label: "URL:"
                     Layout.fillWidth: true
                     visible: win.s !== null && !win.s.batch
-                    placeholderText: "https://"
+                    placeholderText: "https:// or ftp://"
                     font.family: "monospace"
                     value: win.s ? win.s.url : ""
                     onEdited: text => win.text("url", text)
@@ -140,7 +140,7 @@ QQC2.ApplicationWindow {
                 QQC2.Label {
                     textFormat: Text.PlainText
                     visible: win.s !== null && win.s.urlError
-                    text: "Enter a full http:// or https:// address."
+                    text: "Enter a full http://, https:// or ftp:// address."
                     color: Kirigami.Theme.negativeTextColor
                 }
                 RowLayout {
@@ -159,6 +159,7 @@ QQC2.ApplicationWindow {
                             textFormat: Text.PlainText
                             Layout.fillWidth: true
                             text: win.s !== null && win.s.info !== null ? win.s.info.title : ""
+                            color: win.s !== null && win.s.info !== null && win.s.info.bad ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.textColor
                             wrapMode: Text.Wrap
                         }
                         QQC2.Label {
@@ -176,6 +177,21 @@ QQC2.ApplicationWindow {
                         text: win.s ? win.s.check : ""
                         onClicked: win.send("check")
                     }
+                }
+                // a stream's qualities and audio tracks
+                StateChoice {
+                    Kirigami.FormData.label: "Quality:"
+                    visible: win.s !== null && win.s.showsQuality
+                    choices: win.s ? win.s.qualities : []
+                    value: win.s ? win.s.quality : ""
+                    onChosen: id => win.send("quality", id)
+                }
+                StateChoice {
+                    Kirigami.FormData.label: "Audio:"
+                    visible: win.s !== null && win.s.showsAudio
+                    choices: win.s ? win.s.audioTracks : []
+                    value: win.s ? win.s.audio : ""
+                    onChosen: id => win.send("audio", id)
                 }
                 QQC2.TextArea {
                     Kirigami.FormData.label: "Links:"

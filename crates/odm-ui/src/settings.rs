@@ -54,14 +54,14 @@ pub fn set_category_extensions(categories: &mut [Value], id: &str, extensions: &
 }
 
 /// A copied link the clipboard monitor should offer in the Add window: a
-/// single http(s) address whose file type is one the browser capture
+/// single http(s) or FTP address whose file type is one the browser capture
 /// handles, and that isn't in the list already.
 pub fn clipboard_candidate(clip: &str, settings: &Value, downloads: &[Value]) -> Option<String> {
     if !crate::b(settings, "clipboardMonitor") {
         return None;
     }
     let t = clip.trim();
-    if t.len() >= 4096 || t.chars().any(char::is_whitespace) || !fmt::is_http(t) {
+    if t.len() >= 4096 || t.chars().any(char::is_whitespace) || !fmt::is_link(t) {
         return None;
     }
     let ext = fmt::extension(&fmt::url_file_name(t));

@@ -284,7 +284,7 @@ fn clipboard_monitor(app: AppHandle, engine: Engine) {
                 continue;
             }
             let Ok(u) = url::Url::parse(t) else { continue };
-            if !matches!(u.scheme(), "http" | "https") {
+            if !matches!(u.scheme(), "http" | "https" | "ftp" | "ftps" | "ftpes") {
                 continue;
             }
             let ext = odm_core::util::extension(u.path());

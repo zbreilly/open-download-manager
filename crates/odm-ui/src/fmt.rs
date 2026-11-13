@@ -130,6 +130,14 @@ pub fn is_http(s: &str) -> bool {
     url::Url::parse(s.trim()).map(|u| matches!(u.scheme(), "http" | "https") && u.host().is_some()).unwrap_or(false)
 }
 
+/// A link the engine can download: http(s), or FTP (`ftp://`, `ftps://`
+/// implicit TLS, `ftpes://` explicit TLS), with a host.
+pub fn is_link(s: &str) -> bool {
+    url::Url::parse(s.trim())
+        .map(|u| matches!(u.scheme(), "http" | "https" | "ftp" | "ftps" | "ftpes") && u.host().is_some())
+        .unwrap_or(false)
+}
+
 /// Lowercase extension of a file name ("" when there is none or it is
 /// longer than 10 characters).
 pub fn extension(name: &str) -> String {
@@ -224,6 +232,8 @@ mod tests {
         assert_eq!(extension("noext"), "");
         assert!(is_http("https://example.com/a"));
         assert!(!is_http("ftp://example.com/a"));
+        assert!(is_link("ftp://example.com/a") && is_link("ftpes://example.com/a") && is_link("https://x.example/"));
+        assert!(!is_link("file:///etc/passwd") && !is_link("javascript:alert(1)"));
         assert_eq!(url_file_name("https://x.example/dir/My%20File%2B1.zip?x=1"), "My File+1.zip");
         assert_eq!(url_file_name("https://x.example/"), "");
     }

@@ -297,6 +297,10 @@ impl Component for ProgressWindow {
         if let (true, Some(e)) = (status == "error", d.get("error").and_then(Value::as_str)) {
             body.push(error_text(e).into());
         }
+        // a finished stream download may carry a note (audio saved separately)
+        if let (false, Some(t)) = (status == "error", d.get("notice").and_then(Value::as_str).filter(|t| !t.is_empty())) {
+            body.push(note(t).into());
+        }
         if d.get("checksumOk").and_then(Value::as_bool) == Some(true) {
             body.push(TextBlock::new().text("✓ Checksum verified").foreground(status_color("complete")).into());
         }

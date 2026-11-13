@@ -100,12 +100,14 @@ The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links a
 ## Features
 
 **Engine**
-- Downloads with up to 32 connections per file, with IDM-style dynamic segmentation: when a connection finishes its range, it takes over the back half of the largest remaining segment, so every connection stays busy until the end
+- HTTP(S) and FTP downloads with up to 32 connections per file, with IDM-style dynamic segmentation: when a connection finishes its range, it takes over the back half of the largest remaining segment, so every connection stays busy until the end
 - Resume across pauses, crashes and restarts. Progress is checkpointed per segment, and `If-Range` with ETag/Last-Modified detects files that changed on the server
 - Falls back to one connection, and restarts on failure, when a server doesn't support byte ranges
 - Retries with backoff per connection. Clear errors for 403/404/410 and expired links
 - **Refresh link**: point an expired download at a new URL and keep the progress already made
 - Global speed limit (combined) and per-download limits, both adjustable while downloading
+- FTP and FTPS: `ftp://`, `ftpes://` (explicit TLS) and `ftps://` (implicit TLS), passive mode, resume and split downloads through `REST`, size through `SIZE`. A user name and password can be in the link or in the Add dialog's Authentication fields; either way they are stored like the app's other passwords, not in the link. The proxy setting doesn't apply to FTP
+- HLS and DASH streams (`.m3u8`, `.mpd`): the Add dialog lists the qualities and audio tracks a stream offers, with estimated sizes. The segments download over several connections and are joined into one file: MPEG-TS or MP4 for HLS, MP4 or WebM for DASH. A separate MP4 audio track is muxed into the video; any other separate audio track is saved beside the video, and the download says so. HLS AES-128 encryption is supported. Paused and interrupted stream downloads continue from the segments already fetched. DRM-protected streams (Widevine, PlayReady, FairPlay) and live streams can't be downloaded; the Add dialog says so
 - Proxy settings: system, none, HTTP or SOCKS5, with authentication
 - Basic auth, cookies, referrer, custom user agent and custom headers
 - Checksum verification (SHA-256, SHA-1, MD5)
@@ -127,7 +129,7 @@ The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links a
 - Takes over matching downloads (by file type and optional minimum size), passing along cookies, referrer and user agent so links that need a login still work
 - Hold Option/Alt (configurable) while clicking to let the browser handle a download, or pause capture for 10 minutes from the toolbar popup
 - Context menus: download a link, media, an image, the links in a selection, or every link on the page
-- Detects audio and video files a page loads and lists them in the popup, and shows a "Download" button over videos
+- Detects audio and video files and HLS/DASH streams a page loads and lists them in the popup (a stream under the page's title), and shows a "Download" button over videos; for a streamed video it hands the stream to the app, which offers its qualities
 
 **Theme studio**
 
@@ -150,8 +152,8 @@ The native-toolkit apps have everything under Engine, App and Browser extension 
 
 ## Not supported yet
 
-- HLS/DASH streaming manifests (`.m3u8`, `.mpd`). Media detection only lists direct media files
-- FTP
+- DRM-protected streams (Widevine, PlayReady, FairPlay) and live streams
+- FTP through a proxy
 
 ## Development
 
@@ -179,7 +181,7 @@ cargo run -p odm-windows                # on Windows
 Tests and lints (the `checks` workflow runs the first group on every pull request; the Linux apps are linted in the `linux-native` workflow, where their toolkits are installed):
 
 ```bash
-cargo test -p odm-core                       # engine, against a local HTTP server that can simulate failures
+cargo test -p odm-core                       # engine, against local HTTP and FTP servers that can simulate failures
 cargo test -p odm-ffi --features test-hooks  # the engine's interface
 cargo test -p odm-ui -p odm-linux            # shared front-end logic, Linux services
 cargo clippy -p odm-core -p odm-ffi -p odm-ui -p odm-linux --all-targets -- -D warnings
@@ -188,7 +190,7 @@ cargo clippy -p odm-macos --all-targets -- -D warnings    # on a Mac
 npm --prefix ui run check
 ```
 
-A debug build of the native macOS app (`cargo run -p odm-macos`) reads a few variables for trying it without touching the installed copy: `ODM_DATA_DIR=<folder>` keeps its list and settings there, `ODM_PORT=<port>` moves the browser bridge off the port the extension uses, `ODM_OPEN=add,batch,web,grabber,scheduler,settings,progress` opens those windows at startup, and `ODM_SHOTS=<folder>` keeps the app in the background and saves a PNG of each of its windows there every two seconds.
+A debug build of the native macOS app (`cargo run -p odm-macos`) reads a few variables for trying it without touching the installed copy: `ODM_DATA_DIR=<folder>` keeps its list and settings there, `ODM_PORT=<port>` moves the browser bridge off the port the extension uses, `ODM_OPEN=add,batch,web,grabber,scheduler,settings,progress` opens those windows at startup (`ODM_ADD_URL=<link>` sets the link the Add window starts with), and `ODM_SHOTS=<folder>` keeps the app in the background and saves a PNG of each of its windows there every two seconds.
 
 The native Windows app can be type-checked from macOS or Linux without the engine, whose C dependencies don't cross-compile:
 
@@ -216,7 +218,8 @@ apps/windows/        native Windows app (Rust, WinUI 3 through windows-reactor),
 apps/gnome/          GTK 4 + libadwaita app (Rust)
 apps/plasma/         Kirigami app: Rust backend, list model and view-models (src/), QML views (qml/)
 crates/odm-core/     engine: task.rs (segmented downloader), manager.rs (list, queues, scheduler, limits, events),
-                     client.rs (HTTP, probe), store.rs (SQLite), grabber.rs, util.rs
+                     client.rs (HTTP, probe), ftp.rs (FTP/FTPS), stream.rs (HLS/DASH downloads; hls.rs and
+                     dash.rs parse manifests, mp4.rs muxes audio into video), store.rs (SQLite), grabber.rs, util.rs
 crates/odm-ffi/      the engine's interface: C functions (include/odm.h) and the same contract for Rust (api)
 crates/odm-ui/       front-end logic shared by the native-toolkit apps: store, filtering and sorting, Add form, formatting
 crates/odm-linux/    Linux desktop services (single instance, tray, notifications, keep-awake, power, autostart)
@@ -228,7 +231,7 @@ download-manager-ui/ design spec (HANDOFF.md), tokens, reference screens, brand 
 legacy/              the earlier prototype (std-only engine, Swift shell, v1 extension), kept for reference
 ```
 
-App data (the download list, queues and settings) is stored in SQLite under `~/Library/Application Support/app.opendm.desktop/` on macOS, `%APPDATA%\app.opendm.desktop\` on Windows and `~/.local/share/app.opendm.desktop/` on Linux. While a download is in progress it is written to `name.odmpart` next to the final file, which is renamed when the download finishes.
+App data (the download list, queues and settings) is stored in SQLite under `~/Library/Application Support/app.opendm.desktop/` on macOS, `%APPDATA%\app.opendm.desktop\` on Windows and `~/.local/share/app.opendm.desktop/` on Linux. While a download is in progress it is written to `name.odmpart` next to the final file, which is renamed when the download finishes. A stream download keeps its segments in a `name.odmpart.d` folder beside it until they are joined.
 
 ## License
 

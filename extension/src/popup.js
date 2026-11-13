@@ -43,12 +43,15 @@ async function render() {
   $("media-box").hidden = !media.length;
   const ul = $("media");
   ul.textContent = "";
-  for (const m of media) {
+  // streams first: the app lets you pick their quality
+  const sorted = [...media.filter((m) => m.stream), ...media.filter((m) => !m.stream)];
+  for (const m of sorted) {
     const li = document.createElement("li");
     const n = document.createElement("span"); n.className = "n"; n.textContent = m.name; n.title = m.url;
-    const s = document.createElement("span"); s.className = "s"; s.textContent = fmt(m.size);
+    const s = document.createElement("span"); s.className = "s";
+    s.textContent = m.stream ? (m.stream === "hls" ? "HLS stream" : "DASH stream") : fmt(m.size);
     const b = document.createElement("button"); b.textContent = "Download";
-    b.onclick = async () => { b.disabled = true; await B.runtime.sendMessage({ type: "odm-add", url: m.url, referrer: tab?.url || "", fileName: m.name, tabId: tab?.id }); b.textContent = "Sent"; };
+    b.onclick = async () => { b.disabled = true; await B.runtime.sendMessage({ type: "odm-add", url: m.url, referrer: tab?.url || "", fileName: m.name, mime: m.mime || null, tabId: tab?.id }); b.textContent = "Sent"; };
     li.append(n, s, b);
     ul.append(li);
   }

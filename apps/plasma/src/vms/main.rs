@@ -147,6 +147,8 @@ impl Main {
             "status": status,
             "statusLabel": row.status_label,
             "error": if status == "error" { d.get("error").cloned().unwrap_or(Value::Null) } else { Value::Null },
+            // a finished stream download may carry a note (audio saved separately)
+            "notice": if status == "error" { Value::Null } else { d.get("notice").cloned().filter(|v| v.as_str().is_some_and(|t| !t.is_empty())).unwrap_or(Value::Null) },
             "primary": { "label": label, "action": action },
             "retry": status == "error",
             "facts": [
@@ -442,7 +444,7 @@ impl Vm for Main {
             }
             // links dropped on the window, or imported from a file
             "links" => {
-                let links: Vec<&str> = payload.as_str().unwrap_or("").lines().map(str::trim).filter(|l| fmt::is_http(l)).collect();
+                let links: Vec<&str> = payload.as_str().unwrap_or("").lines().map(str::trim).filter(|l| fmt::is_link(l)).collect();
                 match links.as_slice() {
                     [] => {}
                     [one] => cx.request("add", json!({ "url": one })),

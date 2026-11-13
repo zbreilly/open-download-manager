@@ -770,6 +770,13 @@ Kirigami.ApplicationWindow {
                         color: Kirigami.Theme.negativeTextColor
                         wrapMode: Text.Wrap
                     }
+                    Kirigami.SelectableLabel {
+                        Layout.fillWidth: true
+                        visible: detailsPane.d !== null && detailsPane.d.notice !== null
+                        text: visible ? detailsPane.d.notice : ""
+                        opacity: 0.7
+                        wrapMode: Text.Wrap
+                    }
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: Kirigami.Units.gridUnit * 2

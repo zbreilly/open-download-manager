@@ -644,6 +644,13 @@ define_class!(
     }
 );
 
+/// Debug builds: the link the scripted Add window opens with
+/// (`ODM_ADD_URL`, e.g. a stream manifest or an FTP link).
+#[cfg(debug_assertions)]
+fn debug_add_url() -> String {
+    std::env::var("ODM_ADD_URL").unwrap_or_else(|_| "http://127.0.0.1:8919/song.mp3".into())
+}
+
 /// Debug builds: `ODM_OPEN=add,batch,web,grabber,scheduler,settings,
 /// progress` opens these windows at startup.
 #[cfg(debug_assertions)]
@@ -651,7 +658,7 @@ fn debug_open(app: &Rc<App>) {
     let Ok(list) = std::env::var("ODM_OPEN") else { return };
     for w in list.split(',') {
         match w.trim() {
-            "add" => app.open_add(json!({ "url": "http://127.0.0.1:8919/song.mp3" })),
+            "add" => app.open_add(json!({ "url": debug_add_url() })),
             "batch" => app.open_add(json!({ "batch": true })),
             "web" => app.open_add(json!({ "url": "http://127.0.0.1:8919/song.mp3", "source": "web" })),
             "grabber" => app.open_grabber(None),
@@ -726,7 +733,7 @@ impl App {
     fn debug_step(self: &Rc<Self>, step: &str) {
         let ids = || self.main_window().map(|m| m.selected_ids()).unwrap_or_default();
         match step {
-            "add" => self.open_add(json!({ "url": "http://127.0.0.1:8919/song.mp3" })),
+            "add" => self.open_add(json!({ "url": debug_add_url() })),
             "start" => {
                 let last = self.adds.borrow().last().cloned();
                 if let Some(w) = last {

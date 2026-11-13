@@ -1166,7 +1166,7 @@ define_class!(
     impl DropView {
         #[unsafe(method(draggingEntered:))]
         fn dragging_entered(&self, info: &AnyObject) -> NSDragOperation {
-            if dragged_text(info).iter().any(|u| odm_ui::fmt::is_http(u)) {
+            if dragged_text(info).iter().any(|u| odm_ui::fmt::is_link(u)) {
                 NSDragOperation::Copy
             } else {
                 NSDragOperation::None
@@ -1175,7 +1175,7 @@ define_class!(
 
         #[unsafe(method(performDragOperation:))]
         fn perform_drag(&self, info: &AnyObject) -> bool {
-            let links: Vec<String> = dragged_text(info).into_iter().filter(|u| odm_ui::fmt::is_http(u)).collect();
+            let links: Vec<String> = dragged_text(info).into_iter().filter(|u| odm_ui::fmt::is_link(u)).collect();
             let any = !links.is_empty();
             if any {
                 if let Some(f) = &*self.ivars().dropped.borrow() {

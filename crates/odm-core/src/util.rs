@@ -133,12 +133,12 @@ pub fn strip_userinfo(u: &str) -> String {
     }
 }
 
-/// Replace every http(s) URL inside `text` with its redacted form.
+/// Replace every http(s) and FTP URL inside `text` with its redacted form.
 pub fn redact_urls(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut rest = text;
     loop {
-        let at = [rest.find("http://"), rest.find("https://")].into_iter().flatten().min();
+        let at = ["http://", "https://", "ftp://", "ftps://", "ftpes://"].iter().filter_map(|p| rest.find(p)).min();
         let Some(at) = at else {
             out.push_str(rest);
             return out;

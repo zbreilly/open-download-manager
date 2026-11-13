@@ -26,7 +26,7 @@ impl Add {
         let mut form = AddForm::new(params, n(&store.settings, "defaultConnections"), &general);
         // offer a link that is on the clipboard
         let clip = clipboard.trim();
-        if form.url.is_empty() && !form.batch && odm_ui::fmt::is_http(clip) && !clip.chars().any(char::is_whitespace) {
+        if form.url.is_empty() && !form.batch && odm_ui::fmt::is_link(clip) && !clip.chars().any(char::is_whitespace) {
             form.url = clip.to_string();
         }
         let recents = api::call("recent_folders", json!({ "limit": 6 })).map(|v| odm_ui::strings(&json!({ "r": v }), "r")).unwrap_or_default();
@@ -123,7 +123,9 @@ impl Vm for Add {
             Info::Web { host } => json!({ "title": host, "detail": "Opened from a web page. The link has not been contacted yet.", "spinning": false }),
             Info::Failed { error } => json!({ "title": error, "detail": "You can still add it; it will retry when started.", "spinning": false }),
             Info::Probed { summary, detail, .. } => json!({ "title": summary, "detail": detail, "spinning": false }),
+            Info::Blocked { reason } => json!({ "title": reason, "detail": "", "spinning": false, "bad": true }),
         };
+        let pairs = |v: Vec<(String, String)>| v.into_iter().map(|(id, name)| json!({ "id": id, "name": name })).collect::<Vec<_>>();
         let check = if !f.from_web || f.probing {
             ""
         } else if f.probe.is_none() && f.probe_error.is_empty() {
@@ -142,6 +144,12 @@ impl Vm for Add {
             "batchCount": f.batch_urls.len(),
             "info": info,
             "check": check,
+            "showsQuality": f.shows_quality(),
+            "qualities": pairs(f.qualities()),
+            "quality": f.quality,
+            "showsAudio": f.shows_audio(),
+            "audioTracks": pairs(f.audio_tracks()),
+            "audio": f.audio,
             "name": f.name,
             "category": f.category,
             "categories": store.categories().iter().map(|c| json!({ "id": s(c, "id"), "name": s(c, "name") })).collect::<Vec<_>>(),
@@ -231,6 +239,8 @@ impl Vm for Add {
                 self.form.choose_category(&id, folder_for(&id));
             }
             "queue" => self.form.queue = text(),
+            "quality" => self.form.choose_quality(&text()),
+            "audio" => self.form.choose_audio(&text()),
             "connections" => self.form.connections = payload.as_u64().unwrap_or(16) as u32,
             "settled" => {
                 if payload.as_u64() == Some(self.generation) {
@@ -256,7 +266,7 @@ impl Vm for Add {
             }
             // probe right away (a web link is only contacted on request)
             "check" => {
-                if !self.form.batch && odm_ui::fmt::is_http(self.form.link()) {
+                if !self.form.batch && odm_ui::fmt::is_link(self.form.link()) {
                     self.generation += 1;
                     self.form.probe = None;
                     self.form.probe_error.clear();

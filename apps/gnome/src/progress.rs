@@ -312,8 +312,15 @@ impl Progress {
             l.set_label(&t);
         }
         let err = d.get("error").and_then(Value::as_str).filter(|_| status == "error");
-        self.error.set_visible(err.is_some());
-        self.error.set_label(err.unwrap_or(""));
+        // a finished stream download may carry a note (audio saved separately)
+        let notice = d.get("notice").and_then(Value::as_str).filter(|t| !t.is_empty() && err.is_none());
+        self.error.set_visible(err.is_some() || notice.is_some());
+        self.error.set_label(err.or(notice).unwrap_or(""));
+        if err.is_some() {
+            self.error.add_css_class("error");
+        } else {
+            self.error.remove_css_class("error");
+        }
         self.verified.set_visible(d.get("checksumOk").and_then(Value::as_bool) == Some(true));
 
         let mut segs: Vec<&Value> = d.get("segments").and_then(Value::as_array).map(|a| a.iter().collect()).unwrap_or_default();

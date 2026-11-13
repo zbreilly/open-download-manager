@@ -588,6 +588,10 @@ impl MainWindow {
         if let (true, Some(e)) = (status == "error", d.get("error").and_then(Value::as_str)) {
             body.push(error_text(e).into());
         }
+        // a finished stream download may carry a note (audio saved separately)
+        if let (false, Some(t)) = (status == "error", d.get("notice").and_then(Value::as_str).filter(|t| !t.is_empty())) {
+            body.push(note(t).into());
+        }
         body.push(
             Grid::new()
                 .column_spacing(24.0)
@@ -763,7 +767,7 @@ impl Component for MainWindow {
             Msg::DismissError => self.dismissed = self.shared.error.as_ref().map(|e| e.0).unwrap_or(0),
             Msg::Dropped(text) => {
                 // links dragged from a browser
-                let links: Vec<&str> = text.lines().map(str::trim).filter(|l| fmt::is_http(l)).collect();
+                let links: Vec<&str> = text.lines().map(str::trim).filter(|l| fmt::is_link(l)).collect();
                 match links.as_slice() {
                     [] => {}
                     [one] => self.shared.act(Action::Add(json!({ "url": one }))),

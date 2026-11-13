@@ -68,5 +68,7 @@ jobs:
           for f in extension/src/*.js; do node --check "$f"; done
           # the extension and the app seal messages the same way
           node extension/test/pairing.test.mjs
+          # what the media list shows: files, HLS/DASH manifests, not segments
+          node extension/test/media.test.mjs
       - name: Versions agree
         run: scripts/ci/check-versions.sh

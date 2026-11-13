@@ -411,6 +411,7 @@ pub async fn probe_with(
         protocol,
         etag,
         last_modified,
+        stream: None,
     })
 }
 

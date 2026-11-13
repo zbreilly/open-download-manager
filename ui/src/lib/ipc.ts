@@ -38,6 +38,12 @@ export interface Download {
   whenFinished: string;
   manual: boolean;
   description: string | null;
+  /** an HLS/DASH stream (the URL is its manifest) */
+  stream?: StreamChoice | null;
+  /** a note for the finished download (e.g. audio saved as a separate file) */
+  notice?: string | null;
+  /** files written beside the main one */
+  extraFiles?: string[];
 }
 
 export interface ProgressItem {
@@ -92,7 +98,20 @@ export interface Settings {
 export interface ProbeResult {
   finalUrl: string; fileName: string; totalBytes: number | null; mime: string | null;
   resumable: boolean; protocol: string; category: string;
+  /** the link is an HLS/DASH manifest */
+  stream?: StreamInfo;
 }
+
+export interface StreamVariant {
+  id: string; label: string; width: number | null; height: number | null; bandwidth: number | null;
+  codecs: string | null; estBytes: number | null; separateAudio: boolean; ext: string;
+}
+export interface StreamAudio { id: string; label: string; language: string | null; bandwidth: number | null; default: boolean }
+export interface StreamInfo {
+  kind: 'hls' | 'dash'; protected: boolean; live: boolean; blocked?: string;
+  durationSecs: number | null; variants: StreamVariant[]; audio: StreamAudio[];
+}
+export interface StreamChoice { kind: string; variant: string | null; audio: string | null }
 
 export interface AddRequest {
   url: string;
@@ -114,6 +133,7 @@ export interface AddRequest {
   totalBytes?: number | null;
   resumable?: boolean | null;
   mime?: string | null;
+  stream?: StreamChoice | null;
 }
 
 export interface GrabbedLink { url: string; fileName: string; ext: string; category: string; source: string }

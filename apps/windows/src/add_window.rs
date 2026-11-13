@@ -51,6 +51,9 @@ pub enum Msg {
     Category(String),
     Queue(String),
     Connections(String),
+    /// HLS/DASH quality and audio track
+    Quality(String),
+    Audio(String),
     AddHeader,
     RemoveHeader(usize),
     /// the pause after typing is over (generation)
@@ -185,6 +188,7 @@ impl AddWindow {
             Info::Web { host } => (host, "Opened from a web page. The link has not been contacted yet.".to_string(), false),
             Info::Failed { error } => (error, "You can still add it; it will retry when started.".to_string(), false),
             Info::Probed { summary, detail, .. } => (summary, detail, false),
+            Info::Blocked { reason } => (reason, String::new(), false),
         };
         let mut left: Vec<View> = vec![TextBlock::new().text(title).text_wrapping(TextWrapping::Wrap).into()];
         if !detail.is_empty() {
@@ -214,7 +218,7 @@ impl Component for AddWindow {
         if form.url.is_empty() && !form.batch {
             // offer a link that is on the clipboard
             if let Some(clip) = system::clipboard_text().map(|t| t.trim().to_string()) {
-                if odm_ui::fmt::is_http(&clip) && !clip.chars().any(char::is_whitespace) {
+                if odm_ui::fmt::is_link(&clip) && !clip.chars().any(char::is_whitespace) {
                     form.url = clip;
                 }
             }
@@ -286,6 +290,8 @@ impl Component for AddWindow {
             }
             Msg::Queue(id) => self.form.queue = id,
             Msg::Connections(c) => self.form.connections = c.parse().unwrap_or(16),
+            Msg::Quality(id) => self.form.choose_quality(&id),
+            Msg::Audio(id) => self.form.choose_audio(&id),
             Msg::AddHeader => self.form.headers.push(Default::default()),
             Msg::RemoveHeader(i) => {
                 if i < self.form.headers.len() {
@@ -312,7 +318,7 @@ impl Component for AddWindow {
             Msg::Expanded(..) => {}
             Msg::Check => {
                 // probe right away (a web link is only contacted on request)
-                if !self.form.batch && odm_ui::fmt::is_http(self.form.link()) {
+                if !self.form.batch && odm_ui::fmt::is_link(self.form.link()) {
                     self.generation = self.generation.wrapping_add(1);
                     self.form.probe = None;
                     self.form.probe_error.clear();
@@ -378,12 +384,23 @@ impl Component for AddWindow {
                 )),
             ));
         } else {
-            let mut url: Vec<View> = vec![self.field(Field::Url, &f.url, "https://", context).into()];
+            let mut url: Vec<View> = vec![self.field(Field::Url, &f.url, "https:// or ftp://", context).into()];
             if f.url_error() {
-                url.push(error_text("Enter a full http:// or https:// address.").into());
+                url.push(error_text("Enter a full http://, https:// or ftp:// address.").into());
             }
             rows.push(wide("URL", StackPanel::new().spacing(6.0).children(url)));
             rows.extend(self.info(context));
+            // a stream's qualities and audio tracks
+            if f.shows_quality() {
+                let q = f.qualities();
+                let pairs: Vec<(&str, &str)> = q.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+                rows.push(row("Quality", None, choice(&pairs, &f.quality, context.callback(Msg::Quality))));
+            }
+            if f.shows_audio() {
+                let t = f.audio_tracks();
+                let pairs: Vec<(&str, &str)> = t.iter().map(|(a, b)| (a.as_str(), b.as_str())).collect();
+                rows.push(row("Audio", None, choice(&pairs, &f.audio, context.callback(Msg::Audio))));
+            }
         }
 
         rows.push(heading("Save").into());

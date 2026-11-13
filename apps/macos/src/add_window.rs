@@ -34,6 +34,10 @@ pub struct AddWindow {
     info_detail: Retained<NSTextField>,
     info_spinner: Retained<NSProgressIndicator>,
     check: Retained<NSButton>,
+    quality: Retained<NSPopUpButton>,
+    quality_row: Retained<NSStackView>,
+    audio: Retained<NSPopUpButton>,
+    audio_row: Retained<NSStackView>,
     name: Retained<NSTextField>,
     name_row: Retained<NSStackView>,
     category: Retained<NSPopUpButton>,
@@ -86,7 +90,7 @@ impl AddWindow {
         if form.url.is_empty() && !form.batch {
             // a link on the clipboard is most likely what the user wants
             if let Some(clip) = system::clipboard_text().map(|c| c.trim().to_string()) {
-                if fmt::is_http(&clip) && !clip.chars().any(char::is_whitespace) {
+                if fmt::is_link(&clip) && !clip.chars().any(char::is_whitespace) {
                     form.url = clip;
                 }
             }
@@ -98,10 +102,10 @@ impl AddWindow {
             let window = kit::window("Add Download", 560.0, 680.0, (480.0, 520.0), true);
             let edited = call(weak, |w| w.edited());
 
-            let url = kit::text_field("https://", edited.clone());
+            let url = kit::text_field("https:// or ftp://", edited.clone());
             kit::mono(&url);
             let url_row = kit::row("URL", &url);
-            let url_error = kit::note("Enter a full http:// or https:// address.");
+            let url_error = kit::note("Enter a full http://, https:// or ftp:// address.");
             kit::red(&url_error);
 
             let (batch_scroll, batch_text) = kit::text_area(edited.clone());
@@ -124,6 +128,12 @@ impl AddWindow {
             kit::stretch(&info_text, true);
             let info_inner = kit::hstack(10.0, &[&info_icon, &info_spinner, &info_text, &check]);
             let info_row = kit::row("", &info_inner);
+
+            // HLS/DASH: which quality and audio track
+            let quality = kit::popup(&[], call(weak, |w| w.quality_chosen()));
+            let quality_row = kit::row("Quality", &quality);
+            let audio = kit::popup(&[], call(weak, |w| w.audio_chosen()));
+            let audio_row = kit::row("Audio", &audio);
 
             let name = kit::text_field("File name", edited.clone());
             let name_row = kit::row("File name", &name);
@@ -211,6 +221,8 @@ impl AddWindow {
                     &kit::row("", &url_error),
                     &batch_row,
                     &info_row,
+                    &quality_row,
+                    &audio_row,
                     &kit::hline(),
                     &name_row,
                     &category_row,
@@ -273,6 +285,10 @@ impl AddWindow {
                 info_detail,
                 info_spinner,
                 check,
+                quality,
+                quality_row,
+                audio,
+                audio_row,
                 name,
                 name_row,
                 category,
@@ -420,6 +436,7 @@ impl AddWindow {
             Info::Web { host } => (host.clone(), "Opened from a web page. The link has not been contacted yet.".to_string(), false, false),
             Info::Failed { error } => (error.clone(), "You can still add it; it will retry when started.".to_string(), false, true),
             Info::Probed { summary, detail, .. } => (summary.clone(), detail.clone(), false, false),
+            Info::Blocked { reason } => (reason.clone(), String::new(), false, true),
         };
         kit::set_text(&self.info_title, &title);
         kit::set_text(&self.info_detail, &detail);
@@ -433,6 +450,22 @@ impl AddWindow {
             }
         }
         kit::show(&self.check, f.from_web && !spinning);
+
+        // a stream's qualities and audio tracks
+        kit::show(&self.quality_row, f.shows_quality());
+        kit::show(&self.audio_row, f.shows_audio());
+        let qualities = f.qualities();
+        if f.shows_quality() {
+            let titles: Vec<String> = qualities.iter().map(|q| q.1.clone()).collect();
+            let i = qualities.iter().position(|q| q.0 == f.quality).unwrap_or(0);
+            kit::set_popup(&self.quality, &titles, i);
+        }
+        let tracks = f.audio_tracks();
+        if f.shows_audio() {
+            let titles: Vec<String> = tracks.iter().map(|t| t.1.clone()).collect();
+            let i = tracks.iter().position(|t| t.0 == f.audio).unwrap_or(0);
+            kit::set_popup(&self.audio, &titles, i);
+        }
         let again = f.probe.is_some() || !f.probe_error.is_empty();
         unsafe { self.check.setTitle(&ns(if again { "Check Again" } else { "Check Link" })) };
 
@@ -466,6 +499,25 @@ impl AddWindow {
             self.form.borrow_mut().choose_category(&id, folder);
             self.sync();
         }
+    }
+
+    fn quality_chosen(self: &Rc<Self>) {
+        let i = kit::popup_index(&self.quality);
+        self.pull();
+        let id = self.form.borrow().qualities().get(i).map(|q| q.0.clone());
+        if let Some(id) = id {
+            self.form.borrow_mut().choose_quality(&id);
+        }
+        self.sync();
+    }
+
+    fn audio_chosen(self: &Rc<Self>) {
+        let i = kit::popup_index(&self.audio);
+        let id = self.form.borrow().audio_tracks().get(i).map(|t| t.0.clone());
+        if let Some(id) = id {
+            self.form.borrow_mut().choose_audio(&id);
+        }
+        self.sync();
     }
 
     fn browse(self: &Rc<Self>) {
@@ -535,7 +587,7 @@ impl AddWindow {
         self.pull();
         {
             let mut f = self.form.borrow_mut();
-            if f.batch || !fmt::is_http(f.link()) || f.probing {
+            if f.batch || !fmt::is_link(f.link()) || f.probing {
                 return;
             }
             f.probe = None;

@@ -53,8 +53,15 @@
   // the download, and any name / referrer the page supplied is ignored.
   let fromWeb = $state(false);
 
-  const isUrl = (s: string) => { try { const u = new URL(s.trim()); return u.protocol === 'http:' || u.protocol === 'https:'; } catch { return false; } };
-  const urlValid = $derived(batch ? batchUrls.length > 0 : isUrl(url));
+  // http(s), or FTP (ftps:// implicit TLS, ftpes:// explicit TLS)
+  const isUrl = (s: string) => { try { const u = new URL(s.trim()); return ['http:', 'https:', 'ftp:', 'ftps:', 'ftpes:'].includes(u.protocol) && !!u.hostname; } catch { return false; } };
+  // HLS/DASH: the qualities the manifest offers, and the user's choice
+  const stream = $derived(!batch ? probe?.stream ?? null : null);
+  const blocked = $derived(stream?.blocked ?? '');
+  let quality = $state('');
+  let audio = $state('');
+  const variant = $derived(stream ? stream.variants.find((v) => v.id === quality) ?? stream.variants[0] : null);
+  const urlValid = $derived(batch ? batchUrls.length > 0 : isUrl(url) && !blocked);
   const resumable = $derived(probe ? probe.resumable : true);
   const catName = $derived(settings?.categories.find((c) => c.id === category)?.name ?? 'this category');
 
@@ -106,7 +113,11 @@
       });
       if (seq !== probeSeq) return;
       probe = p;
+      quality = p.stream?.variants[0]?.id ?? '';
+      audio = (p.stream?.audio.find((a) => a.default) ?? p.stream?.audio[0])?.id ?? '';
       if (!nameTouched) fileName = p.fileName;
+      // a name given with the link (a page title) gets the stream's file type
+      else if (p.stream) chooseQuality(quality);
       autoCat = p.category;
       if (!catTouched) await setCategory(p.category, false);
       if (!p.resumable) conns = 1;
@@ -153,10 +164,20 @@
       checksum: !batch && verify && checksum.trim() ? { algo: '', expected: checksum.trim() } : null,
       onExists: onExists ?? 'rename',
       rememberFolder: !batch && remember && dirTouched,
-      totalBytes: probe?.totalBytes ?? null,
+      totalBytes: stream ? variant?.estBytes ?? null : probe?.totalBytes ?? null,
       resumable: probe ? probe.resumable : null,
       mime: probe?.mime ?? null,
+      stream: stream ? { kind: stream.kind, variant: quality || null, audio: audio || null } : null,
     };
+  }
+
+  /** A quality with another file type changes the name's extension. */
+  function chooseQuality(id: string) {
+    quality = id;
+    const ext = stream?.variants.find((v) => v.id === id)?.ext;
+    if (!ext || nameExt === ext || !fileName.trim()) return;
+    // a page title such as "Ep. 5 The End" has no extension to replace
+    fileName = /\.[a-z0-9]{1,5}$/i.test(fileName) ? fileName.replace(/\.[a-z0-9]{1,5}$/i, `.${ext}`) : `${fileName.trim()}.${ext}`;
   }
 
   async function submit(start: boolean, onExists?: string) {
@@ -249,9 +270,9 @@
       {#if batch}
         <textarea bind:this={urlEl} class="input mono" rows="5" bind:value={url} spellcheck="false" placeholder="https://example.com/photos/img[001-050].jpg"></textarea>
       {:else}
-        <input bind:this={urlEl} class="input mono" class:invalid={!!url && (!isUrl(url) || !!probeErr)} type="url" bind:value={url} spellcheck="false" placeholder="https://" />
+        <input bind:this={urlEl} class="input mono" class:invalid={!!url && (!isUrl(url) || !!probeErr)} type="url" bind:value={url} spellcheck="false" placeholder="https:// or ftp://" />
       {/if}
-      {#if url && !batch && !isUrl(url)}<span class="bad">Enter a full http:// or https:// address.</span>{/if}
+      {#if url && !batch && !isUrl(url)}<span class="bad">Enter a full http://, https:// or ftp:// address.</span>{/if}
     </label>
 
     {#if batch}
@@ -275,6 +296,17 @@
           {:else if probeErr}
             <div class="bad">{probeErr}</div>
             <div class="muted small">You can still add it; the download will retry when started.</div>
+          {:else if blocked}
+            <div class="bad">{blocked}</div>
+            <div class="muted small">{stream?.kind.toUpperCase()} stream</div>
+          {:else if probe && stream}
+            <div class="mono small">{stream.kind.toUpperCase()} stream{variant?.estBytes ? ` · about ${f.bytes(variant.estBytes)}` : ''}</div>
+            <div class="chips">
+              <span><Icon name="check" size={13} />Resumable</span>
+              <span>{stream.variants.length} {stream.variants.length === 1 ? 'quality' : 'qualities'}</span>
+              {#if variant?.separateAudio}<span>Separate audio track</span>{/if}
+              <span>{probe.protocol}</span>
+            </div>
           {:else if probe}
             <div class="mono small">{f.bytes(probe.totalBytes)}{probe.mime ? ` · ${probe.mime}` : ''}</div>
             {#if probe.resumable}
@@ -290,6 +322,27 @@
         </div>
         {#if fromWeb && !probing}
           <button type="button" class="btn sm c-teal" onclick={probeNow}><Icon name="refresh-link" size={14} />{probe || probeErr ? 'Check again' : 'Check link'}</button>
+        {/if}
+      </div>
+    {/if}
+
+    {#if stream && !blocked && (stream.variants.length > 1 || stream.audio.length > 1)}
+      <div class="grid2">
+        {#if stream.variants.length > 1}
+          <label class="field">
+            <span>Quality</span>
+            <select class="select" value={quality} onchange={(e) => chooseQuality((e.target as HTMLSelectElement).value)}>
+              {#each stream.variants as v}<option value={v.id}>{v.label}{v.estBytes ? ` — about ${f.bytes(v.estBytes)}` : ''}</option>{/each}
+            </select>
+          </label>
+        {/if}
+        {#if stream.audio.length > 1}
+          <label class="field">
+            <span>Audio</span>
+            <select class="select" bind:value={audio}>
+              {#each stream.audio as a}<option value={a.id}>{a.label}</option>{/each}
+            </select>
+          </label>
         {/if}
       </div>
     {/if}

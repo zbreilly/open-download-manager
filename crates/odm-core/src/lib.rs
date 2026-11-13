@@ -1,6 +1,8 @@
 //! Open Download Manager — core engine.
 //!
-//! * `task`     — segmented, resumable HTTP(S) download with dynamic splitting
+//! * `task`     — segmented, resumable HTTP(S)/FTP download with dynamic splitting
+//! * `ftp`      — FTP/FTPS client (passive mode, REST, SIZE, MDTM)
+//! * `stream`   — HLS/DASH downloads (`hls`, `dash` parse manifests, `mp4` muxes)
 //! * `manager`  — download list, queues, scheduler, limits, events
 //! * `store`    — SQLite persistence
 //! * `grabber`  — site grabber (link extraction)
@@ -9,13 +11,18 @@
 //! * `secret`   — protection of stored cookies, passwords and keys
 
 pub mod client;
+pub mod dash;
+pub mod ftp;
+pub mod hls;
 pub mod grabber;
 pub mod limiter;
 pub mod manager;
 pub mod model;
+pub mod mp4;
 pub mod pairing;
 pub mod secret;
 pub mod store;
+pub mod stream;
 pub mod task;
 pub mod util;
 

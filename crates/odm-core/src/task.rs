@@ -6,6 +6,8 @@
 use crate::client::{self, ContentRange, HeaderSet};
 use crate::limiter::Limiter;
 use crate::model::{SegState, SegmentView};
+use bytes::Bytes;
+use futures_util::stream::BoxStream;
 use futures_util::StreamExt;
 use parking_lot::Mutex;
 use std::path::PathBuf;
@@ -149,6 +151,124 @@ impl Seg {
     }
 }
 
+/// Progress of a download made of many small pieces (the segments of an
+/// HLS/DASH stream). Piece sizes are known only once fetched; until then
+/// a piece counts with the average size of the finished ones.
+pub struct Units {
+    got: Vec<AtomicU64>,
+    done: Vec<AtomicBool>,
+    active: Vec<AtomicBool>,
+    /// estimated size of a piece not fetched yet
+    est: AtomicU64,
+}
+
+impl Units {
+    /// `done[i]` = size of a piece already on disk.
+    pub fn new(done: &[Option<u64>], est_total: Option<u64>) -> Self {
+        let n = done.len().max(1) as u64;
+        let u = Self {
+            got: done.iter().map(|d| AtomicU64::new(d.unwrap_or(0))).collect(),
+            done: done.iter().map(|d| AtomicBool::new(d.is_some())).collect(),
+            active: done.iter().map(|_| AtomicBool::new(false)).collect(),
+            est: AtomicU64::new(est_total.map(|t| t / n).unwrap_or(0)),
+        };
+        u.refresh_estimate();
+        u
+    }
+
+    pub fn len(&self) -> usize {
+        self.got.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.got.is_empty()
+    }
+
+    pub fn is_done(&self, i: usize) -> bool {
+        self.done[i].load(Ordering::SeqCst)
+    }
+
+    pub fn start(&self, i: usize) {
+        self.got[i].store(0, Ordering::SeqCst);
+        self.active[i].store(true, Ordering::SeqCst);
+    }
+
+    pub fn add(&self, i: usize, n: u64) {
+        self.got[i].fetch_add(n, Ordering::SeqCst);
+    }
+
+    /// The piece failed: forget its bytes.
+    pub fn reset(&self, i: usize) {
+        self.got[i].store(0, Ordering::SeqCst);
+        self.active[i].store(false, Ordering::SeqCst);
+    }
+
+    pub fn finish(&self, i: usize, size: u64) {
+        self.got[i].store(size, Ordering::SeqCst);
+        self.done[i].store(true, Ordering::SeqCst);
+        self.active[i].store(false, Ordering::SeqCst);
+        self.refresh_estimate();
+    }
+
+    fn refresh_estimate(&self) {
+        let (mut sum, mut n) = (0u64, 0u64);
+        for (g, d) in self.got.iter().zip(&self.done) {
+            if d.load(Ordering::SeqCst) {
+                sum += g.load(Ordering::SeqCst);
+                n += 1;
+            }
+        }
+        if n >= 3 || (n > 0 && self.est.load(Ordering::SeqCst) == 0) {
+            self.est.store(sum / n, Ordering::SeqCst);
+        }
+    }
+
+    pub fn received(&self) -> u64 {
+        self.got.iter().map(|g| g.load(Ordering::SeqCst)).sum()
+    }
+
+    pub fn done_bytes(&self) -> u64 {
+        self.got.iter().zip(&self.done).filter(|(_, d)| d.load(Ordering::SeqCst)).map(|(g, _)| g.load(Ordering::SeqCst)).sum()
+    }
+
+    /// Estimated size of the whole download.
+    pub fn total(&self) -> u64 {
+        self.layout(false).1
+    }
+
+    /// The pieces as segment views (finished and waiting runs merged), and
+    /// the total. `synced`: count only finished pieces (what is on disk).
+    pub fn layout(&self, synced: bool) -> (Vec<SegmentView>, u64) {
+        let est = self.est.load(Ordering::SeqCst);
+        let mut out: Vec<SegmentView> = vec![];
+        let mut at = 0u64;
+        for i in 0..self.len() {
+            let got = self.got[i].load(Ordering::SeqCst);
+            let done = self.done[i].load(Ordering::SeqCst);
+            let active = !synced && self.active[i].load(Ordering::SeqCst);
+            let size = if done { got } else { est.max(got) };
+            let (received, state) = if done {
+                (size, SegState::Done)
+            } else if active {
+                (got.min(size), SegState::Receiving)
+            } else {
+                (0, SegState::Idle)
+            };
+            let merge = state != SegState::Receiving
+                && out.last().is_some_and(|l| l.state == state && l.end == at);
+            if merge {
+                let l = out.last_mut().unwrap();
+                l.end = at + size;
+                l.received += received;
+            } else if size > 0 || done {
+                out.push(SegmentView { start: at, end: at + size, received, state, speed_bps: 0 });
+            }
+            at += size;
+        }
+        (out, at)
+    }
+}
+
 /// Shared live state of a running download (read by the UI ticker).
 pub struct Runtime {
     pub cancel: CancellationToken,
@@ -164,6 +284,8 @@ pub struct Runtime {
     pub gen: u64,
     /// where the finished file was moved to (set during completion)
     pub placed: Mutex<Option<PathBuf>>,
+    /// set for a stream download: progress is counted per piece
+    pub units: std::sync::OnceLock<Arc<Units>>,
     done: CancellationToken,
 }
 
@@ -184,15 +306,22 @@ impl Runtime {
             started: Instant::now(),
             gen,
             placed: Mutex::new(None),
+            units: std::sync::OnceLock::new(),
             done: CancellationToken::new(),
         })
     }
 
     pub fn received(&self) -> u64 {
+        if let Some(u) = self.units.get() {
+            return u.received();
+        }
         self.segs.lock().iter().map(|s| s.received()).sum()
     }
 
     pub fn views(&self) -> Vec<SegmentView> {
+        if let Some(u) = self.units.get() {
+            return u.layout(false).0;
+        }
         let mut v: Vec<SegmentView> = self.segs.lock().iter().map(|s| s.view()).collect();
         v.sort_by_key(|s| s.start);
         v
@@ -201,6 +330,9 @@ impl Runtime {
     /// Segment views limited to synced data (what may be persisted while
     /// writers are still running).
     pub fn synced_views(&self) -> Vec<SegmentView> {
+        if let Some(u) = self.units.get() {
+            return u.layout(true).0;
+        }
         let mut v: Vec<SegmentView> = self.segs.lock().iter().map(|s| s.synced_view()).collect();
         v.sort_by_key(|s| s.start);
         v
@@ -225,6 +357,8 @@ impl Runtime {
 pub struct TaskCtx {
     /// segment client (HTTP/1.1, redirects followed by `client::send`)
     pub client: reqwest::Client,
+    /// set for an FTP download: segments are fetched from there instead
+    pub ftp: Option<Arc<crate::ftp::Endpoint>>,
     pub url: String,
     pub headers: HeaderSet,
     pub part: PathBuf,
@@ -257,8 +391,9 @@ enum SegErr {
     Cancelled,
     Restart { resumable: bool, reason: String },
     Http(u16),
-    /// rate-limited / busy after all retries
-    Throttled(u16),
+    /// rate-limited / busy after all retries (HTTP status, or the FTP
+    /// server's message)
+    Throttled(u16, Option<String>),
     Fatal(String),
 }
 
@@ -358,7 +493,7 @@ pub async fn run(ctx: Arc<TaskCtx>) -> Result<TaskOutcome, TaskError> {
         seg.assigned.store(false, Ordering::SeqCst);
         match res {
             Ok(()) => seg.set_state(SegState::Done),
-            Err(SegErr::Throttled(code)) if failure.is_none() && !set.is_empty() => {
+            Err(SegErr::Throttled(code, _)) if failure.is_none() && !set.is_empty() => {
                 // other connections are still working: hand this segment
                 // back to the pool and use one connection fewer
                 seg.set_state(SegState::Idle);
@@ -382,7 +517,8 @@ pub async fn run(ctx: Arc<TaskCtx>) -> Result<TaskOutcome, TaskError> {
     match failure {
         Some(SegErr::Cancelled) => return Err(TaskError::Cancelled),
         Some(SegErr::Restart { resumable, reason }) => return Err(TaskError::Restart { resumable, reason }),
-        Some(SegErr::Http(c)) | Some(SegErr::Throttled(c)) => return Err(TaskError::Http(c)),
+        Some(SegErr::Throttled(_, Some(m))) => return Err(TaskError::Fatal(m)),
+        Some(SegErr::Http(c)) | Some(SegErr::Throttled(c, None)) => return Err(TaskError::Http(c)),
         Some(SegErr::Fatal(m)) => return Err(TaskError::Fatal(m)),
         None => {}
     }
@@ -529,103 +665,23 @@ async fn run_segment(ctx: &TaskCtx, seg: &Seg, stop: &CancellationToken) -> Resu
         }
         seg.set_state(if attempts == 0 && reconnects == 0 { SegState::Connecting } else { SegState::Reconnecting });
 
-        let mut extra: Vec<(&'static str, String)> = vec![];
-        let mut sent_range = false;
-        let mut sent_if_range = false;
-        if resumable && (from > 0 || end != UNKNOWN) {
-            let range = if end == UNKNOWN { format!("bytes={from}-") } else { format!("bytes={from}-{}", end - 1) };
-            extra.push(("range", range));
-            sent_range = true;
-            if let Some(v) = if_range_value(ctx) {
-                extra.push(("if-range", v));
-                sent_if_range = true;
-            }
-        }
-
-        let resp = tokio::select! {
+        let opened = tokio::select! {
             _ = stop.cancelled() => return Err(SegErr::Cancelled),
-            r = client::send(&ctx.client, &ctx.url, &ctx.headers, &extra, None) => r,
+            r = open(ctx, seg, from, end) => r,
         };
-        let resp = match resp {
-            Ok(r) => r,
-            // refused by policy or malformed: trying again cannot help
-            Err(e @ (crate::CoreError::InsecureRedirect | crate::CoreError::BadUrl(_))) => {
-                return Err(SegErr::Fatal(e.to_string()));
-            }
-            Err(e) => {
+        let mut stream = match opened {
+            Ok(Opened::Body(b)) => b,
+            Ok(Opened::Done) => return Ok(()),
+            Err(OpenFail::Seg(e)) => return Err(e),
+            Err(OpenFail::Retry(last)) => {
                 attempts += 1;
                 if attempts > ctx.max_retries {
-                    return Err(SegErr::Fatal(e.to_string()));
+                    return Err(last);
                 }
                 backoff(ctx, seg, attempts, stop).await?;
                 continue;
             }
         };
-        let status = resp.status().as_u16();
-        let header = |k: &str| resp.headers().get(k).and_then(|v| v.to_str().ok()).map(|s| s.trim().to_string());
-        let known_total = rt.total.load(Ordering::SeqCst);
-        match status {
-            206 => {
-                let cr = header("content-range").and_then(|v| client::parse_content_range(&v));
-                let Some(ContentRange { range: Some((first, _)), total: got_total }) = cr else {
-                    return Err(SegErr::Restart { resumable: false, reason: "server sent an invalid byte range".into() });
-                };
-                if first != from {
-                    return Err(SegErr::Restart { resumable: false, reason: "server returned the wrong byte range".into() });
-                }
-                if let Some(t) = got_total {
-                    if known_total != UNKNOWN && t != known_total {
-                        return Err(SegErr::Restart {
-                            resumable: true,
-                            reason: format!("file changed on server (size {known_total} -> {t}); restarting"),
-                        });
-                    }
-                }
-                if let (Some(stored), Some(got)) = (ctx.etag.as_deref(), header("etag")) {
-                    if strip_weak(stored) != strip_weak(&got) {
-                        return Err(SegErr::Restart { resumable: true, reason: "file changed on server; restarting".into() });
-                    }
-                }
-            }
-            200 => {
-                // a full response is only usable by a segment that covers the whole file
-                let whole = from == 0 && seg.start == 0 && (end == UNKNOWN || end == known_total);
-                if sent_range && !whole {
-                    return Err(SegErr::Restart {
-                        resumable: sent_if_range,
-                        reason: if sent_if_range {
-                            "file changed on server; restarting".into()
-                        } else {
-                            "server stopped honoring byte ranges".into()
-                        },
-                    });
-                }
-                let len = header("content-length").and_then(|v| v.parse::<u64>().ok());
-                if let (Some(len), true) = (len, known_total != UNKNOWN) {
-                    if len != known_total {
-                        return Err(SegErr::Restart {
-                            resumable: true,
-                            reason: format!("file changed on server (size {known_total} -> {len}); restarting"),
-                        });
-                    }
-                }
-            }
-            416 => {
-                if known_total != UNKNOWN && from >= known_total {
-                    return Ok(());
-                }
-                return Err(SegErr::Restart { resumable: true, reason: "requested range is no longer available; restarting".into() });
-            }
-            408 | 425 | 429 | 500..=599 => {
-                attempts += 1;
-                if attempts > ctx.max_retries {
-                    return Err(if matches!(status, 429 | 503) { SegErr::Throttled(status) } else { SegErr::Http(status) });
-                }
-                backoff(ctx, seg, attempts, stop).await?;
-                continue;
-            }
-            _ => return Err(SegErr::Http(status)),
-        }
         if rt.phase.load(Ordering::SeqCst) == 0 {
             rt.phase.store(1, Ordering::SeqCst);
         }
@@ -639,7 +695,6 @@ async fn run_segment(ctx: &TaskCtx, seg: &Seg, stop: &CancellationToken) -> Resu
             return Err(SegErr::Fatal(format!("seek failed: {e}")));
         }
         seg.set_state(SegState::Receiving);
-        let mut stream = resp.bytes_stream();
         let mut buf: Vec<u8> = Vec::with_capacity(FLUSH_BYTES + 64 * 1024);
         let mut last_flush = Instant::now();
         let mut last_sync = Instant::now();
@@ -736,6 +791,135 @@ async fn run_segment(ctx: &TaskCtx, seg: &Seg, stop: &CancellationToken) -> Resu
         }
         backoff(ctx, seg, attempts, stop).await?;
     }
+}
+
+/// A connection that delivers the bytes from `from`, or the news that
+/// there is nothing left to fetch.
+enum Opened {
+    Body(BoxStream<'static, Result<Bytes, String>>),
+    Done,
+}
+
+enum OpenFail {
+    /// may work later; this is the error once retries are used up
+    Retry(SegErr),
+    Seg(SegErr),
+}
+
+async fn open(ctx: &TaskCtx, seg: &Seg, from: u64, end: u64) -> Result<Opened, OpenFail> {
+    match &ctx.ftp {
+        Some(ep) => open_ftp(ctx, ep, from).await,
+        None => open_http(ctx, seg, from, end).await,
+    }
+}
+
+async fn open_ftp(ctx: &TaskCtx, ep: &crate::ftp::Endpoint, from: u64) -> Result<Opened, OpenFail> {
+    use crate::ftp::FtpError;
+    let rt = &ctx.rt;
+    let known_total = rt.total.load(Ordering::SeqCst);
+    if known_total != UNKNOWN && from >= known_total {
+        return Ok(Opened::Done);
+    }
+    let resumable = rt.resumable.load(Ordering::SeqCst);
+    let expect = (known_total != UNKNOWN).then_some(known_total);
+    match ep.open(if resumable { from } else { 0 }, expect).await {
+        Ok(body) => Ok(Opened::Body(body)),
+        Err(FtpError::Changed { expected, now }) => Err(OpenFail::Seg(SegErr::Restart {
+            resumable: true,
+            reason: format!("file changed on server (size {expected} -> {now}); restarting"),
+        })),
+        Err(FtpError::NoResume) => {
+            Err(OpenFail::Seg(SegErr::Restart { resumable: false, reason: "the FTP server can't resume transfers".into() }))
+        }
+        Err(e) if e.throttled() => Err(OpenFail::Retry(SegErr::Throttled(421, Some(e.message())))),
+        Err(e) if e.retryable() => Err(OpenFail::Retry(SegErr::Fatal(e.message()))),
+        Err(e) => Err(OpenFail::Seg(SegErr::Fatal(e.message()))),
+    }
+}
+
+async fn open_http(ctx: &TaskCtx, seg: &Seg, from: u64, end: u64) -> Result<Opened, OpenFail> {
+    let rt = &ctx.rt;
+    let resumable = rt.resumable.load(Ordering::SeqCst);
+    let mut extra: Vec<(&'static str, String)> = vec![];
+    let mut sent_range = false;
+    let mut sent_if_range = false;
+    if resumable && (from > 0 || end != UNKNOWN) {
+        let range = if end == UNKNOWN { format!("bytes={from}-") } else { format!("bytes={from}-{}", end - 1) };
+        extra.push(("range", range));
+        sent_range = true;
+        if let Some(v) = if_range_value(ctx) {
+            extra.push(("if-range", v));
+            sent_if_range = true;
+        }
+    }
+    let restart = |resumable: bool, reason: String| Err(OpenFail::Seg(SegErr::Restart { resumable, reason }));
+    let resp = match client::send(&ctx.client, &ctx.url, &ctx.headers, &extra, None).await {
+        Ok(r) => r,
+        // refused by policy or malformed: trying again cannot help
+        Err(e @ (crate::CoreError::InsecureRedirect | crate::CoreError::BadUrl(_))) => {
+            return Err(OpenFail::Seg(SegErr::Fatal(e.to_string())));
+        }
+        Err(e) => return Err(OpenFail::Retry(SegErr::Fatal(e.to_string()))),
+    };
+    let status = resp.status().as_u16();
+    let header = |k: &str| resp.headers().get(k).and_then(|v| v.to_str().ok()).map(|s| s.trim().to_string());
+    let known_total = rt.total.load(Ordering::SeqCst);
+    match status {
+        206 => {
+            let cr = header("content-range").and_then(|v| client::parse_content_range(&v));
+            let Some(ContentRange { range: Some((first, _)), total: got_total }) = cr else {
+                return restart(false, "server sent an invalid byte range".into());
+            };
+            if first != from {
+                return restart(false, "server returned the wrong byte range".into());
+            }
+            if let Some(t) = got_total {
+                if known_total != UNKNOWN && t != known_total {
+                    return restart(true, format!("file changed on server (size {known_total} -> {t}); restarting"));
+                }
+            }
+            if let (Some(stored), Some(got)) = (ctx.etag.as_deref(), header("etag")) {
+                if strip_weak(stored) != strip_weak(&got) {
+                    return restart(true, "file changed on server; restarting".into());
+                }
+            }
+        }
+        200 => {
+            // a full response is only usable by a segment that covers the whole file
+            let whole = from == 0 && seg.start == 0 && (end == UNKNOWN || end == known_total);
+            if sent_range && !whole {
+                return restart(
+                    sent_if_range,
+                    if sent_if_range {
+                        "file changed on server; restarting".into()
+                    } else {
+                        "server stopped honoring byte ranges".into()
+                    },
+                );
+            }
+            let len = header("content-length").and_then(|v| v.parse::<u64>().ok());
+            if let (Some(len), true) = (len, known_total != UNKNOWN) {
+                if len != known_total {
+                    return restart(true, format!("file changed on server (size {known_total} -> {len}); restarting"));
+                }
+            }
+        }
+        416 => {
+            if known_total != UNKNOWN && from >= known_total {
+                return Ok(Opened::Done);
+            }
+            return restart(true, "requested range is no longer available; restarting".into());
+        }
+        408 | 425 | 429 | 500..=599 => {
+            return Err(OpenFail::Retry(if matches!(status, 429 | 503) {
+                SegErr::Throttled(status, None)
+            } else {
+                SegErr::Http(status)
+            }));
+        }
+        _ => return Err(OpenFail::Seg(SegErr::Http(status))),
+    }
+    Ok(Opened::Body(resp.bytes_stream().map(|r| r.map_err(|e| e.to_string())).boxed()))
 }
 
 async fn backoff(ctx: &TaskCtx, seg: &Seg, attempt: u32, stop: &CancellationToken) -> Result<(), SegErr> {

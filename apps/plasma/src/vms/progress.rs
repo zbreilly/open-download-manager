@@ -102,6 +102,8 @@ impl Vm for Progress {
                 ["RESUME", if b(d, "resumable") { "Supported" } else { "Not supported" }],
             ],
             "error": if status == "error" { d.get("error").cloned().unwrap_or(Value::Null) } else { Value::Null },
+            // a finished stream download may carry a note (audio saved separately)
+            "notice": if status == "error" { Value::Null } else { d.get("notice").cloned().filter(|v| v.as_str().is_some_and(|t| !t.is_empty())).unwrap_or(Value::Null) },
             "verified": d.get("checksumOk").and_then(Value::as_bool) == Some(true),
             "segmentsTitle": format!("Segment map · {} connections", (n(d, "activeConnections") as usize).max(segs.len())),
             "segments": { "status": status, "totalBytes": d.get("totalBytes"), "segments": d.get("segments") },

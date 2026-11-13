@@ -6,6 +6,7 @@ use crate::widgets::{self, Choice};
 use adw::prelude::*;
 use gtk::glib;
 use odm_ffi::api;
+use odm_linux::add::{AddForm, Info};
 use odm_linux::fmt;
 use serde_json::{json, Value};
 use std::cell::{Cell, RefCell};
@@ -32,6 +33,9 @@ struct Add {
     queue: Choice,
     dir: adw::EntryRow,
     connections: Choice,
+    /// HLS/DASH: quality and audio track
+    quality: Choice,
+    audio: Choice,
     always: adw::SwitchRow,
     remember: adw::SwitchRow,
     verify: adw::SwitchRow,
@@ -95,6 +99,10 @@ pub fn open(app: &Rc<App>, params: Value) {
     queues.extend(app.queues.borrow().iter().map(|q| (s(q, "id").to_string(), s(q, "name").to_string())));
     queue.set_items(queues);
     let connections = Choice::new("Connections", &CONNECTIONS.map(|c| (c, c)));
+    let quality = Choice::new("Quality", &[]);
+    quality.row.set_visible(false);
+    let audio = Choice::new("Audio", &[]);
+    audio.row.set_visible(false);
 
     let batch_text = gtk::TextView::builder().monospace(true).wrap_mode(gtk::WrapMode::Char).top_margin(8).bottom_margin(8).left_margin(10).right_margin(10).build();
     let a = Rc::new(Add {
@@ -117,6 +125,8 @@ pub fn open(app: &Rc<App>, params: Value) {
         queue,
         dir,
         connections,
+        quality,
+        audio,
         always: adw::SwitchRow::builder().visible(false).build(),
         remember: adw::SwitchRow::builder().active(true).build(),
         verify: adw::SwitchRow::builder().title("Verify checksum after download").build(),
@@ -150,6 +160,8 @@ pub fn open(app: &Rc<App>, params: Value) {
     let page = adw::PreferencesPage::new();
     a.url_group.add(&a.url);
     a.url_group.add(&a.info);
+    a.url_group.add(&a.quality.row);
+    a.url_group.add(&a.audio.row);
     page.add(&a.url_group);
     let frame = gtk::ScrolledWindow::builder().child(&a.batch_text).min_content_height(110).build();
     frame.add_css_class("card");
@@ -282,6 +294,26 @@ pub fn open(app: &Rc<App>, params: Value) {
         this.category_changed(&c);
     });
     let this = a.clone();
+    a.quality.on_change(move |_| {
+        if this.quiet.get() {
+            return;
+        }
+        // a quality of another file type changes the name's extension
+        let mut f = this.stream_form();
+        f.name = this.name.text().to_string();
+        let before = f.name.clone();
+        let id = f.quality.clone();
+        f.choose_quality(&id);
+        if f.name != before {
+            if this.name.text() == *this.auto_name.borrow() {
+                *this.auto_name.borrow_mut() = f.name.clone();
+            }
+            this.name.set_text(&f.name);
+        }
+        this.show_stream_info();
+        this.layout();
+    });
+    let this = a.clone();
     a.verify.connect_active_notify(move |v| this.checksum.set_visible(v.is_active()));
     let this = a.clone();
     a.check.connect_clicked(move |_| this.probe_now());
@@ -309,7 +341,7 @@ pub fn open(app: &Rc<App>, params: Value) {
             if let Some(display) = gtk::gdk::Display::default() {
                 if let Ok(Some(text)) = display.clipboard().read_text_future().await {
                     let t = text.trim();
-                    if this.url.text().is_empty() && fmt::is_http(t) && !t.chars().any(char::is_whitespace) {
+                    if this.url.text().is_empty() && fmt::is_link(t) && !t.chars().any(char::is_whitespace) {
                         this.url.set_text(t);
                     }
                 }
@@ -351,8 +383,41 @@ impl Add {
         if self.is_batch() {
             !self.batch_urls.borrow().is_empty()
         } else {
-            fmt::is_http(&self.link())
+            fmt::is_link(&self.link()) && self.stream_form().blocked().is_none()
         }
+    }
+
+    /// The shared form logic for a stream's qualities, fed with this
+    /// window's probe and choices.
+    fn stream_form(&self) -> AddForm {
+        let mut f = AddForm::default();
+        if !self.is_batch() {
+            f.probe = self.probe.borrow().clone();
+        }
+        f.quality = self.quality.value();
+        f.audio = self.audio.value();
+        f
+    }
+
+    /// Show a stream's quality and audio choices (or nothing for a file).
+    fn show_stream(&self) {
+        let f = self.stream_form();
+        self.quiet.set(true);
+        self.quality.set_items(f.qualities());
+        self.audio.set_items(f.audio_tracks());
+        if let Some(first) = f.qualities().first() {
+            if f.quality.is_empty() || !f.qualities().iter().any(|q| q.0 == f.quality) {
+                self.quality.set_value(&first.0);
+            }
+        }
+        let mut probed = f.clone();
+        probed.probed(self.probe.borrow().clone().unwrap_or_default(), 16, |_| None);
+        if f.audio.is_empty() || !f.audio_tracks().iter().any(|t| t.0 == f.audio) {
+            self.audio.set_value(&probed.audio);
+        }
+        self.quiet.set(false);
+        self.quality.row.set_visible(f.shows_quality());
+        self.audio.row.set_visible(f.shows_audio());
     }
 
     fn category_name(&self) -> String {
@@ -384,7 +449,7 @@ impl Add {
         self.start_button.set_sensitive(ok);
         self.queue_button.set_sensitive(ok);
         let text = self.link();
-        if !batch && !text.is_empty() && !fmt::is_http(&text) {
+        if !batch && !text.is_empty() && !fmt::is_link(&text) {
             self.url.add_css_class("error");
         } else {
             self.url.remove_css_class("error");
@@ -469,7 +534,7 @@ impl Add {
                     if this.generation.get() != generation {
                         return;
                     }
-                    out.retain(|u| fmt::is_http(u));
+                    out.retain(|u| fmt::is_link(u));
                     out.truncate(10_000);
                     *this.batch_urls.borrow_mut() = out;
                     this.layout();
@@ -479,8 +544,10 @@ impl Add {
             return;
         }
         *self.probe.borrow_mut() = None;
+        self.info.remove_css_class("error");
+        self.show_stream();
         let link = self.link();
-        if !fmt::is_http(&link) {
+        if !fmt::is_link(&link) {
             self.info.set_visible(false);
             self.layout();
             return;
@@ -505,7 +572,7 @@ impl Add {
     /// Probe right away (the Check Link button).
     fn probe_now(self: &Rc<Self>) {
         let link = self.link();
-        if self.is_batch() || !fmt::is_http(&link) {
+        if self.is_batch() || !fmt::is_link(&link) {
             return;
         }
         let generation = self.generation.get().wrapping_add(1);
@@ -555,8 +622,22 @@ impl Add {
                     } else {
                         "Server doesn't support resume. Download will use 1 connection.".to_string()
                     };
-                    this.show_info(&format!("{size}{mime}"), &detail, false);
+                    let stream = p.get("stream").is_some_and(Value::is_object);
                     *this.probe.borrow_mut() = Some(p);
+                    this.show_stream();
+                    if stream && name_touched {
+                        // a name given with the link (a page title) gets the stream's file type
+                        let mut f = this.stream_form();
+                        f.name = this.name.text().to_string();
+                        let id = f.quality.clone();
+                        f.choose_quality(&id);
+                        this.name.set_text(&f.name);
+                    }
+                    if stream {
+                        this.show_stream_info();
+                    } else {
+                        this.show_info(&format!("{size}{mime}"), &detail, false);
+                    }
                 }
                 Err(e) => {
                     if !name_touched {
@@ -574,6 +655,18 @@ impl Add {
         });
     }
 
+    /// The line under the URL for a stream (or why it can't be downloaded).
+    fn show_stream_info(&self) {
+        match self.stream_form().info() {
+            Info::Probed { summary, detail, .. } => self.show_info(&summary, &detail, false),
+            Info::Blocked { reason } => {
+                self.show_info(&reason, "", false);
+                self.info.add_css_class("error");
+            }
+            _ => {}
+        }
+    }
+
     fn request(&self, start: bool, link: &str, on_exists: Option<&str>) -> Value {
         let batch = self.is_batch();
         let queue = self.queue.value();
@@ -581,6 +674,8 @@ impl Add {
         let from_probe = |k: &str| if batch { Value::Null } else { probe.as_ref().and_then(|p| p.get(k).cloned()).unwrap_or(Value::Null) };
         let dir_touched = self.dir_touched();
         let checksum = self.checksum.text().trim().to_string();
+        // the shared form decides the stream part and its size estimate
+        let stream = self.stream_form().request(start, link, None);
         json!({
             "url": link,
             "fileName": if batch { Value::Null } else { opt(self.name.text()) },
@@ -598,9 +693,10 @@ impl Add {
             "checksum": if !batch && self.verify.is_active() && !checksum.is_empty() { json!({ "algo": "", "expected": checksum }) } else { Value::Null },
             "onExists": on_exists.unwrap_or("rename"),
             "rememberFolder": !batch && self.remember.is_active() && dir_touched,
-            "totalBytes": from_probe("totalBytes"),
+            "totalBytes": if batch { Value::Null } else { stream["totalBytes"].clone() },
             "resumable": from_probe("resumable"),
             "mime": from_probe("mime"),
+            "stream": if batch { Value::Null } else { stream["stream"].clone() },
         })
     }
 

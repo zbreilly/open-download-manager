@@ -348,8 +348,13 @@ impl ProgressWindow {
             kit::set_text(label, text);
         }
         let error = d.get("error").and_then(Value::as_str).filter(|_| status == "error");
-        kit::show(&self.error, error.is_some());
-        kit::set_text(&self.error, error.unwrap_or(""));
+        // a finished stream download may carry a note (audio saved separately)
+        let notice = d.get("notice").and_then(Value::as_str).filter(|t| !t.is_empty() && error.is_none());
+        kit::show(&self.error, error.is_some() || notice.is_some());
+        kit::set_text(&self.error, error.or(notice).unwrap_or(""));
+        unsafe {
+            self.error.setTextColor(Some(&*if error.is_some() { NSColor::systemRedColor() } else { NSColor::secondaryLabelColor() }));
+        }
         kit::show(&self.verified, d.get("checksumOk").and_then(Value::as_bool) == Some(true));
 
         let mut segments: Vec<Value> = d.get("segments").and_then(Value::as_array).cloned().unwrap_or_default();

@@ -355,6 +355,7 @@
         { label: 'Import link list…', icon: 'import', tone: 'green', action: importList },
         { label: 'Export link list…', icon: 'export', tone: 'orange', action: exportList },
         { sep: true },
+        { label: 'Theme studio…', icon: 'theme-dark', tone: 'violet', action: () => act(() => api.openWindow('theme')) },
         { label: 'Settings…', icon: 'options', tone: 'muted', action: () => act(() => api.openWindow('settings')) },
         { label: 'About Open Download Manager', icon: 'help', tone: 'blue', action: () => act(() => api.openWindow('about')) },
         { label: 'Quit', icon: 'exit', tone: 'red', action: () => api.quit() },
@@ -551,7 +552,7 @@
 <svelte:window onkeydown={onKey} ondragover={winDragOver} ondragleave={(e) => { if (!e.relatedTarget) dropOver = false; }} ondrop={winDrop} />
 
 <div class="app" class:drop={dropOver}>
-  <header class="head glass-chrome">
+  <header class="head glass-chrome art-head">
     <div class="brand">
       <span class="logo"><Icon name="odm-mark" size={19} stroke={2.6} /></span>
       <span>Open Download Manager</span>
@@ -578,7 +579,7 @@
   {/if}
 
   <div class="body">
-    <aside class="side glass-chrome">
+    <aside class="side glass-chrome art-side">
       <nav aria-label="Library">
         <div class="label">Library</div>
         {#each libItems as it}
@@ -636,7 +637,7 @@
         <button class="btn tb icon c-blue" aria-label="Options" title="Settings ({modKey},)" onclick={() => act(() => api.openWindow('settings'))}><Icon name="options" size={16} /></button>
       </div>
 
-      <div class="tablewrap glass" bind:this={scroller} onscroll={() => (scrollTop = scroller!.scrollTop)}>
+      <div class="tablewrap glass art-list" bind:this={scroller} onscroll={() => (scrollTop = scroller!.scrollTop)}>
         <table style:width="{tableWidth}px">
           <colgroup>{#each visibleCols as c (c.key)}<col style:width="{colWidth(c)}px" />{/each}</colgroup>
           <thead oncontextmenu={headerMenu}>
@@ -703,7 +704,7 @@
 
       {#if focused}
         {@const d = focused}
-        <section class="details glass" aria-label="Selected download">
+        <section class="details glass art-details" aria-label="Selected download">
           <div class="dtop">
             <FileBadge ext={d.ext} large />
             <div class="dname">
@@ -747,7 +748,7 @@
     </main>
   </div>
 
-  <footer class="status glass-chrome">
+  <footer class="status glass-chrome art-status">
     <span>{summary}</span>
     <span class="mono">↓ {f.speed(store.totals?.speedBps)}</span>
     <span>Speed limit: {limitOn ? `${limitMB} MB/s total` : 'off'}</span>
@@ -800,7 +801,7 @@
 <style>
   .app { height: 100%; display: flex; flex-direction: column; }
   .app.drop { outline: 2px dashed var(--accent); outline-offset: -6px; }
-  .head { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi); flex: none; position: relative; z-index: 3; }
+  .head { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: var(--outline-w, 1px) solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--outline-neon, 0 0 0 transparent); flex: none; position: relative; z-index: 3; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-lg); white-space: nowrap; }
   .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(140deg, var(--accent-hi), var(--violet)); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 12px var(--accent-glow); }
   .search { flex: 1 1 280px; max-width: 460px; display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 34px; border-radius: var(--r-md); background: var(--surface-sunken); border: 1px solid var(--border); color: var(--text-muted); transition: border-color var(--motion), box-shadow var(--motion); }
@@ -815,7 +816,7 @@
   .power :global(svg) { color: var(--danger); }
 
   .body { flex: 1; min-height: 0; display: flex; }
-  .side { width: var(--sidebar-w); flex: none; border-right: 1px solid var(--glass-border); padding: 14px 10px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
+  .side { width: var(--sidebar-w); flex: none; border-right: var(--outline-w, 1px) solid var(--glass-border); padding: 14px 10px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
   .side nav { display: flex; flex-direction: column; gap: 2px; }
   .side .label { padding: 0 10px 6px; }
   .nav { position: relative; display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border-radius: 8px; border: 0; background: transparent; color: var(--text-muted); text-align: left; transition: background var(--motion), color var(--motion); }
@@ -889,7 +890,7 @@
   .cap { display: flex; justify-content: space-between; font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: 6px; }
   .cap .mono { color: var(--accent); font-weight: 600; }
 
-  .status { flex: none; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; padding: 7px 16px; border-top: 1px solid var(--glass-border); color: var(--text-muted); font-size: var(--fs-sm); }
+  .status { flex: none; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; padding: 7px 16px; border-top: var(--outline-w, 1px) solid var(--glass-border); color: var(--text-muted); font-size: var(--fs-sm); }
   .status > .mono:nth-of-type(2) { color: var(--accent); font-weight: 600; }
   .ext { display: flex; align-items: center; gap: 6px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: .6; }

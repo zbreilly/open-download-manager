@@ -20,6 +20,7 @@ pub fn spec(view: &str) -> ViewSpec {
         "scheduler" => ViewSpec { title: "Queues & scheduler", w: 820.0, h: 680.0, min_w: 720.0, min_h: 560.0, resizable: true },
         "settings" => ViewSpec { title: "Settings", w: 960.0, h: 700.0, min_w: 820.0, min_h: 560.0, resizable: true },
         "grabber" => ViewSpec { title: "Site grabber", w: 900.0, h: 680.0, min_w: 700.0, min_h: 520.0, resizable: true },
+        "theme" => ViewSpec { title: "Theme studio", w: 1100.0, h: 760.0, min_w: 940.0, min_h: 600.0, resizable: true },
         "about" => ViewSpec { title: "About Open Download Manager", w: 420.0, h: 400.0, min_w: 420.0, min_h: 400.0, resizable: false },
         _ => ViewSpec { title: "Open Download Manager", w: 800.0, h: 600.0, min_w: 600.0, min_h: 400.0, resizable: true },
     }

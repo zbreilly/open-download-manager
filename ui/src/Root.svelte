@@ -9,6 +9,8 @@
   import Settings from './windows/Settings.svelte';
   import Grabber from './windows/Grabber.svelte';
   import About from './windows/About.svelte';
+  import Theme from './windows/Theme.svelte';
+  import { initThemeEngine } from './lib/themes.svelte';
   import { api } from './lib/ipc';
 
   const q = new URLSearchParams(location.search);
@@ -20,6 +22,8 @@
 
   onMount(async () => {
     initTheme(q.get('theme') || 'dark');
+    // the saved colour profile, if any, before the window shows its content
+    await initThemeEngine();
     try { params = token ? await api.takeParams(token) : null; } catch { params = null; }
     try {
       const s = await api.getSettings();
@@ -54,6 +58,7 @@
   {:else if view === 'settings'}<Settings {params} />
   {:else if view === 'grabber'}<Grabber {params} />
   {:else if view === 'about'}<About />
+  {:else if view === 'theme'}<Theme />
   {/if}
 {/if}
 <Toast />

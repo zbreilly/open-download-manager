@@ -15,7 +15,7 @@
   });
 </script>
 
-<div class="about">
+<div class="about art-dialog">
   <span class="logo"><Icon name="odm-mark" size={40} stroke={2.4} /></span>
   <h1>Open Download Manager</h1>
   {#if info}

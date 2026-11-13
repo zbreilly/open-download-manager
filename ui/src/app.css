@@ -45,9 +45,16 @@ body {
 .glass, .glass-chrome, .glass-pop {
   -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
 }
-.glass { background: var(--glass); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-card); }
+.glass { background: var(--glass); border: var(--outline-w, 1px) solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-card), var(--outline-neon, 0 0 0 transparent); }
 .glass-chrome { background: var(--glass-chrome); }
-.glass-pop { background: var(--glass-pop); border: 1px solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-pop); }
+.glass-pop { background: var(--glass-pop); border: var(--outline-w, 1px) solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--shadow-pop), var(--outline-neon, 0 0 0 transparent); }
+
+/* window outline (colour profiles): a frame inside the edge of every window */
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 2000; pointer-events: none;
+  border: var(--outline-window-w, 0px) solid var(--outline-window, transparent);
+  box-shadow: var(--outline-window-neon, 0 0 0 transparent);
+}
 
 /* ---- hue helpers: set --c / --c-soft on anything ---- */
 .c-blue { --c: var(--accent); --c-soft: var(--accent-soft); }
@@ -88,7 +95,7 @@ button:disabled { opacity: .4; cursor: default; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   height: var(--input-h); padding: 0 14px;
-  border-radius: var(--r-md); border: 1px solid var(--border);
+  border-radius: var(--r-md); border: var(--outline-control-w, 1px) solid var(--border);
   background: var(--btn-bg); color: var(--text);
   box-shadow: inset 0 1px 0 var(--glass-hi);
   transition: background var(--motion), border-color var(--motion), box-shadow var(--motion);
@@ -123,7 +130,7 @@ button:disabled { opacity: .4; cursor: default; }
 /* ---- inputs ---- */
 .input, .select {
   height: var(--input-h); padding: 0 12px;
-  border-radius: var(--r-md); border: 1px solid var(--border);
+  border-radius: var(--r-md); border: var(--outline-control-w, 1px) solid var(--border);
   background: var(--surface-sunken); color: var(--text);
   outline: none; min-width: 0;
   transition: border-color var(--motion);
@@ -164,7 +171,7 @@ input[type="range"] { accent-color: var(--accent); }
 }
 .spacer { flex: 1; }
 
-.card { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface-2); box-shadow: inset 0 1px 0 var(--glass-hi); }
+.card { border: var(--outline-control-w, 1px) solid var(--border); border-radius: var(--r-lg); background: var(--surface-2); box-shadow: inset 0 1px 0 var(--glass-hi); }
 .errbox {
   padding: 9px 12px; border-radius: var(--r-md);
   background: var(--danger-soft); color: var(--danger);

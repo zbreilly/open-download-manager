@@ -372,6 +372,11 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|w, ev| {
+            // the Theme studio previews its profile in every window: when it
+            // goes away, however it was closed, they return to the saved one
+            if w.label() == "theme" && matches!(ev, WindowEvent::Destroyed) {
+                let _ = w.app_handle().emit("theme_changed", ());
+            }
             if let WindowEvent::CloseRequested { api, .. } = ev {
                 if w.label() == "main" {
                     // hide to the tray only when there is one to come back from
@@ -429,6 +434,7 @@ pub fn run() {
             commands::get_power_countdown,
             commands::export_list,
             commands::read_url_list,
+            commands::write_theme_file,
             commands::app_info,
             commands::kv_get,
             commands::kv_set,

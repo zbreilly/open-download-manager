@@ -10,7 +10,8 @@
   import { api, errText, on, type Category, type Settings } from '../lib/ipc';
   import { MBPS, parseLimitMB, LIMIT_ERROR } from '../lib/format';
   import { toast } from '../components/Toast.svelte';
-  import { isMac } from '../lib/theme';
+  import { isMac, previewTheme } from '../lib/theme';
+  import { themeState, findProfile } from '../lib/themes.svelte';
 
   let { params }: { params: any } = $props();
   const win = getCurrentWindow();
@@ -142,10 +143,6 @@
     const p = await openDialog({ directory: true, defaultPath: cur || undefined });
     if (p) set(p as string);
   }
-  function previewTheme(t: string) {
-    const resolved = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t;
-    document.documentElement.dataset.theme = resolved;
-  }
   const CAT_ICONS = [
     { id: 'cat-video', label: 'Video' }, { id: 'cat-music', label: 'Music' }, { id: 'cat-documents', label: 'Documents' },
     { id: 'cat-compressed', label: 'Archive' }, { id: 'cat-programs', label: 'Programs' }, { id: 'cat-images', label: 'Images' },
@@ -208,7 +205,7 @@
     {/each}
   </nav>
 
-  <div class="content">
+  <div class="content art-dialog">
     <div class="scroll">
       {#if s}
         {#if page === 'general'}
@@ -396,6 +393,10 @@
               <Segmented label="Theme" bind:value={s.theme} onchange={previewTheme} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'system', label: 'System' }]} />
             </div>
             <div class="rowc card">
+              <div class="t"><div class="tt">Colour profile</div><div class="d">{themeState.activeId ? `“${findProfile(themeState.activeId)?.name ?? 'Custom'}” is in use and replaces the theme above.` : 'Make your own colours, outlines, fonts, panel art and buttons.'}</div></div>
+              <button class="btn sm c-violet" onclick={() => api.openWindow('theme')}><Icon name="theme-dark" size={14} />Theme studio…</button>
+            </div>
+            <div class="rowc card">
               <div class="t"><div class="tt">List density</div><div class="d">Row height in the download list.</div></div>
               <Segmented label="List density" bind:value={s.density} options={[{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]} />
             </div>
@@ -441,7 +442,7 @@
 
 <style>
   .wrap { height: 100%; display: flex; }
-  nav { width: 220px; flex: none; border-right: 1px solid var(--glass-border); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
+  nav { width: 220px; flex: none; border-right: var(--outline-w, 1px) solid var(--glass-border); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
   h1 { margin: 0 10px 12px; font-size: var(--fs-xl); font-weight: 600; }
   .nav { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px; border: 0; background: transparent; color: var(--text-muted); text-align: left; }
   .nav :global(svg) { color: var(--accent); }

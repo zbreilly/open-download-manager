@@ -170,6 +170,10 @@ export const api = {
   kvGet: (key: string) => invoke<string | null>('kv_get', { key }),
   kvSet: (key: string, value: string) => invoke<void>('kv_set', { key, value }),
   quit: () => invoke<void>('quit_app'),
+  /** Send an event to every window. */
+  broadcast: (event: string, payload: unknown) => invoke<void>('broadcast', { event, payload }),
+  /** Write an exported colour profile; `path` must end in .odmtheme. */
+  writeThemeFile: (path: string, contents: string) => invoke<void>('write_theme_file', { path, contents }),
   extensionDir: () => invoke<string | null>('extension_dir'),
   assignExtensions: (category: string, extensions: string[]) => invoke<void>('assign_extensions', { category, extensions }),
 };

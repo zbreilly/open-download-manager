@@ -522,6 +522,30 @@ pub async fn export_list(st: State<'_, AppState>, path: String, only_unfinished:
     Ok(list.len())
 }
 
+/// Largest colour profile the Theme studio may export (its images and
+/// fonts are inside it).
+const MAX_THEME_FILE: usize = 96 * 1024 * 1024;
+
+/// Save an exported colour profile. The webview can only write a JSON
+/// document, and only to a `.odmtheme` file (the path comes from the
+/// native save dialog).
+#[tauri::command]
+pub async fn write_theme_file(path: String, contents: String) -> R<()> {
+    let p = absolute(&path)?;
+    let is_theme = p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("odmtheme"));
+    if !is_theme {
+        return Err("theme files end in .odmtheme".into());
+    }
+    if contents.len() > MAX_THEME_FILE {
+        return Err("the theme is too large to export".into());
+    }
+    let doc: Value = serde_json::from_str(&contents).map_err(|_| "not a theme".to_string())?;
+    if doc.get("format").and_then(Value::as_str) != Some("odm-theme") {
+        return Err("not a theme".into());
+    }
+    std::fs::write(p, contents).map_err(err)
+}
+
 #[tauri::command]
 pub async fn read_url_list(path: String) -> R<Vec<String>> {
     let text = std::fs::read_to_string(absolute(&path)?).map_err(err)?;

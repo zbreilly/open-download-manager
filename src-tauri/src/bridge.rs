@@ -1,30 +1,36 @@
 //! Local HTTP bridge for the browser extension (127.0.0.1 only).
 //!
+//! * Every request that does anything is sealed with the pairing key shown
+//!   in Settings → Browser integration (see `odm_core::pairing`). Without
+//!   the key a client learns only that the app is running; a process that
+//!   took over the port cannot read what the extension sends.
 //! * The `Host` header must be `127.0.0.1:<port>` or `localhost:<port>`, so
 //!   a web page cannot reach the bridge through DNS rebinding.
-//! * Every request is sealed with the pairing key (see
-//!   `odm_core::pairing`), and so is every answer: a caller without the key
-//!   is refused, and nothing readable is sent to one.
 //! * Requests from web pages are refused: a request carrying an `Origin`
 //!   header must come from a browser-extension origin.
-//! * A request never starts a download: it opens the Add window (or the
-//!   link list), where the user decides.
 
 use crate::state::{AppState, BridgeHandle};
 use crate::windows;
-use axum::extract::State;
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, State};
 use axum::http::{header, HeaderMap, HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
-use axum::routing::{any, post};
-use axum::Router;
+use axum::routing::{any, get, post};
+use axum::{Json, Router};
 use serde::Deserialize;
-use serde_json::json;
+use serde_json::{json, Value};
 use std::collections::HashSet;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Longest capture pause accepted from the extension (one day).
 const MAX_PAUSE_MINUTES: i64 = 1440;
+/// Largest request body (a page's links with their cookies, sealed).
+const MAX_BODY_BYTES: usize = 8 * 1024 * 1024;
+/// How long a browser counts as connected after its last request.
+const BROWSER_SEEN_SECS: u64 = 150;
+/// Most browsers remembered as connected.
+const MAX_BROWSERS: usize = 16;
 
 #[derive(Clone)]
 struct Ctx {
@@ -60,25 +66,39 @@ fn with_cors(mut r: Response, origin: Option<String>) -> Response {
         if let Ok(v) = HeaderValue::from_str(&o) {
             r.headers_mut().insert("access-control-allow-origin", v);
         }
-        r.headers_mut().insert("access-control-allow-headers", HeaderValue::from_static("content-type"));
-        r.headers_mut().insert("access-control-allow-methods", HeaderValue::from_static("POST, OPTIONS"));
+        r.headers_mut().insert("access-control-allow-headers", HeaderValue::from_static("content-type, x-odm-browser"));
+        r.headers_mut().insert("access-control-allow-methods", HeaderValue::from_static("GET, POST, OPTIONS"));
     }
     r
 }
 
-/// A paired extension was heard from: remember its browser.
-fn note_browser(app: &AppHandle, name: Option<&str>) {
-    let name: String = name.filter(|n| !n.trim().is_empty()).unwrap_or("Browser").chars().take(40).collect();
+/// Remember the browser of a paired extension (only called for requests
+/// that opened with the pairing key).
+fn note_browser(app: &AppHandle, h: &HeaderMap) {
+    let name = h
+        .get("x-odm-browser")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("Browser")
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(40)
+        .collect::<String>();
     let st = app.state::<AppState>();
     let was = st.extension_browsers();
-    st.ext_seen.lock().insert(name, Instant::now());
+    {
+        let mut seen = st.ext_seen.lock();
+        seen.retain(|_, t| t.elapsed().as_secs() < BROWSER_SEEN_SECS);
+        if seen.len() < MAX_BROWSERS || seen.contains_key(&name) {
+            seen.insert(name, Instant::now());
+        }
+    }
     let now = st.extension_browsers();
     if was != now {
         let _ = app.emit("extension_status", json!({ "connected": !now.is_empty(), "browsers": now }));
     }
 }
 
-fn capture_info(app: &AppHandle) -> serde_json::Value {
+fn capture_info(app: &AppHandle) -> Value {
     let s = app.state::<AppState>().mgr.settings();
     let now = chrono_now();
     let paused = s.capture_paused_until.map(|t| t > now).unwrap_or(false);
@@ -104,6 +124,14 @@ pub fn chrono_now() -> i64 {
         .unwrap_or(0)
 }
 
+/// Unsealed: says only that the app is here and that pairing is needed.
+async fn ping(h: HeaderMap) -> Response {
+    let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
+    // no version or settings: nothing about this installation before pairing
+    let hello = json!({ "ok": true, "app": "Open Download Manager", "pairing": "required" });
+    with_cors(Json(hello).into_response(), origin)
+}
+
 async fn preflight(h: HeaderMap) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
     with_cors(StatusCode::NO_CONTENT.into_response(), origin)
@@ -122,14 +150,17 @@ struct AddBody {
     url: String,
     /// several links, each with the cookies for that URL
     items: Vec<AddItem>,
+    /// several links without cookies
+    urls: Vec<String>,
     referrer: Option<String>,
     file_name: Option<String>,
-    /// cookies for `url` (or, in the older form, for the first link)
+    /// cookies for `url`
     cookies: Option<String>,
     user_agent: Option<String>,
     total_bytes: Option<u64>,
     mime: Option<String>,
-    /// add & start without showing the dialog (browser extensions only)
+    /// add & start without showing the dialog; honoured in automated runs
+    /// only (see `Manager::automated`), otherwise the dialog is shown
     silent: bool,
 }
 
@@ -151,10 +182,13 @@ fn collect_links(b: &AddBody) -> Vec<(String, Option<String>)> {
     for it in &b.items {
         push(&it.url, nz(&it.cookies));
     }
+    for u in &b.urls {
+        push(u, None);
+    }
     out
 }
 
-fn links_json(links: &[(String, Option<String>)]) -> Vec<serde_json::Value> {
+fn links_json(links: &[(String, Option<String>)]) -> Vec<Value> {
     links
         .iter()
         .map(|(u, c)| match c {
@@ -164,34 +198,60 @@ fn links_json(links: &[(String, Option<String>)]) -> Vec<serde_json::Value> {
         .collect()
 }
 
-/// Hand links to the UI. Nothing is added or started here.
-fn add(app: &AppHandle, b: AddBody) -> serde_json::Value {
+/// Hand links from a paired extension to the app.
+fn add(app: &AppHandle, body: Value) -> Result<(), String> {
+    let b: AddBody = serde_json::from_value(body).map_err(|_| "bad request".to_string())?;
     let links = collect_links(&b);
     if links.is_empty() {
-        return json!({ "ok": false, "error": "no valid URL" });
+        return Err("no valid URL".into());
     }
-    let (window, params) = if links.len() > 1 {
-        ("grabber", json!({ "links": links_json(&links), "referrer": b.referrer, "userAgent": b.user_agent }))
-    } else {
+    if links.len() > 1 {
+        let params = json!({ "links": links_json(&links), "referrer": b.referrer, "userAgent": b.user_agent });
+        let a2 = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            let _ = windows::open(&a2, "grabber", None, Some(params));
+        });
+    } else if b.silent && app.state::<AppState>().mgr.automated() {
         let (url, cookies) = links.into_iter().next().unwrap_or_default();
-        (
-            "add",
-            json!({
-                "url": url,
-                "fileName": b.file_name,
-                "referrer": b.referrer,
-                "cookies": cookies,
-                "userAgent": b.user_agent,
-                "totalBytes": b.total_bytes,
-                "mime": b.mime,
-            }),
-        )
-    };
-    let a2 = app.clone();
-    let _ = app.run_on_main_thread(move || {
-        let _ = windows::open(&a2, window, None, Some(params));
-    });
-    json!({ "ok": true })
+        let mgr = app.state::<AppState>().mgr.clone();
+        let req = odm_core::AddRequest {
+            url,
+            file_name: b.file_name.clone(),
+            referrer: b.referrer.clone(),
+            cookies,
+            user_agent: b.user_agent.clone(),
+            total_bytes: b.total_bytes,
+            mime: b.mime.clone(),
+            start: true,
+            ..Default::default()
+        };
+        mgr.add(req).map_err(|e| e.to_string())?;
+    } else {
+        // every request opens a window of its own: keep that bounded
+        if !windows::can_open_add(app) {
+            return Err("too many Add download windows are open".into());
+        }
+        let (url, cookies) = links.into_iter().next().unwrap_or_default();
+        let params = json!({
+            "url": url,
+            "fileName": b.file_name,
+            "referrer": b.referrer,
+            "cookies": cookies,
+            "userAgent": b.user_agent,
+            "totalBytes": b.total_bytes,
+            "mime": b.mime,
+        });
+        let a2 = app.clone();
+        let _ = app.run_on_main_thread(move || {
+            let _ = windows::open(&a2, "add", None, Some(params));
+        });
+    }
+    Ok(())
+}
+
+#[derive(Deserialize)]
+struct PauseBody {
+    minutes: i64,
 }
 
 /// End of a capture pause of `minutes` (clamped to 0..=1440) from `now`.
@@ -203,50 +263,44 @@ fn pause_until(now: i64, minutes: i64) -> Option<i64> {
     m.checked_mul(60_000).and_then(|ms| now.checked_add(ms))
 }
 
-fn pause_capture(app: &AppHandle, minutes: i64) -> serde_json::Value {
+fn pause_capture(app: &AppHandle, body: Value) -> Result<(), String> {
+    let b: PauseBody = serde_json::from_value(body).map_err(|_| "bad request".to_string())?;
     let mgr = app.state::<AppState>().mgr.clone();
     let mut s = mgr.settings();
-    s.capture_paused_until = pause_until(chrono_now(), minutes);
-    let _ = mgr.save_settings(s);
-    capture_info(app)
+    s.capture_paused_until = pause_until(chrono_now(), b.minutes);
+    mgr.save_settings(s).map_err(|e| e.to_string())
 }
 
-/// One opened request: `{op, browser, ...}`.
-fn handle(app: &AppHandle, req: &serde_json::Value) -> serde_json::Value {
-    note_browser(app, req.get("browser").and_then(|v| v.as_str()));
-    match req.get("op").and_then(|v| v.as_str()) {
-        Some("ping") => capture_info(app),
-        Some("add") => match serde_json::from_value::<AddBody>(req.get("body").cloned().unwrap_or_default()) {
-            Ok(b) => add(app, b),
-            Err(_) => json!({ "ok": false, "error": "bad request" }),
-        },
-        Some("pause") => pause_capture(app, req.get("minutes").and_then(|v| v.as_i64()).unwrap_or(0)),
-        _ => json!({ "ok": false, "error": "unknown request" }),
-    }
+fn failed(msg: String) -> Value {
+    json!({ "ok": false, "error": msg })
 }
 
-/// The bridge's one endpoint: a sealed request in, a sealed answer out.
-async fn sealed(State(c): State<Ctx>, h: HeaderMap, body: axum::body::Bytes) -> Response {
+/// The one sealed endpoint: `{op, body}` in, the operation's result out.
+async fn rpc(State(c): State<Ctx>, h: HeaderMap, body: Bytes) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    if !h
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v.starts_with("application/json"))
-        .unwrap_or(false)
-    {
-        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
-    }
-    let mgr = c.app.state::<AppState>().mgr.clone();
-    let req = match mgr.pairing().open_request(&body, chrono_now()) {
+    let pairing = c.app.state::<AppState>().mgr.pairing();
+    let req = match pairing.open(&body, chrono_now()) {
         Ok(r) => r,
-        // the same answer for every failure: a caller without the key learns nothing
-        Err(_) => return with_cors(StatusCode::UNAUTHORIZED.into_response(), origin),
+        Err(e) => {
+            let refused = (StatusCode::UNAUTHORIZED, Json(json!({ "ok": false, "error": e.code() })));
+            return with_cors(refused.into_response(), origin);
+        }
     };
-    let id = req.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-    let answer = mgr.pairing().seal_response(&id, handle(&c.app, &req));
-    let mut r = answer.into_response();
-    r.headers_mut().insert(header::CONTENT_TYPE, HeaderValue::from_static("application/json"));
-    with_cors(r, origin)
+    note_browser(&c.app, &h);
+    let result = match req.op.as_str() {
+        "ping" => capture_info(&c.app),
+        "add" => match add(&c.app, req.body.clone()) {
+            Ok(()) => json!({ "ok": true }),
+            Err(e) => failed(e),
+        },
+        "capture-pause" => match pause_capture(&c.app, req.body.clone()) {
+            Ok(()) => capture_info(&c.app),
+            Err(e) => failed(e),
+        },
+        _ => failed("unknown operation".into()),
+    };
+    let sealed = pairing.seal(&req, &result);
+    with_cors(([(header::CONTENT_TYPE, "application/json")], sealed).into_response(), origin)
 }
 
 fn is_http(u: &str) -> bool {
@@ -256,8 +310,8 @@ fn is_http(u: &str) -> bool {
 fn router(app: AppHandle, port: u16) -> Router {
     let ctx = Ctx { app };
     Router::new()
-        .route("/api/v2", post(sealed))
-        .layer(axum::extract::DefaultBodyLimit::max(odm_core::pairing::MAX_REQUEST_BYTES))
+        .route("/api/ping", get(ping))
+        .route("/api/rpc", post(rpc))
         .route(
             "/{*rest}",
             any(|m: Method, h: HeaderMap| async move {
@@ -269,6 +323,7 @@ fn router(app: AppHandle, port: u16) -> Router {
             }),
         )
         .with_state(ctx)
+        .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         // Host check first, then OPTIONS on the real routes too
         .layer(axum::middleware::from_fn(
             move |req: axum::extract::Request, next: axum::middleware::Next| async move {
@@ -300,7 +355,7 @@ pub async fn start(app: AppHandle, port: u16) -> Result<(), String> {
         }
     };
     if st.bridge_error.lock().take().is_some() {
-        let _ = app.emit("bridge_error", serde_json::Value::Null);
+        let _ = app.emit("bridge_error", Value::Null);
     }
     let (tx, rx) = tokio::sync::oneshot::channel::<()>();
     if let Some(old) = st.bridge.lock().replace(BridgeHandle { stop: tx }) {
@@ -344,6 +399,18 @@ mod tests {
     }
 
     #[test]
+    fn origins() {
+        let mut h = HeaderMap::new();
+        assert_eq!(origin_ok(&h), Some(None));
+        h.insert("origin", HeaderValue::from_static("chrome-extension://abc"));
+        assert_eq!(origin_ok(&h), Some(Some("chrome-extension://abc".into())));
+        for web in ["https://evil.example", "null", "http://127.0.0.1:8901"] {
+            h.insert("origin", HeaderValue::from_static(web));
+            assert_eq!(origin_ok(&h), None, "{web}");
+        }
+    }
+
+    #[test]
     fn pause_clamp() {
         assert_eq!(pause_until(1000, 0), None);
         assert_eq!(pause_until(1000, -5), None);
@@ -355,18 +422,24 @@ mod tests {
     #[test]
     fn links_per_url_cookies() {
         let b = AddBody {
-            url: "https://c/3".into(),
             items: vec![
                 AddItem { url: "https://a/1".into(), cookies: Some("a=1".into()) },
                 AddItem { url: "https://b/2".into(), cookies: None },
                 AddItem { url: "https://a/1".into(), cookies: Some("dup".into()) },
-                AddItem { url: "javascript:x".into(), cookies: None },
             ],
+            urls: vec!["https://b/2".into(), "https://c/3".into(), "javascript:x".into()],
             ..Default::default()
         };
+        let l = collect_links(&b);
         assert_eq!(
-            collect_links(&b),
-            vec![("https://c/3".into(), None), ("https://a/1".into(), Some("a=1".into())), ("https://b/2".into(), None)]
+            l,
+            vec![
+                ("https://a/1".into(), Some("a=1".into())),
+                ("https://b/2".into(), None),
+                ("https://c/3".into(), None)
+            ]
         );
+        let single = AddBody { url: "https://x/1".into(), cookies: Some("x=1".into()), ..Default::default() };
+        assert_eq!(collect_links(&single), vec![("https://x/1".into(), Some("x=1".into()))]);
     }
 }

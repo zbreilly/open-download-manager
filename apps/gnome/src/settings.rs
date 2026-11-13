@@ -331,8 +331,8 @@ impl Prefs {
         });
         self.ext_status.add_suffix(&show);
         ext.add(&self.ext_status);
-        let pair = adw::ActionRow::builder().title("Pairing code").subtitle("Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends.").build();
-        for (label, method, done) in [("Copy", "pairing_code", "Pairing code copied."), ("New Code", "reset_pairing", "New pairing code copied. Paste it into the extension in each browser; the old code no longer works.")] {
+        let pair = adw::ActionRow::builder().title("Pairing key").subtitle("Paste it into the extension’s popup, under Connection, and save it under Pairing key. Only an extension that holds the key can talk to the app, and other programs can’t read what it sends. A new key unpairs every browser.").build();
+        for (label, method, done) in [("Copy Key", "bridge_key", "Pairing key copied."), ("New Key", "regenerate_bridge_key", "New pairing key copied. Paste it into the extension in each browser; the old key no longer works.")] {
             let button = gtk::Button::builder().label(label).valign(gtk::Align::Center).build();
             button.connect_clicked(move |_| match odm_ffi::api::call_as::<String>(method, Value::Null) {
                 Ok(code) => {
@@ -571,6 +571,7 @@ impl Prefs {
         let security = adw::PreferencesGroup::builder().title("Security").build();
         security.add(&self.switch("verifyTls", "Verify TLS certificates", ""));
         security.add(&self.tls_warning);
+        security.add(&self.switch("allowInsecureRedirects", "Allow redirects from https to http", "Keep this off. A secure download that a server sends on to a plain http address fails instead of continuing unprotected."));
         page.add(&security);
         page
     }

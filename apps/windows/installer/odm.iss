@@ -3,7 +3,7 @@
 ;   iscc /DAppVersion=0.2.0 /DArch=x64 /DSourceDir=<publish folder> /DOutputDir=<folder> odm.iss
 ;
 ; Installs per user by default (no administrator prompt), registers the
-; odm:// link scheme and replaces an installed Tauri build of the app.
+; odm:// link scheme and replaces an installed copy of the Tauri app.
 
 #ifndef AppVersion
   #define AppVersion "0.0.0"
@@ -80,7 +80,7 @@ Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: 
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// The earlier Tauri build installs under the same name with its own (NSIS)
+// The Tauri build of the app installs under the same name with its own (NSIS)
 // uninstaller. Remove it first so only one copy is installed; the download
 // list and settings live in %APPDATA%\app.opendm.desktop and stay.
 procedure RemoveTauriBuild();

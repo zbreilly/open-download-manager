@@ -19,7 +19,7 @@ on:
         description: "Build a universal (Apple silicon + Intel) binary"
         type: boolean
         default: false
-  # the linux-webview workflow calls this for tagged releases
+  # the desktop workflow calls this for tagged releases
   workflow_call:
     inputs:
       universal:
@@ -80,8 +80,9 @@ jobs:
         run: |
           set -x
           APP="$PWD/dist/macos-native/Open Download Manager.app"
-          # the app downloads this once the e2e script serves it
-          open --env ODM_E2E_URL=http://127.0.0.1:8919/odm-ci-e2e.bin "$APP"
+          # pairing key for this run: the app and the test script share it
+          export ODM_BRIDGE_KEY="$(openssl rand -hex 32)"
+          open --env "ODM_BRIDGE_KEY=$ODM_BRIDGE_KEY" "$APP"
           sleep 8
           pgrep -fl OpenDownloadManager || { echo "app exited early"; exit 1; }
           screencapture -x ci-out/01-main.png || true
@@ -94,7 +95,7 @@ jobs:
           sleep 2
           screencapture -x ci-out/02b-after-return.png || true
           osascript -e 'tell application "System Events" to key code 53' || true
-          # real download (ODM_E2E_URL above), checked byte for byte
+          # real download through the bridge, checked byte for byte
           bash scripts/ci/e2e-download.sh "$HOME/Downloads" > ci-out/e2e.log 2>&1 &
           E2E=$!
           sleep 6
@@ -123,7 +124,7 @@ jobs:
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: OpenDownloadManager-macOS
+          name: OpenDownloadManager-macOSNative
           path: |
             dist/macos-native/*.dmg
             dist/macos-native/*.zip

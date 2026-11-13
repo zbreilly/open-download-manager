@@ -46,11 +46,13 @@ pub fn build(app: &AppHandle, limit_on: bool) -> tauri::Result<(TrayIcon, CheckM
     let sep2 = PredefinedMenuItem::separator(app)?;
     let sched = MenuItem::with_id(app, "scheduler", "Scheduler…", true, None::<&str>)?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)?;
+    // a way back from a colour profile that made the windows hard to use
+    let reset_theme = MenuItem::with_id(app, "reset_theme", "Use the default theme", true, None::<&str>)?;
     let sep3 = PredefinedMenuItem::separator(app)?;
     let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
-        &[&show, &add, &grab, &sep1, &start_q, &pause_all, &limit, &sep2, &sched, &settings, &sep3, &quit],
+        &[&show, &add, &grab, &sep1, &start_q, &pause_all, &limit, &sep2, &sched, &settings, &reset_theme, &sep3, &quit],
     )?;
 
     let tray = TrayIconBuilder::with_id("odm-tray")
@@ -67,6 +69,7 @@ pub fn build(app: &AppHandle, limit_on: bool) -> tauri::Result<(TrayIcon, CheckM
                 "grabber" => open_any(app, "grabber"),
                 "scheduler" => open_any(app, "scheduler"),
                 "settings" => open_any(app, "settings"),
+                "reset_theme" => crate::reset_theme(app),
                 "start_main" => with_mgr(app, |m| m.start_queue(odm_core::manager::MAIN_QUEUE)),
                 "pause_all" => with_mgr(app, |m| m.pause_all()),
                 "limit" => with_mgr(app, |m| {

@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
-  import { open as openDialog } from '@tauri-apps/plugin-dialog';
-  import { writeText } from '@tauri-apps/plugin-clipboard-manager';
+  import { ask, open as openDialog } from '@tauri-apps/plugin-dialog';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
   import Switch from '../components/Switch.svelte';
@@ -10,7 +9,8 @@
   import { api, errText, on, type Category, type Settings } from '../lib/ipc';
   import { MBPS, parseLimitMB, LIMIT_ERROR } from '../lib/format';
   import { toast } from '../components/Toast.svelte';
-  import { isMac } from '../lib/theme';
+  import { isMac, previewTheme } from '../lib/theme';
+  import { themeState, findProfile } from '../lib/themes.svelte';
 
   let { params }: { params: any } = $props();
   const win = getCurrentWindow();
@@ -115,6 +115,25 @@
       busy = false;
     }
   }
+  async function copyKey() {
+    try {
+      await api.copyBridgeKey();
+      toast('Pairing key copied — paste it into the extension within a minute');
+    } catch (e) {
+      toast(errText(e), 'error');
+    }
+  }
+  async function newKey() {
+    try {
+      const yes = await ask('Every browser paired with the current key stops sending downloads to the app until you paste the new key into its extension.', { title: 'Make a new pairing key?', kind: 'warning', okLabel: 'New key', cancelLabel: 'Cancel' });
+      if (!yes) return;
+      await api.regenerateBridgeKey();
+      await api.copyBridgeKey();
+      toast('New pairing key copied — paste it into the extension within a minute');
+    } catch (e) {
+      toast(errText(e), 'error');
+    }
+  }
   async function restore() {
     const d = await api.defaultSettings();
     fill(d); // not the engine's state: every changed field stays edited
@@ -123,10 +142,6 @@
   async function pickFolder(cur: string | null, set: (v: string) => void) {
     const p = await openDialog({ directory: true, defaultPath: cur || undefined });
     if (p) set(p as string);
-  }
-  function previewTheme(t: string) {
-    const resolved = t === 'system' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : t;
-    document.documentElement.dataset.theme = resolved;
   }
   const CAT_ICONS = [
     { id: 'cat-video', label: 'Video' }, { id: 'cat-music', label: 'Music' }, { id: 'cat-documents', label: 'Documents' },
@@ -183,14 +198,14 @@
 </script>
 
 <div class="wrap">
-  <nav aria-label="Settings sections">
+  <nav class="glass-chrome" aria-label="Settings sections">
     <h1>Settings</h1>
     {#each PAGES as p}
       <button class="nav" class:on={page === p.id} onclick={() => (page = p.id)}><Icon name={p.icon} size={16} />{p.label}</button>
     {/each}
   </nav>
 
-  <div class="content">
+  <div class="content art-dialog">
     <div class="scroll">
       {#if s}
         {#if page === 'general'}
@@ -238,17 +253,17 @@
             <h2>Browser integration</h2>
             <div class="group card">
               <div class="rowc">
-                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only an extension paired with this app is accepted.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
+                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only an extension that holds the pairing key is listened to.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
                 <span class="status"><span class="dot" class:ok={ext.connected && !ext.bridgeError} class:bad={!!ext.bridgeError}></span>{ext.bridgeError ? 'Not listening' : ext.connected ? 'Connected' : 'Not detected'}</span>
-              </div>
-              <div class="rowc">
-                <div class="t"><div class="tt">Pairing code</div><div class="d">Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends.</div></div>
-                <button class="btn sm" onclick={async () => { await writeText((await api.extensionStatus()).pairingCode); toast('Pairing code copied'); }}>Copy</button>
-                <button class="btn sm" onclick={async () => { await writeText(await api.resetPairing()); toast('New pairing code copied. Pair each browser again.'); }}>New code</button>
               </div>
               <div class="rowc">
                 <div class="t"><div class="tt">Install the extension</div><div class="d">Chrome, Edge, Brave, Opera, Vivaldi: open the extensions page, turn on Developer mode, choose “Load unpacked” and pick the <span class="mono">chromium</span> folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → <span class="mono">firefox/manifest.json</span>.</div></div>
                 <button class="btn sm" onclick={async () => { const d = await api.extensionDir(); if (d) api.openPath(d); else toast('Extension files not found in this build', 'error'); }}><Icon name="open-folder" size={14} />Show extension folder</button>
+              </div>
+              <div class="rowc">
+                <div class="t"><div class="tt">Pairing key</div><div class="d">Copy this key and paste it into the extension: click its toolbar button, open Connection and save it under Pairing key. Links and their cookies are sealed with it, so only this app and your extension can read them. Anyone who has the key can add downloads; a new key unpairs every browser.</div></div>
+                <button class="btn sm" onclick={copyKey}>Copy key</button>
+                <button class="btn sm" onclick={newKey}>New key</button>
               </div>
               {#each BROWSERS as b}
                 <div class="rowc">
@@ -378,8 +393,22 @@
               <Segmented label="Theme" bind:value={s.theme} onchange={previewTheme} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'system', label: 'System' }]} />
             </div>
             <div class="rowc card">
+              <div class="t"><div class="tt">Colour profile</div><div class="d">{themeState.activeId ? `“${findProfile(themeState.activeId)?.name ?? 'Custom'}” is in use and replaces the theme above.` : 'Make your own colours, outlines, fonts, panel art and buttons.'}</div></div>
+              <button class="btn sm c-violet" onclick={() => api.openWindow('theme')}><Icon name="theme-dark" size={14} />Theme studio…</button>
+            </div>
+            <div class="rowc card">
               <div class="t"><div class="tt">List density</div><div class="d">Row height in the download list.</div></div>
               <Segmented label="List density" bind:value={s.density} options={[{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]} />
+            </div>
+            {#if !isMac}
+              <div class="rowc card">
+                <div class="t"><div class="tt">Title bar</div><div class="d">{s.titleBar === 'native' ? 'Windows are framed by the operating system; colour profiles do not reach the title bar.' : 'The app draws its own title bar, so it follows your theme and colour profile.'}</div></div>
+                <Segmented label="Title bar" bind:value={s.titleBar} options={[{ value: 'custom', label: 'Custom' }, { value: 'native', label: 'Native' }]} />
+              </div>
+            {/if}
+            <div class="rowc card">
+              <div class="t"><div class="tt">Toolbar buttons</div><div class="d">{s.toolbarLabels === 'always' ? 'Every button shows its icon and name.' : s.toolbarLabels === 'icons' ? 'Icons only. Hold the pointer over a button for its name.' : 'Icons only; a button opens to show its name while the pointer is on it.'}</div></div>
+              <Segmented label="Toolbar buttons" bind:value={s.toolbarLabels} options={[{ value: 'hover', label: 'Expand on hover' }, { value: 'always', label: 'Always full size' }, { value: 'icons', label: 'Always collapsed' }]} />
             </div>
             <label class="check"><input type="checkbox" bind:checked={s.traySpeed} />Show speed in the {isMac ? 'menu bar' : 'system tray'}</label>
           </section>
@@ -399,6 +428,11 @@
               <Switch label="Verify TLS" bind:checked={s.verifyTls} />
             </div>
             {#if !s.verifyTls}<div class="errbox">Certificate checks are off. Anyone on the network path can alter what you download.</div>{/if}
+            <div class="rowc card">
+              <div class="t"><div class="tt">Allow redirects from https to http</div><div class="d">Keep this off. A secure download that a server sends on to a plain http address fails instead of continuing unprotected.</div></div>
+              <Switch label="Allow insecure redirects" bind:checked={s.allowInsecureRedirects} />
+            </div>
+            {#if s.allowInsecureRedirects}<div class="errbox">Secure downloads may continue over plain http, where anyone on the network path can alter the file.</div>{/if}
           </section>
         {/if}
       {/if}
@@ -413,15 +447,14 @@
 </div>
 
 <style>
-  .wrap { height: 100%; display: flex; background: var(--surface); }
-  nav { width: 220px; flex: none; border-right: 1px solid var(--border); background: #111418; padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
-  :global([data-theme='light']) nav { background: var(--surface-2); }
+  .wrap { height: 100%; display: flex; }
+  nav { width: 220px; flex: none; border-right: var(--outline-w, 1px) solid var(--glass-border); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
   h1 { margin: 0 10px 12px; font-size: var(--fs-xl); font-weight: 600; }
   .nav { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px; border: 0; background: transparent; color: var(--text-muted); text-align: left; }
-  .nav:hover { background: var(--surface-2); color: var(--text); }
-  .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-  .nav.on :global(svg) { color: var(--accent); }
-  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .nav :global(svg) { color: var(--accent); }
+  .nav:hover { background: var(--hover); color: var(--text); }
+  .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
   .scroll { flex: 1; overflow: auto; padding: 22px 28px; }
   section { display: flex; flex-direction: column; gap: 14px; }
   h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; }
@@ -440,8 +473,8 @@
   .small { font-size: var(--fs-sm); }
   .status { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
-  .dot.ok { background: var(--success); opacity: 1; }
-  .dot.bad { background: var(--danger); opacity: 1; }
+  .dot.ok { background: var(--success); opacity: 1; box-shadow: 0 0 6px var(--success); }
+  .dot.bad { background: var(--danger); opacity: 1; box-shadow: 0 0 6px var(--danger); }
   .bridge-err { color: var(--danger); }
   .path { flex: 2; min-width: 0; }
   .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -452,7 +485,7 @@
   .catname { width: 170px; font-weight: 500; }
   .fold { display: flex; gap: 6px; min-width: 0; flex: 1; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-sunken); font-size: var(--fs-sm); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 9px; border-radius: 7px; border: 1px solid var(--accent-soft); background: var(--accent-soft); font-size: var(--fs-sm); }
   .chip button { display: flex; border: 0; background: transparent; color: var(--text-muted); padding: 3px; border-radius: 4px; }
   .chip button:hover { color: var(--danger); background: var(--danger-soft); }
   .chipin { height: 26px; width: 110px; border: 1px dashed var(--border); border-radius: 7px; background: transparent; padding: 0 8px; font-size: var(--fs-sm); outline: none; }

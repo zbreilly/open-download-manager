@@ -33,7 +33,7 @@ pub enum Msg {
     PauseCapture(bool),
     CaptureTypes(String),
     ShowExtension,
-    /// copy the pairing code (true: make a new one first)
+    /// copy the pairing key (true: make a new one first)
     Pairing(bool),
     /// pick a folder for a setting, or for a category (its id)
     Browse(Option<String>, &'static str),
@@ -203,11 +203,11 @@ impl SettingsWindow {
         ];
         rows.push(
             row(
-                "Pairing code",
-                Some("Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends."),
+                "Pairing key",
+                Some("Paste it into the extension’s popup, under Connection, and save it under Pairing key. Only an extension that holds the key can talk to the app, and other programs can’t read what it sends. A new key unpairs every browser."),
                 StackPanel::new().orientation(Orientation::Horizontal).spacing(10.0).children((
-                    View::from(Button::new().content("Copy").on_click(c.callback(|()| Msg::Pairing(false)))),
-                    View::from(Button::new().content("New Code").on_click(c.callback(|()| Msg::Pairing(true)))),
+                    View::from(Button::new().content("Copy Key").on_click(c.callback(|()| Msg::Pairing(false)))),
+                    View::from(Button::new().content("New Key").on_click(c.callback(|()| Msg::Pairing(true)))),
                 )),
             )
             .into(),
@@ -338,6 +338,7 @@ impl SettingsWindow {
             self.number("extensionPort", "Extension port", 1.0, 65535.0, None, c),
             heading("Security").into(),
             self.toggle("verifyTls", "Verify TLS certificates", None, c),
+            self.toggle("allowInsecureRedirects", "Allow redirects from https to http", Some("Keep this off. A secure download that a server sends on to a plain http address fails instead of continuing unprotected."), c),
         ];
         if !b_or(&self.draft, "verifyTls", true) {
             rows.push(error_text("Certificate checks are off. Anyone on the network path can alter what you download.").into());
@@ -410,15 +411,15 @@ impl Component for SettingsWindow {
                 None => self.shared.report("The extension isn't bundled in this build. Run extension/build.sh in the source folder and load extension/dist/chromium."),
             },
             Msg::Pairing(fresh) => {
-                let code = crate::engine::call(if fresh { "reset_pairing" } else { "pairing_code" }, Value::Null);
+                let code = crate::engine::call(if fresh { "regenerate_bridge_key" } else { "bridge_key" }, Value::Null);
                 match code.as_ref().map(|v| v.as_str().unwrap_or_default()) {
                     Ok(code) if !code.is_empty() => {
                         system::set_clipboard_text(code);
                         if fresh {
-                            self.shared.report("New pairing code copied. Paste it into the extension in each browser; the old code no longer works.");
+                            self.shared.report("New pairing key copied. Paste it into the extension in each browser; the old key no longer works.");
                         }
                     }
-                    Ok(_) => self.shared.report("The pairing code isn't available."),
+                    Ok(_) => self.shared.report("The pairing key isn't available."),
                     Err(e) => self.shared.report(e.clone()),
                 }
             }

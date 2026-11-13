@@ -225,14 +225,14 @@ QQC2.ApplicationWindow {
                     }
                 }
                 RowLayout {
-                    Kirigami.FormData.label: "Pairing code:"
+                    Kirigami.FormData.label: "Pairing key:"
                     QQC2.Button {
-                        text: "Copy"
+                        text: "Copy Key"
                         icon.name: "edit-copy"
                         onClicked: win.send("copy-pairing")
                     }
                     QQC2.Button {
-                        text: "New Code"
+                        text: "New Key"
                         icon.name: "view-refresh"
                         onClicked: win.send("new-pairing")
                     }
@@ -240,7 +240,7 @@ QQC2.ApplicationWindow {
                 QQC2.Label {
                     textFormat: Text.PlainText
                     Layout.maximumWidth: Kirigami.Units.gridUnit * 28
-                    text: "Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends."
+                    text: "Paste it into the extension’s popup, under Connection, and save it under Pairing key. Only an extension that holds the key can talk to the app, and other programs can’t read what it sends. A new key unpairs every browser."
                     font: Kirigami.Theme.smallFont
                     color: Kirigami.Theme.disabledTextColor
                     wrapMode: Text.Wrap
@@ -488,6 +488,15 @@ QQC2.ApplicationWindow {
                     visible: win.s !== null && win.s.tlsWarning
                     text: "Certificate checks are off. Anyone on the network path can alter what you download."
                     color: Kirigami.Theme.negativeTextColor
+                    wrapMode: Text.Wrap
+                }
+                Toggle { key: "allowInsecureRedirects"; text: "Allow redirects from https to http" }
+                QQC2.Label {
+                    textFormat: Text.PlainText
+                    Layout.maximumWidth: Kirigami.Units.gridUnit * 26
+                    text: "Keep this off. A secure download that a server sends on to a plain http address fails instead of continuing unprotected."
+                    font: Kirigami.Theme.smallFont
+                    color: Kirigami.Theme.disabledTextColor
                     wrapMode: Text.Wrap
                 }
             }

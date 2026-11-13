@@ -271,8 +271,8 @@ impl SettingsWindow {
             let bridge_error = kit::note("");
             kit::red(&bridge_error);
             let pairing_note = kit::note("");
-            let copy = kit::button("Copy", kit::bound(weak, |w| w.copy_pairing_code(false)));
-            let new_code = kit::button("New Code", kit::bound(weak, |w| w.copy_pairing_code(true)));
+            let copy = kit::button("Copy Key", kit::bound(weak, |w| w.copy_pairing_key(false)));
+            let new_key = kit::button("New Key…", kit::bound(weak, |w| w.copy_pairing_key(true)));
             let paused = kit::checkbox("Pause capture for 10 minutes", build.edited());
             {
                 let (a, z) = (paused.clone(), paused.clone());
@@ -313,8 +313,8 @@ impl SettingsWindow {
                     &bridge_error,
                     &kit::note(how),
                     &kit::hstack(0.0, &[&kit::button("Show Extension Folder", kit::bound(weak, |w| w.reveal_extension())), &kit::spacer()]),
-                    &kit::row("Pairing code", &kit::hstack(8.0, &[&copy, &new_code, &pairing_note])),
-                    &kit::note("Paste it into the extension’s popup, under Connection. Only a paired extension can talk to the app, and other programs can’t read what it sends."),
+                    &kit::row("Pairing key", &kit::hstack(8.0, &[&copy, &new_key, &pairing_note])),
+                    &kit::note("Paste it into the extension’s popup, under Connection, and save it under Pairing key. Only an extension that holds the key can talk to the app, and other programs can’t read what it sends. A new key unpairs every browser."),
                     &kit::hline(),
                     &kit::heading("Capture"),
                     &build.check("captureEnabled", "Take over browser downloads"),
@@ -450,6 +450,8 @@ impl SettingsWindow {
                     &kit::heading("Security"),
                     &build.check("verifyTls", "Verify TLS certificates"),
                     &tls_warning,
+                    &build.check("allowInsecureRedirects", "Allow redirects from https to http"),
+                    &kit::note("Keep this off. A secure download that a server sends on to a plain http address fails instead of continuing unprotected."),
                 ]),
             );
 
@@ -584,12 +586,18 @@ impl SettingsWindow {
         }
     }
 
-    /// Put the pairing code (a new one when asked) on the clipboard.
-    fn copy_pairing_code(&self, new: bool) {
-        match engine::call(if new { "reset_pairing" } else { "pairing_code" }, json!({})) {
-            Ok(code) => {
-                system::copy(code.as_str().unwrap_or(""));
-                kit::set_text(&self.pairing_note, if new { "New code copied. Pair each browser again." } else { "Copied." });
+    /// Put the pairing key (a new one when asked) on the clipboard.
+    fn copy_pairing_key(&self, new: bool) {
+        if new {
+            let text = "Every browser paired with the current key stops sending downloads to the app until you paste the new key into its extension. The new key is copied to the clipboard.";
+            if kit::ask(None, "Make a new pairing key?", text, &["New Key", "Cancel"], None) != 0 {
+                return;
+            }
+        }
+        match engine::call(if new { "regenerate_bridge_key" } else { "bridge_key" }, json!({})) {
+            Ok(key) => {
+                system::copy_secret(key.as_str().unwrap_or(""));
+                kit::set_text(&self.pairing_note, if new { "New key copied. Pair each browser again." } else { "Copied." });
             }
             Err(e) => app().report(&e),
         }

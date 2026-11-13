@@ -188,11 +188,11 @@ impl Vm for Settings {
             },
             "copy-pairing" | "new-pairing" => {
                 let fresh = action == "new-pairing";
-                match api::call_as::<String>(if fresh { "reset_pairing" } else { "pairing_code" }, Value::Null) {
+                match api::call_as::<String>(if fresh { "regenerate_bridge_key" } else { "bridge_key" }, Value::Null) {
                     Ok(code) => {
                         backend::copy_text(&code);
                         if fresh {
-                            backend::report("New pairing code copied. Paste it into the extension in each browser; the old code no longer works.".into());
+                            backend::report("New pairing key copied. Paste it into the extension in each browser; the old key no longer works.".into());
                         }
                     }
                     Err(e) => backend::report(e),

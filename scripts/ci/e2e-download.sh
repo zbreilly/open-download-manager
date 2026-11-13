@@ -1,17 +1,19 @@
 #!/bin/bash
-# End-to-end check against a running app that was started with
-#   ODM_E2E_URL=http://127.0.0.1:8919/odm-ci-e2e.bin
-# in its environment: serve that file, wait for the app to download it and
-# compare the result byte for byte with the source. Also checks that the
-# browser bridge turns away everyone who isn't a paired extension.
+# End-to-end check against a running app: hand a download to the browser
+# bridge the way the extension does (sealed with the pairing key), then wait
+# for the finished file and compare it byte for byte with the source.
 #
-# usage: e2e-download.sh DOWNLOAD_DIR [BRIDGE_PORT]
+# The app must have been started with ODM_BRIDGE_KEY set to the same 64 hex
+# digits as this script's environment (the pairing key for this run).
+#
+# usage: ODM_BRIDGE_KEY=... e2e-download.sh DOWNLOAD_DIR [BRIDGE_PORT]
 set -euo pipefail
 DL="$1"
 PORT="${2:-8901}"
+: "${ODM_BRIDGE_KEY:?set ODM_BRIDGE_KEY to the pairing key the app was started with}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$(mktemp -d)"
-NAME="odm-ci-e2e.bin"
+NAME="odm-ci-$$.bin"
 SRV=8919
 
 sha() { if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
@@ -23,21 +25,28 @@ SRV_PID=$!
 trap 'kill $SRV_PID 2>/dev/null || true' EXIT
 for _ in $(seq 1 50); do curl -sf -o /dev/null -I "http://127.0.0.1:$SRV/$NAME" && break; sleep 0.1; done
 
-# the bridge must refuse a web page, a forged Host, anything not sealed with
-# the pairing key, and the endpoints that took unsealed requests
-api="http://127.0.0.1:$PORT/api/v2"
-post() { curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' "$@"; }
-code=$(post -H 'Origin: https://evil.example' -d '{}' "$api")
+# the bridge must refuse a web page origin and a forged Host
+code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Origin: https://evil.example' "http://127.0.0.1:$PORT/api/ping")
 [ "$code" = 403 ] || { echo "bridge accepted a web origin ($code)"; exit 1; }
-code=$(post -H "Host: evil.example:$PORT" -d '{}' "$api")
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: evil.example:$PORT" "http://127.0.0.1:$PORT/api/ping")
 [ "$code" = 403 ] || { echo "bridge accepted a forged Host ($code)"; exit 1; }
-code=$(post -H 'Origin: chrome-extension://odmcitest' -d "{\"url\":\"http://127.0.0.1:$SRV/$NAME\",\"silent\":true}" "$api")
+
+# without the pairing key nothing is accepted: not the routes of earlier
+# versions, not an unsealed request, not a request sealed with another key
+ADD="{\"url\":\"http://127.0.0.1:$SRV/$NAME\",\"silent\":true}"
+ext=(-H 'Origin: chrome-extension://odmcitest' -H 'X-ODM-Browser: CI' -H 'Content-Type: application/json')
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${ext[@]}" -d "$ADD" "http://127.0.0.1:$PORT/api/add")
+[ "$code" = 404 ] || { echo "bridge still has the unsealed add route ($code)"; exit 1; }
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${ext[@]}" -d "$ADD" "http://127.0.0.1:$PORT/api/rpc")
 [ "$code" = 401 ] || { echo "bridge accepted an unsealed request ($code)"; exit 1; }
-code=$(post -H 'Origin: chrome-extension://odmcitest' -d '{"v":2,"n":"AAAAAAAAAAAAAAAA","c":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}' "$api")
-[ "$code" = 401 ] || { echo "bridge accepted a request sealed with another key ($code)"; exit 1; }
-code=$(post -H 'Origin: chrome-extension://odmcitest' -d "{\"url\":\"http://127.0.0.1:$SRV/$NAME\",\"silent\":true}" "http://127.0.0.1:$PORT/api/add")
-[ "$code" = 404 ] || { echo "the unsealed add endpoint still answers ($code)"; exit 1; }
-echo "bridge refuses unpaired callers"
+out=$(ODM_BRIDGE_KEY=$(printf 'ab%.0s' $(seq 1 32)) node "$HERE/bridge-rpc.mjs" "$PORT" add "$ADD" || true)
+[ "$out" = "HTTP 401" ] || { echo "bridge accepted a request sealed with another key ($out)"; exit 1; }
+sleep 2
+[ -z "$(find "$DL" -maxdepth 3 -name "$NAME*" 2>/dev/null | head -1)" ] || { echo "a refused request started a download"; exit 1; }
+
+# the paired way
+node "$HERE/bridge-rpc.mjs" "$PORT" ping | grep -q '"capture"' || { echo "sealed ping failed"; exit 1; }
+node "$HERE/bridge-rpc.mjs" "$PORT" add "$ADD"
 
 # wait for the finished file (the engine renames .odmpart when done)
 OUT=""

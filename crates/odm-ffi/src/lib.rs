@@ -173,8 +173,6 @@ fn start_with(dir: std::path::PathBuf, sink: Option<Sink>) -> Result<(), (i32, S
         return Err((-6, format!("odm_start: {ON_ASYNC_THREAD}")));
     }
     std::fs::create_dir_all(&dir).map_err(|e| (-2, format!("cannot create {}: {e}", dir.display())))?;
-    // the app's own folder: it holds the database (cookies, passwords, the pairing key)
-    store::private_dir(&dir);
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("odm-engine")
@@ -521,17 +519,16 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
                 "browsers": b,
                 "port": mgr.settings().extension_port,
                 "bridgeError": c.bridge_error.lock().clone(),
-                "pairingCode": mgr.pairing().code(),
             }))
         }
-        // pasted into the browser extension once, to pair it with this app
-        "pairing_code" => ok(mgr.pairing().code()),
-        // a new pairing code: every browser extension must be paired again
-        "reset_pairing" => {
-            let code = mgr.reset_pairing().map_err(|e| e.to_string())?;
+        // the key the browser extension is paired with (shown in settings)
+        "bridge_key" => ok(mgr.bridge_key()),
+        "regenerate_bridge_key" => {
+            let key = mgr.regenerate_bridge_key();
+            // nothing is paired any more
             c.ext_seen.lock().clear();
             c.emit("extension_status", &json!({ "connected": false, "browsers": [] }));
-            ok(code)
+            ok(key)
         }
         "export_list" => {
             let path: String = arg(&a, "path")?;
@@ -555,7 +552,8 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
                 .map(String::from)
                 .collect::<Vec<_>>())
         }
-        "kv_get" => ok(mgr.kv_get(&format!("ui.{}", arg::<String>(&a, "key")?))),
+        // a read error is an error, not "nothing stored"
+        "kv_get" => ok(mgr.kv_read(&format!("ui.{}", arg::<String>(&a, "key")?)).map_err(|e| e.to_string())?),
         "kv_set" => {
             mgr.kv_set(&format!("ui.{}", arg::<String>(&a, "key")?), &arg::<String>(&a, "value")?);
             done()

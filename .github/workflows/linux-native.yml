@@ -22,7 +22,7 @@ on:
       - "scripts/ci/**"
       - ".github/workflows/linux-native.yml"
   workflow_dispatch:
-  # the linux-webview workflow calls this for tagged releases
+  # the desktop workflow calls this for tagged releases
   workflow_call:
 
 concurrency:
@@ -111,16 +111,19 @@ jobs:
           mkdir -p ci-out
           if [ "${{ matrix.distro }}" = debian ]; then
             apt-get update
-            apt-get install -y ./pkg/*.deb xvfb xauth imagemagick dbus dbus-x11 procps curl python3 git libgl1-mesa-dri 2>&1 | tee ci-out/install.log
+            apt-get install -y ./pkg/*.deb xvfb xauth imagemagick dbus dbus-x11 procps curl python3 git nodejs openssl libgl1-mesa-dri 2>&1 | tee ci-out/install.log
           else
-            dnf install -y ./pkg/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-daemon dbus-x11 procps-ng curl python3 git mesa-dri-drivers 2>&1 | tee ci-out/install.log
+            dnf install -y ./pkg/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-daemon dbus-x11 procps-ng curl python3 git nodejs openssl mesa-dri-drivers 2>&1 | tee ci-out/install.log
           fi
           command -v open-download-manager | tee -a ci-out/install.log
-      # only the e2e scripts are needed (the container job has no source)
+      # only the e2e scripts are needed (the container job has no source),
+      # and the extension's sealing code they send requests with
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          sparse-checkout: scripts/ci
+          sparse-checkout: |
+            scripts/ci
+            extension/src
           path: src
       - name: Launch as ${{ matrix.desktop }}, open a link, download
         env:
@@ -129,13 +132,13 @@ jobs:
           GSK_RENDERER: cairo
           QT_QUICK_BACKEND: software
           LIBGL_ALWAYS_SOFTWARE: "1"
-          # the app downloads this once the e2e script serves it
-          ODM_E2E_URL: http://127.0.0.1:8919/odm-ci-e2e.bin
         run: |
           UI=$([ "$XDG_CURRENT_DESKTOP" = KDE ] && echo odm-plasma || echo odm-gnome)
           Xvfb :99 -screen 0 1440x900x24 &
           sleep 2
           export DISPLAY=:99 HOME=/root
+          # pairing key for this run: the app and the test script share it
+          export ODM_BRIDGE_KEY="$(openssl rand -hex 32)"
           cat > run.sh <<SCRIPT
           set -e
           open-download-manager > ci-out/app.log 2>&1 &

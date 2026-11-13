@@ -313,8 +313,9 @@ async fn file_changed_on_server_restarts() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn grabber_lists_files() {
     let srv = common::start().await;
-    let client = reqwest::Client::new();
+    // the provider must be installed before any reqwest::Client is built
     odm_core::client::install_crypto();
+    let client = reqwest::Client::new();
     let links = odm_core::grabber::grab(
         &client,
         &format!("{}/page", srv.base),

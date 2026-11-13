@@ -15,7 +15,7 @@
   });
 </script>
 
-<div class="about">
+<div class="about art-dialog">
   <span class="logo"><Icon name="odm-mark" size={40} stroke={2.4} /></span>
   <h1>Open Download Manager</h1>
   {#if info}
@@ -27,8 +27,8 @@
 </div>
 
 <style>
-  .about { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: var(--surface); }
-  .logo { width: 72px; height: 72px; border-radius: 18px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; }
+  .about { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; text-align: center; background: var(--glass); }
+  .logo { width: 72px; height: 72px; border-radius: 18px; background: linear-gradient(140deg, var(--accent-hi), var(--violet)); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 8px 28px var(--accent-glow); display: flex; align-items: center; justify-content: center; }
   h1 { margin: 6px 0 0; font-size: 18px; font-weight: 600; }
   .small { font-size: var(--fs-sm); max-width: 320px; }
 </style>

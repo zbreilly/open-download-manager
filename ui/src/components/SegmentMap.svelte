@@ -27,7 +27,7 @@
 <div class="map" style:height="{height}px">
   {#each cells as c}
     <div class="cell" style:flex-grow={c.flex}>
-      <div class="fill" style:width="{c.frac * 100}%" style:background={color} style:opacity={c.done ? 0.55 : 1}>
+      <div class="fill" style:width="{c.frac * 100}%" style:background-color={color} style:opacity={c.done ? 0.55 : 1}>
         {#if head && c.active && c.frac < 1}<span class="head"></span>{/if}
       </div>
     </div>
@@ -36,7 +36,7 @@
 
 <style>
   .map { display: flex; gap: 3px; width: 100%; }
-  .cell { flex-basis: 0; min-width: 4px; height: 100%; border-radius: 4px; background: var(--track); overflow: hidden; }
-  .fill { height: 100%; position: relative; }
-  .head { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; background: var(--accent); filter: brightness(1.6); opacity: .4; }
+  .cell { flex-basis: 0; min-width: 4px; height: 100%; border-radius: 4px; background: var(--track); overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,.18); }
+  .fill { height: 100%; position: relative; background-image: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 60%); }
+  .head { position: absolute; right: 0; top: 0; bottom: 0; width: 10px; background: linear-gradient(90deg, transparent, #fff); opacity: .55; }
 </style>

@@ -78,8 +78,10 @@
     root.querySelector("button").addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      // only a real click by the user, never one a page script made up
-      if (!e.isTrusted || !current) return;
+      // only a real click on a button the user can actually see: the page
+      // owns this element's surroundings and could otherwise stretch or
+      // hide it under something else to collect clicks
+      if (!e.isTrusted || !current || !plainlyVisible(e)) return;
       const src = current.currentSrc || current.src || current.querySelector("source")?.src || "";
       // streamed (blob:) video: the background offers the media this tab
       // loaded, each with its own cookies, or says none was found
@@ -92,6 +94,26 @@
     host.addEventListener("mouseleave", scheduleHide);
     document.documentElement.appendChild(host);
     return host;
+  }
+
+  /**
+   * Is the button shown the way this script drew it: attached where it was
+   * put, at its natural size, fully opaque, not transformed or clipped, and
+   * the topmost thing at the click point?
+   */
+  function plainlyVisible(e) {
+    if (!host || host.parentNode !== document.documentElement) return false;
+    const r = host.getBoundingClientRect();
+    if (r.width < 40 || r.width > 240 || r.height < 20 || r.height > 60) return false;
+    const page = getComputedStyle(document.documentElement);
+    if (page.visibility !== "visible" || Number(page.opacity) < 1) return false;
+    const cs = getComputedStyle(host);
+    if (cs.visibility !== "visible" || Number(cs.opacity) < 1) return false;
+    if (cs.transform !== "none" || cs.filter !== "none" || cs.clipPath !== "none") return false;
+    if (cs.mixBlendMode !== "normal") return false;
+    if (cs.maskImage && cs.maskImage !== "none") return false;
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return false;
+    return document.elementFromPoint(e.clientX, e.clientY) === host;
   }
 
   function scheduleHide() {

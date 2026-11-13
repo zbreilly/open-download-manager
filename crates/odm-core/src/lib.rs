@@ -4,8 +4,9 @@
 //! * `manager`  — download list, queues, scheduler, limits, events
 //! * `store`    — SQLite persistence
 //! * `grabber`  — site grabber (link extraction)
-//! * `pairing`  — sealed messages between the app and its browser extension
 //! * `util`     — names, categories, batch patterns, hashing
+//! * `pairing`  — shared key and sealed messages for the browser extension
+//! * `secret`   — protection of stored cookies, passwords and keys
 
 pub mod client;
 pub mod grabber;
@@ -13,6 +14,7 @@ pub mod limiter;
 pub mod manager;
 pub mod model;
 pub mod pairing;
+pub mod secret;
 pub mod store;
 pub mod task;
 pub mod util;
@@ -28,6 +30,10 @@ pub enum CoreError {
     Http(u16),
     #[error("{0}")]
     Network(String),
+    /// an https download was redirected to plain http (see
+    /// `Settings::allow_insecure_redirects`)
+    #[error("the server redirected this secure (https) download to an insecure http address; if you trust the source, allow it under Settings → Advanced")]
+    InsecureRedirect,
     #[error("download not found")]
     NotFound,
     #[error("{0}")]

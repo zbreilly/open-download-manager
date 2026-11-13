@@ -657,7 +657,7 @@ fn debug_open(app: &Rc<App>) {
             "grabber" => app.open_grabber(None),
             "scheduler" => app.open_scheduler(),
             "settings" => app.open_settings(),
-            // once a download started for the test (ODM_E2E_URL) is listed
+            // once a download is listed
             "progress" => kit::after(3.0, || {
                 let app = crate::app::app();
                 let id = app.store.borrow().downloads().first().map(|d| s(d, "id").to_string());

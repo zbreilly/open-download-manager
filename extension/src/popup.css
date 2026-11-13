@@ -26,3 +26,5 @@ li .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overf
 li .s { color: var(--m); font: 11px ui-monospace, monospace; }
 li button { height: 26px; padding: 0 9px; }
 summary { cursor: pointer; color: var(--m); font-size: 12px; margin-bottom: 6px; }
+details .label { margin-top: 10px; }
+details .d { margin: 4px 0 2px; }

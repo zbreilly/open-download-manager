@@ -143,21 +143,7 @@ fn default_when_finished() -> String {
     "notify".into()
 }
 
-/// Request headers that carry credentials.
-pub fn is_secret_header(name: &str) -> bool {
-    matches!(name.trim().to_ascii_lowercase().as_str(), "authorization" | "proxy-authorization" | "cookie")
-}
-
 impl Download {
-    /// Forget what was only needed to fetch the file: cookies, the password
-    /// and credential headers. Called when the download is complete, so they
-    /// don't stay in the database.
-    pub fn forget_secrets(&mut self) {
-        self.cookies = None;
-        self.password = None;
-        self.headers.retain(|(k, _)| !is_secret_header(k));
-    }
-
     pub fn final_path(&self) -> std::path::PathBuf {
         std::path::Path::new(&self.save_dir).join(&self.file_name)
     }
@@ -382,6 +368,12 @@ pub struct Settings {
     pub theme: String,
     pub density: String,
     pub tray_speed: bool,
+    /// main toolbar buttons: "hover" (icons that open on hover),
+    /// "always" (full size) or "icons" (always collapsed)
+    pub toolbar_labels: String,
+    /// window title bars: "custom" (drawn by the app, follows the colour
+    /// profile) or "native" (the operating system's)
+    pub title_bar: String,
     // Advanced
     pub user_agent: String,
     pub max_retries: u32,
@@ -389,6 +381,8 @@ pub struct Settings {
     pub timeout_secs: u64,
     pub min_segment_kb: u64,
     pub verify_tls: bool,
+    /// follow a redirect from https to plain http (off: such a download fails)
+    pub allow_insecure_redirects: bool,
 }
 
 pub const DEFAULT_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -492,12 +486,15 @@ impl Default for Settings {
             theme: "dark".into(),
             density: "comfortable".into(),
             tray_speed: false,
+            toolbar_labels: "hover".into(),
+            title_bar: "custom".into(),
             user_agent: DEFAULT_UA.into(),
             max_retries: 10,
             retry_delay_secs: 3,
             timeout_secs: 30,
             min_segment_kb: 512,
             verify_tls: true,
+            allow_insecure_redirects: false,
         }
     }
 }
@@ -510,27 +507,4 @@ pub struct GrabbedLink {
     pub ext: String,
     pub category: String,
     pub source: String,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn a_finished_download_forgets_its_secrets() {
-        let mut d: Download = serde_json::from_value(serde_json::json!({
-            "id": "1", "url": "https://x.example/a.zip", "fileName": "a.zip", "ext": "ZIP", "category": "general",
-            "queueId": null, "saveDir": "/dl", "totalBytes": 1, "receivedBytes": 1, "status": "complete",
-            "resumable": true, "maxConnections": 1, "error": null, "addedAt": "", "completedAt": null,
-            "cookies": "sid=1", "username": "me", "password": "pw", "referrer": "https://x.example/",
-            "headers": [["Authorization", "Bearer t"], ["X-Plain", "1"], [" cookie ", "a=b"]]
-        }))
-        .unwrap();
-        d.forget_secrets();
-        assert_eq!((d.cookies, d.password), (None, None));
-        assert_eq!(d.headers, vec![("X-Plain".to_string(), "1".to_string())]);
-        // what identifies the download stays
-        assert_eq!(d.username.as_deref(), Some("me"));
-        assert_eq!(d.referrer.as_deref(), Some("https://x.example/"));
-    }
 }

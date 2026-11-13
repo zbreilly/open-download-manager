@@ -13,10 +13,23 @@ const B = globalThis.browser ?? globalThis.chrome;
 const IS_FIREFOX = typeof globalThis.browser !== "undefined" && navigator.userAgent.includes("Firefox");
 const DEFAULT_PORT = 8901;
 
+// sealed messages (ODMPairing): a service worker loads the file itself,
+// Firefox lists it in the manifest
+if (!globalThis.ODMPairing && typeof importScripts === "function") importScripts("pairing.js");
+const Pairing = globalThis.ODMPairing;
+
+// the pairing key is for the extension's own pages only, not content scripts
+try { B.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {}); } catch {}
+
 const state = {
+  // the app answered with the pairing key: only then is anything sent to it
   connected: false,
-  // "ok" | "down" (app not running) | "unpaired" (no pairing code) | "wrongkey"
-  link: "down",
+  // something that says it is the app listens on the port
+  appRunning: false,
+  // a pairing key is stored
+  paired: false,
+  // the stored key is not the app's key
+  keyRejected: false,
   capture: { enabled: true, paused: false, extensions: [], bypassKey: "alt", minSizeKb: 0 },
   lastCheck: 0,
   bypassUntil: 0,
@@ -42,112 +55,87 @@ async function port() {
   }
 }
 
-// ---------------------------------------------------------------- pairing
-// Everything sent to the app is sealed (AES-256-GCM) with the pairing code
-// from the app's Settings → Browser integration, and so is every answer. A
-// program that listens on the app's port instead of the app can read
-// nothing (URLs, cookies) and can't answer; without the code, nothing can
-// talk to the app.
+/** The listener did not prove it holds the pairing key (or no key is stored). */
+class PairingError extends Error {}
 
-const REQUEST_AAD = new TextEncoder().encode("odm-bridge-v2 request");
-const RESPONSE_AAD = new TextEncoder().encode("odm-bridge-v2 response");
-// the pairing code stays out of reach of content scripts (Chromium)
-try { B.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" }); } catch {}
+let keyCache = { hex: "", key: null };
 
-class LinkError extends Error {
-  /** kind: "unpaired" | "wrongkey" | "down" */
-  constructor(kind) { super(kind); this.kind = kind; }
-}
-
-function toB64(bytes) {
-  let s = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-}
-
-function fromB64(text) {
-  const bin = atob(text);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
-
-/** The 32 key bytes of a pairing code, or null if it isn't one. */
-function codeBytes(code) {
-  try {
-    const raw = fromB64(String(code || "").trim().replace(/-/g, "+").replace(/_/g, "/"));
-    return raw.length === 32 ? raw : null;
-  } catch {
-    return null;
-  }
-}
-
-let cachedKey = { code: null, key: null };
-
+/** The stored pairing key as a CryptoKey, or null when not paired. */
 async function pairingKey() {
-  let code = "";
-  try { code = (await B.storage.local.get({ pairingCode: "" })).pairingCode || ""; } catch {}
-  if (code !== cachedKey.code) {
-    const raw = codeBytes(code);
-    const key = raw ? await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]) : null;
-    cachedKey = { code, key };
-  }
-  return cachedKey.key;
+  let hex = "";
+  try {
+    hex = Pairing.parseKey((await B.storage.local.get({ pairKey: "" })).pairKey) || "";
+  } catch {}
+  state.paired = !!hex;
+  if (!hex) return null;
+  if (keyCache.hex !== hex) keyCache = { hex, key: await Pairing.importKey(hex) };
+  return keyCache.key;
 }
 
-/** Send one sealed request (`op` plus `fields`) and return the opened answer. */
-async function call(op, fields) {
-  const key = await pairingKey();
-  if (!key) throw new LinkError("unpaired");
-  const id = crypto.randomUUID();
-  const plain = new TextEncoder().encode(JSON.stringify({ ...fields, op, id, ts: Date.now(), browser: browserName() }));
-  const nonce = crypto.getRandomValues(new Uint8Array(12));
-  const sealed = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: REQUEST_AAD }, key, plain));
+async function request(path, init, timeoutMs) {
   const p = await port();
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 2500);
-  let envelope;
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const r = await fetch(`http://127.0.0.1:${p}/api/v2`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ v: 2, n: toB64(nonce), c: toB64(sealed) }),
-      signal: ctl.signal,
-    });
-    if (r.status === 401) throw new LinkError("wrongkey");
-    if (!r.ok) throw new LinkError("down");
-    envelope = await r.json();
-  } catch (e) {
-    throw e instanceof LinkError ? e : new LinkError("down");
+    return await fetch(`http://127.0.0.1:${p}${path}`, { ...init, signal: ctl.signal });
   } finally {
     clearTimeout(t);
   }
-  // only the app can produce an answer that opens with our key and
-  // carries this request's id
+}
+
+/**
+ * Ask the app to do `op`. The request is sealed with the pairing key, so
+ * only the app can read it, and the answer must be sealed with the same key
+ * for this very request: anything else on the port gets nothing and is not
+ * believed. Throws PairingError when not paired or the key is not accepted.
+ */
+async function rpc(op, body) {
+  const key = await pairingKey();
+  if (!key) throw new PairingError("not paired");
+  const sealed = await Pairing.sealRequest(key, op, body ?? null);
+  const r = await request("/api/rpc", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-odm-browser": browserName() },
+    body: sealed.envelope,
+  }, 5000);
+  if (r.status === 401) throw new PairingError("pairing key not accepted");
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
   let answer;
   try {
-    const opened = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: fromB64(envelope.n), additionalData: RESPONSE_AAD }, key, fromB64(envelope.c));
-    answer = JSON.parse(new TextDecoder().decode(opened));
+    answer = await Pairing.openResponse(key, sealed.nonce, await r.text());
   } catch {
-    throw new LinkError("wrongkey");
+    throw new PairingError("the answer was not sealed with the pairing key");
   }
-  if (!answer || answer.id !== id) throw new LinkError("wrongkey");
+  if (!answer || answer.ok === false) throw new Error((answer && answer.error) || "request failed");
   return answer;
 }
 
-function setLink(link) {
-  state.link = link;
-  state.connected = link === "ok";
+/** Is something that calls itself the app listening? (Unsealed; tells nothing else.) */
+async function appListening() {
+  try {
+    const r = await request("/api/ping", { method: "GET" }, 2500);
+    return r.ok;
+  } catch {
+    return false;
+  }
 }
 
 async function ping() {
   try {
-    const info = await call("ping");
-    setLink("ok");
+    const info = await rpc("ping");
+    state.connected = true;
+    state.appRunning = true;
+    state.keyRejected = false;
     state.capture = info.capture || state.capture;
   } catch (e) {
-    setLink(e.kind || "down");
+    state.connected = false;
+    if (e instanceof PairingError) {
+      state.appRunning = await appListening();
+      state.keyRejected = state.paired && state.appRunning;
+    } else {
+      state.appRunning = false;
+      state.keyRejected = false;
+    }
   }
   state.lastCheck = Date.now();
   updateIcon();
@@ -167,10 +155,10 @@ function updateIcon() {
     ? { 16: "icons/icon-16-paused.png", 32: "icons/icon-32-paused.png" }
     : { 16: "icons/icon-16.png", 32: "icons/icon-32.png" };
   try { action.setIcon({ path }); } catch {}
-  const title = state.link === "unpaired" || state.link === "wrongkey"
-    ? "Open Download Manager — not paired with the app"
-    : !state.connected
-    ? "Open Download Manager — app not running"
+  const title = !state.connected
+    ? state.appRunning
+      ? "Open Download Manager — not paired with the app"
+      : "Open Download Manager — app not running"
     : state.capture.paused
       ? "Open Download Manager — capture paused"
       : "Open Download Manager";
@@ -224,32 +212,27 @@ async function cookieItems(urls, storeId) {
 async function sendToApp({ url, urls, referrer, fileName, totalBytes, mime, storeId }) {
   const list = (urls || []).filter((u) => typeof u === "string" && u);
   if (!url && !list.length) return false;
-  // without a pairing code nothing is collected, let alone sent
-  if (!(await pairingKey())) {
-    setLink("unpaired");
-    updateIcon();
-    return false;
-  }
+  // nothing is collected or sent unless the app has answered with the
+  // pairing key
+  if (!state.connected && !(await ping())) return false;
   const items = list.length ? await cookieItems(list, storeId) : [];
   const cookies = url ? await cookiesFor(url, storeId) : "";
   try {
-    const answer = await call("add", {
-      body: {
-        url: url || "",
-        // each link with its own cookies
-        items,
-        referrer: referrer || "",
-        fileName: fileName || null,
-        cookies,
-        userAgent: navigator.userAgent,
-        totalBytes: totalBytes > 0 ? totalBytes : null,
-        mime: mime || null,
-      },
+    await rpc("add", {
+      url: url || "",
+      // each link with its own cookies
+      items,
+      referrer: referrer || "",
+      fileName: fileName || null,
+      cookies,
+      userAgent: navigator.userAgent,
+      totalBytes: totalBytes > 0 ? totalBytes : null,
+      mime: mime || null,
     });
-    setLink("ok");
-    return !!answer.ok;
-  } catch (e) {
-    setLink(e.kind || "down");
+    state.connected = true;
+    return true;
+  } catch {
+    state.connected = false;
     updateIcon();
     return false;
   }
@@ -479,8 +462,11 @@ function notify(title, message) {
 }
 
 function notifyDown() {
-  if (state.link === "unpaired" || state.link === "wrongkey") {
-    notify("Open Download Manager isn't paired", "Copy the pairing code from the app's Settings → Browser integration into this extension's popup.");
+  if (state.appRunning && !state.connected) {
+    notify(
+      "Open Download Manager isn't paired",
+      "Copy the pairing key from the app (Settings → Browser integration) and paste it into this extension's popup."
+    );
   } else {
     notify("Open Download Manager isn't running", "Start the app, then try again.");
   }
@@ -542,7 +528,9 @@ B.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         const tabId = privileged ? (msg.tabId ?? -1) : (sender.tab?.id ?? -1);
         sendResponse({
           connected: state.connected,
-          link: state.link,
+          appRunning: state.appRunning,
+          paired: state.paired,
+          keyRejected: state.keyRejected,
           capture: state.capture,
           browser: browserName(),
           port: await port(),
@@ -553,26 +541,27 @@ B.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       case "odm-pause-capture":
         if (!privileged) { sendResponse({ error: "not allowed" }); break; }
         try {
-          const info = await call("pause", { minutes: Math.max(0, Math.min(1440, Number(msg.minutes) || 0)) });
+          const info = await rpc("capture-pause", { minutes: Math.max(0, Math.min(1440, Number(msg.minutes) || 0)) });
           state.capture = info.capture || state.capture;
         } catch {}
         updateIcon();
         sendResponse({ capture: state.capture });
         break;
+      case "odm-set-key": {
+        // the pairing key from the app's settings (empty: forget it)
+        if (!privileged) { sendResponse({ error: "not allowed" }); break; }
+        const text = String(msg.key ?? "").trim();
+        const hex = Pairing.parseKey(text);
+        if (text && !hex) { sendResponse({ error: "That isn't a pairing key (64 letters and digits)." }); break; }
+        await B.storage.local.set({ pairKey: hex || "" });
+        sendResponse({ connected: await ping(), paired: state.paired, keyRejected: state.keyRejected });
+        break;
+      }
       case "odm-set-port": {
         if (!privileged) { sendResponse({ error: "not allowed" }); break; }
         const p = Number(msg.port);
         await B.storage.local.set({ port: Number.isInteger(p) && p > 0 && p < 65536 ? p : DEFAULT_PORT });
         sendResponse({ connected: await ping() });
-        break;
-      }
-      case "odm-set-pairing": {
-        if (!privileged) { sendResponse({ error: "not allowed" }); break; }
-        const code = String(msg.code || "").trim();
-        if (!codeBytes(code)) { sendResponse({ error: "That isn't a pairing code. Copy it from the app's Settings → Browser integration." }); break; }
-        await B.storage.local.set({ pairingCode: code });
-        await ping();
-        sendResponse({ connected: state.connected, link: state.link });
         break;
       }
       default:

@@ -223,9 +223,12 @@ def installer_svg(W, H, kind):
         icon = H - 18
         tile = tile_svg(int(icon)).split(">", 1)[1].rsplit("</svg>", 1)[0]
         x_icon = W - icon - 10
-        txt = f'<path transform="translate(14 {H / 2 + cap / 2:.1f})" d="{name_d}" fill="{TEXT_LIGHT}"/>' if kind == "banner" else ""
+        # Only the logo tile, at the right. The left of both images must stay
+        # empty: the installers draw each page's title and description there
+        # (WiX over the banner, NSIS beside the header), so a wordmark in the
+        # picture ends up underneath that text.
         return (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">'
-                f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>{txt}'
+                f'<rect width="{W}" height="{H}" fill="#FFFFFF"/>'
                 f'<g transform="translate({x_icon} 9)">{tile}</g></svg>')
     # sidebar / dialog / dmg: dark brand panel
     if kind == "sidebar":

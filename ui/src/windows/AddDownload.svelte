@@ -289,7 +289,7 @@
           {/if}
         </div>
         {#if fromWeb && !probing}
-          <button type="button" class="btn sm" onclick={probeNow}><Icon name="refresh-link" size={14} />{probe || probeErr ? 'Check again' : 'Check link'}</button>
+          <button type="button" class="btn sm c-teal" onclick={probeNow}><Icon name="refresh-link" size={14} />{probe || probeErr ? 'Check again' : 'Check link'}</button>
         {/if}
       </div>
     {/if}
@@ -396,7 +396,7 @@
   </div>
 
   <div class="dialog-foot">
-    <button class="btn" disabled={!urlValid || busy} onclick={() => submit(false)}><Icon name="add-to-queue" size={15} />Add to queue</button>
+    <button class="btn c-violet" disabled={!urlValid || busy} onclick={() => submit(false)}><Icon name="add-to-queue" size={15} />Add to queue</button>
     <span class="spacer"></span>
     <button class="btn" onclick={() => win.close()}>Cancel</button>
     <button class="btn primary" disabled={!urlValid || busy} onclick={() => submit(true)}>

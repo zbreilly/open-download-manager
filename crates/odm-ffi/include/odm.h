@@ -39,6 +39,10 @@ int32_t odm_start(const char *data_dir, odm_event_cb cb, void *ctx);
 // save_settings with a new extensionPort first listens on the new port;
 // if that fails nothing is saved, the old listener keeps running, a
 // "bridge_error" event is emitted and {"err": ...} is returned.
+// bridge_key returns the key the browser extension must be paired with
+// (show it in the settings so the user can paste it into the extension);
+// regenerate_bridge_key replaces it and returns the new one. The bridge
+// only acts on requests sealed with this key.
 char *odm_call(const char *method, const char *args_json);
 
 // Free a string returned by odm_call (NULL is ignored).

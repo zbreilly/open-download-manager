@@ -298,6 +298,10 @@ pub async fn save_settings(app: AppHandle, st: State<'_, AppState>, settings: Se
     if old.theme != settings.theme {
         windows::retheme_all(&app, &settings.theme);
     }
+    if old.title_bar != settings.title_bar {
+        let (a, title_bar) = (app.clone(), settings.title_bar.clone());
+        let _ = app.run_on_main_thread(move || windows::reframe_all(&a, &title_bar));
+    }
     match autostart_err {
         Some(e) => Err(format!("Couldn't change launch at login: {e}")),
         None => Ok(()),
@@ -307,7 +311,78 @@ pub async fn save_settings(app: AppHandle, st: State<'_, AppState>, settings: Se
 fn set_autostart(app: &AppHandle, on: bool) -> R<()> {
     use tauri_plugin_autostart::ManagerExt;
     let al = app.autolaunch();
-    if on { al.enable() } else { al.disable() }.map_err(err)
+    if on { al.enable() } else { al.disable() }.map_err(err)?;
+    if on {
+        quote_autostart_entry(app);
+    }
+    Ok(())
+}
+
+/// The launch-at-login entry the autostart plugin writes on Windows is
+/// `C:\path with spaces\app.exe --minimized`, without quotes. Windows
+/// resolves such a command word by word, so a program planted at
+/// `C:\path.exe` or `C:\path with.exe` would be started instead. Rewrite
+/// the entry with the program path quoted (only if it is exactly the entry
+/// the plugin wrote for this executable).
+#[cfg(windows)]
+fn quote_autostart_entry(app: &AppHandle) {
+    use std::ffi::c_void;
+    use windows_sys::Win32::System::Registry::{RegGetValueW, RegSetKeyValueW, HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_SZ};
+
+    let wide = |s: &str| -> Vec<u16> { s.encode_utf16().chain(Some(0)).collect() };
+    let Ok(exe) = std::env::current_exe() else { return };
+    let (plain, quoted) = autostart_commands(&exe.display().to_string(), crate::AUTOSTART_ARGS);
+    let key = wide(r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run");
+    let name = wide(&app.package_info().name);
+
+    let mut buf = vec![0u16; 4096];
+    let mut size = (buf.len() * 2) as u32;
+    // SAFETY: key and name are NUL-terminated; `buf` is valid for `size` bytes
+    let rc = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            key.as_ptr(),
+            name.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            buf.as_mut_ptr() as *mut c_void,
+            &mut size,
+        )
+    };
+    if rc != 0 {
+        return; // no entry for this user
+    }
+    let len = (size as usize / 2).min(buf.len());
+    let current = String::from_utf16_lossy(&buf[..len]);
+    if current.trim_end_matches('\0').trim() != plain {
+        return;
+    }
+    let data = wide(&quoted);
+    // SAFETY: all strings are NUL-terminated and `data` is `data.len() * 2` bytes long
+    let rc = unsafe {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            key.as_ptr(),
+            name.as_ptr(),
+            REG_SZ,
+            data.as_ptr() as *const c_void,
+            (data.len() * 2) as u32,
+        )
+    };
+    if rc != 0 {
+        tracing::warn!("could not quote the launch-at-login entry (error {rc})");
+    }
+}
+
+#[cfg(not(windows))]
+fn quote_autostart_entry(_app: &AppHandle) {}
+
+/// The launch-at-login command as the autostart plugin writes it, and the
+/// same command with the program path quoted.
+#[cfg_attr(not(any(windows, test)), allow(dead_code))]
+fn autostart_commands(exe: &str, args: &[&str]) -> (String, String) {
+    let args = args.join(" ");
+    (format!("{exe} {args}").trim().to_string(), format!("\"{exe}\" {args}").trim().to_string())
 }
 
 fn autostart_enabled(app: &AppHandle) -> Option<bool> {
@@ -319,6 +394,10 @@ fn autostart_enabled(app: &AppHandle) -> Option<bool> {
 /// outside the app); store what the OS says.
 pub fn reconcile_autostart(app: &AppHandle) {
     let Some(os) = autostart_enabled(app) else { return };
+    if os {
+        // entries written by earlier versions
+        quote_autostart_entry(app);
+    }
     let st = app.state::<AppState>();
     let mut s = st.mgr.settings();
     if s.launch_at_login != os {
@@ -402,18 +481,61 @@ pub async fn extension_status(st: State<'_, AppState>) -> R<Value> {
         "port": st.mgr.settings().extension_port,
         // why the bridge isn't listening (port taken), or null
         "bridgeError": st.bridge_error.lock().clone(),
-        // pasted into the browser extension once, to pair it with this app
-        "pairingCode": st.mgr.pairing().code(),
     }))
 }
 
-/// A new pairing code: every browser extension must be paired again.
+/// The key the browser extension is paired with (shown in the settings).
 #[tauri::command]
-pub async fn reset_pairing(app: AppHandle, st: State<'_, AppState>) -> R<String> {
-    let code = st.mgr.reset_pairing().map_err(|e| e.to_string())?;
+pub async fn bridge_key(st: State<'_, AppState>) -> R<String> {
+    Ok(st.mgr.bridge_key())
+}
+
+/// How long the pairing key may stay on the clipboard.
+const KEY_ON_CLIPBOARD: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Put a secret on the clipboard. On Windows it is marked so that it is
+/// kept out of the clipboard history (Win+V) and is not synced to other
+/// devices; elsewhere it is an ordinary copy.
+fn copy_secret(app: &AppHandle, text: &str) -> R<()> {
+    #[cfg(windows)]
+    {
+        use arboard::SetExtWindows;
+        let _ = app;
+        let mut clipboard = arboard::Clipboard::new().map_err(err)?;
+        clipboard.set().exclude_from_monitoring().text(text.to_string()).map_err(err)
+    }
+    #[cfg(not(windows))]
+    {
+        use tauri_plugin_clipboard_manager::ClipboardExt;
+        app.clipboard().write_text(text.to_string()).map_err(err)
+    }
+}
+
+/// Copy the pairing key for pasting into the extension. The key never
+/// passes through the settings window, and it is taken off the clipboard
+/// again after a minute unless something else was copied meanwhile.
+#[tauri::command]
+pub async fn copy_bridge_key(app: AppHandle, st: State<'_, AppState>) -> R<()> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    let key = st.mgr.bridge_key();
+    copy_secret(&app, &key)?;
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(KEY_ON_CLIPBOARD).await;
+        if app.clipboard().read_text().ok().as_deref() == Some(key.as_str()) {
+            let _ = app.clipboard().clear();
+        }
+    });
+    Ok(())
+}
+
+/// Replace the pairing key; paired extensions must be given the new one.
+#[tauri::command]
+pub async fn regenerate_bridge_key(app: AppHandle, st: State<'_, AppState>) -> R<String> {
+    let key = st.mgr.regenerate_bridge_key();
+    // nothing is paired any more
     st.ext_seen.lock().clear();
     let _ = app.emit("extension_status", json!({ "connected": false, "browsers": [] }));
-    Ok(code)
+    Ok(key)
 }
 
 #[tauri::command]
@@ -442,6 +564,67 @@ pub async fn export_list(st: State<'_, AppState>, path: String, only_unfinished:
     Ok(list.len())
 }
 
+/// One installed font family.
+#[derive(serde::Serialize)]
+pub struct FontFamily {
+    name: String,
+    /// every face of the family is fixed-width
+    mono: bool,
+}
+
+/// The font families installed on this computer, sorted by name, for the
+/// Theme studio's font fields. Scans the system font folders each time, so
+/// a font installed while the app runs shows up the next time it is asked.
+#[tauri::command]
+pub async fn list_fonts() -> R<Vec<FontFamily>> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let mut db = fontdb::Database::new();
+        db.load_system_fonts();
+        // keyed by lower-case name: sorted, and one entry per family
+        let mut families = std::collections::BTreeMap::<String, FontFamily>::new();
+        for face in db.faces() {
+            // the first family name is the English one
+            let Some((name, _)) = face.families.first() else { continue };
+            let name = name.trim();
+            // names starting with '.' are system-internal fonts
+            if name.is_empty() || name.starts_with('.') {
+                continue;
+            }
+            families
+                .entry(name.to_lowercase())
+                .and_modify(|f| f.mono &= face.monospaced)
+                .or_insert_with(|| FontFamily { name: name.to_string(), mono: face.monospaced });
+        }
+        families.into_values().collect()
+    })
+    .await
+    .map_err(err)
+}
+
+/// Largest colour profile the Theme studio may export (its images and
+/// fonts are inside it).
+const MAX_THEME_FILE: usize = 96 * 1024 * 1024;
+
+/// Save an exported colour profile. The webview can only write a JSON
+/// document, and only to a `.odmtheme` file (the path comes from the
+/// native save dialog).
+#[tauri::command]
+pub async fn write_theme_file(path: String, contents: String) -> R<()> {
+    let p = absolute(&path)?;
+    let is_theme = p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("odmtheme"));
+    if !is_theme {
+        return Err("theme files end in .odmtheme".into());
+    }
+    if contents.len() > MAX_THEME_FILE {
+        return Err("the theme is too large to export".into());
+    }
+    let doc: Value = serde_json::from_str(&contents).map_err(|_| "not a theme".to_string())?;
+    if doc.get("format").and_then(Value::as_str) != Some("odm-theme") {
+        return Err("not a theme".into());
+    }
+    std::fs::write(p, contents).map_err(err)
+}
+
 #[tauri::command]
 pub async fn read_url_list(path: String) -> R<Vec<String>> {
     let text = std::fs::read_to_string(absolute(&path)?).map_err(err)?;
@@ -467,7 +650,9 @@ pub async fn app_info(app: AppHandle) -> R<Value> {
 
 #[tauri::command]
 pub async fn kv_get(st: State<'_, AppState>, key: String) -> R<Option<String>> {
-    Ok(st.mgr.kv_get(&format!("ui.{key}")))
+    // a read error is an error, not "nothing stored": the windows decide
+    // what to delete or overwrite from what they read here
+    st.mgr.kv_read(&format!("ui.{key}")).map_err(err)
 }
 
 #[tauri::command]
@@ -509,4 +694,20 @@ fn extension_dirs(app: &AppHandle) -> Vec<PathBuf> {
 #[tauri::command]
 pub async fn assign_extensions(st: State<'_, AppState>, category: String, extensions: Vec<String>) -> R<()> {
     st.mgr.assign_extensions(&category, &extensions).map_err(err)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn autostart_entry_is_quoted() {
+        let exe = r"C:\Users\Jo Smith\AppData\Local\Open Download Manager\open-download-manager.exe";
+        let (plain, quoted) = autostart_commands(exe, &["--minimized"]);
+        assert_eq!(plain, format!("{exe} --minimized"));
+        assert_eq!(quoted, format!("\"{exe}\" --minimized"));
+        let (plain, quoted) = autostart_commands(exe, &[]);
+        assert_eq!(plain, exe);
+        assert_eq!(quoted, format!("\"{exe}\""));
+    }
 }

@@ -11,6 +11,7 @@
   import { store, initStore, byId } from '../lib/store.svelte';
   import * as f from '../lib/format';
   import { toast } from '../components/Toast.svelte';
+  import { frame } from '../lib/frame.svelte';
 
   let { id }: { id: string } = $props();
   const win = getCurrentWindow();
@@ -27,7 +28,8 @@
 
   $effect(() => {
     if (!d) return;
-    win.setTitle(`${pct}% ${d.fileName}`).catch(() => {});
+    frame.title = `${pct}% ${d.fileName}`;
+    win.setTitle(frame.title).catch(() => {});
     const complete = d.status === 'complete';
     if (wasComplete === false && complete) closeIn = 5;
     wasComplete = complete;
@@ -91,17 +93,18 @@
     </div>
 
     <div class="dialog-body">
+      <div class="bar"><div class="barfill" style:width="{pct}%" style:background-color={f.statusColor(d.status)}></div></div>
       <div class="hero">
         {#if d.status === 'complete'}
           <div class="done"><Icon name="st-complete" size={36} stroke={2} /><span>Complete</span></div>
         {:else}
-          <div class="pct mono">{pct}<span>%</span></div>
+          <div class="pct mono" style:--c={f.statusColor(d.status)}>{pct}<span>%</span></div>
         {/if}
         <div class="stats">
-          <div><div class="label">Downloaded</div><div class="mono v">{f.bytes(d.receivedBytes)} / {f.bytes(d.totalBytes)}</div></div>
-          <div><div class="label">Speed</div><div class="mono v" style="color:var(--accent)">{f.speed(d.speedBps)}</div></div>
-          <div><div class="label">Time left</div><div class="mono v">{d.status === 'downloading' ? f.eta(d.etaSecs) : '—'}</div></div>
-          <div><div class="label">Resume</div><div class="v">{d.resumable ? 'Supported' : 'Not supported'}</div></div>
+          <div class="stat c-teal"><div class="label">Downloaded</div><div class="mono v">{f.bytes(d.receivedBytes)} / {f.bytes(d.totalBytes)}</div></div>
+          <div class="stat c-blue"><div class="label">Speed</div><div class="mono v hl">{f.speed(d.speedBps)}</div></div>
+          <div class="stat c-violet"><div class="label">Time left</div><div class="mono v">{d.status === 'downloading' ? f.eta(d.etaSecs) : '—'}</div></div>
+          <div class="stat {d.resumable ? 'c-green' : 'c-amber'}"><div class="label">Resume</div><div class="v hl">{d.resumable ? 'Supported' : 'Not supported'}</div></div>
         </div>
       </div>
 
@@ -160,7 +163,7 @@
       {#if d.status === 'complete'}
         <button class="btn" onclick={() => win.close()}>Close{closeIn != null ? ` (${closeIn})` : ''}</button>
         <span class="spacer"></span>
-        <button class="btn" onclick={() => act(() => api.openFolder(id))}><Icon name="open-folder" size={15} />Open folder</button>
+        <button class="btn c-orange" onclick={() => act(() => api.openFolder(id))}><Icon name="open-folder" size={15} />Open folder</button>
         <button class="btn primary" onclick={() => act(async () => { await api.openFile(id); win.close(); })}><Icon name="open-file" size={15} />Open file</button>
       {:else}
         <button class="btn" onclick={() => win.close()}>Hide</button>
@@ -181,7 +184,7 @@
     <p class="muted" style="margin:0">The partial file is deleted and the download is removed from the list.</p>
     {#snippet footer()}
       <button class="btn" onclick={() => (confirmCancel = false)}>Keep downloading</button>
-      <button class="btn primary" onclick={() => act(async () => { await api.delete([id], false); win.close(); })}>Cancel download</button>
+      <button class="btn primary destructive" onclick={() => act(async () => { await api.delete([id], false); win.close(); })}>Cancel download</button>
     {/snippet}
   </Modal>
 {/if}
@@ -190,17 +193,22 @@
   .small { font-size: var(--fs-sm); }
   h1 { font-size: var(--fs-xl); }
   .hero { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
-  .pct { font-size: var(--fs-hero); font-weight: 500; line-height: 1; letter-spacing: -0.02em; min-width: 110px; }
+  .bar { height: 4px; margin: -18px -20px 0; background: var(--track); flex: none; }
+  .barfill { height: 100%; background-image: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.45)); box-shadow: 0 0 10px var(--accent-glow); }
+  .pct { font-size: var(--fs-hero); font-weight: 600; line-height: 1; letter-spacing: -0.02em; min-width: 110px; color: var(--c); }
   .pct span { font-size: 22px; color: var(--text-muted); }
   .done { display: flex; align-items: center; gap: 10px; color: var(--success); font-size: 22px; font-weight: 600; min-width: 110px; }
-  .stats { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; min-width: 380px; }
+  .stats { flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; min-width: 380px; }
+  .stat { padding: 8px 10px; border-radius: var(--r-md); background: var(--c-soft); border: 1px solid var(--c-soft); min-width: 0; overflow: hidden; }
+  .stat .label { color: var(--c); margin-bottom: 2px; }
+  .hl { color: var(--c); font-weight: 600; }
   .v { font-size: var(--fs-md); white-space: nowrap; }
   .cap { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: 6px; }
   .okline { color: var(--success); display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
   .lower { display: flex; gap: 16px; min-height: 180px; flex: 1; }
   .conns { flex: 1.25; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: transparent; }
   .crow { display: grid; grid-template-columns: 34px 1.4fr 1fr 90px; gap: 8px; padding: 6px 12px; font-size: var(--fs-sm); border-bottom: 1px solid var(--border-subtle); }
-  .chead { background: var(--surface-2); border-bottom: 1px solid var(--border); padding: 8px 12px; }
+  .chead { background: var(--tint); border-bottom: 1px solid var(--border); padding: 8px 12px; }
   .cbody { overflow: auto; flex: 1; }
   .r { text-align: right; }
   .right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }

@@ -1,12 +1,16 @@
-name: linux-webview
+name: desktop
 
-# The webview (Tauri) Linux packages, kept as the fallback for distributions
-# too old for the native apps: .deb (Debian/Ubuntu) and .rpm (Fedora) for
-# x64 and ARM64, each installed in a clean container, launched, and used for
-# a real download through the browser bridge.
+# The app (Tauri: Rust engine and shell, web interface with the theme
+# studio) for every platform: Windows (x64) installers, Linux .deb
+# (Debian/Ubuntu) and .rpm (Fedora) packages for x64 and ARM64, and a
+# universal macOS DMG. The Windows installer, each Linux package (in a clean
+# Debian or Fedora container on its own arch) and the macOS app are
+# installed or launched and used for a real download through the browser
+# bridge. The macOS build runs for v* tags and manual runs only.
 #
-# A v* tag also builds the native apps (macOS, Windows, Linux) through their
-# own workflows and drafts a release with everything.
+# A v* tag also builds the native-toolkit apps (macOS, Windows, Linux)
+# through their own workflows and drafts a release with everything; the
+# native files carry "-native" in their names.
 
 on:
   push:
@@ -22,7 +26,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: linux-webview-${{ github.ref }}
+  group: desktop-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -35,6 +39,75 @@ defaults:
 jobs:
   checks:
     uses: ./.github/workflows/checks.yml
+
+  windows:
+    needs: checks
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: windows
+      - name: Frontend and extension
+        run: |
+          npm --prefix ui ci
+          npm --prefix ui run build
+          bash extension/build.sh
+      - name: Bundle (NSIS + MSI)
+        working-directory: src-tauri
+        run: |
+          mkdir -p ../ci-out
+          # the CLI version is pinned in ui/package.json
+          ../ui/node_modules/.bin/tauri build --bundles nsis,msi -- --locked 2>&1 | tee ../ci-out/build.log
+      - name: Install silently, launch, download
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Get-ChildItem target/release/bundle/nsis/*.exe | Select-Object -First 1
+          Start-Process $exe.FullName -ArgumentList '/S' -Wait
+          $app = Get-ChildItem "$env:LOCALAPPDATA\Open Download Manager\*.exe","$env:ProgramFiles\Open Download Manager\*.exe" -ErrorAction SilentlyContinue |
+                 Where-Object { $_.Name -notlike 'uninstall*' } | Select-Object -First 1
+          if (-not $app) { Write-Error "installed app not found"; exit 1 }
+          "installed: $($app.FullName)" | Tee-Object ci-out/install.log
+          # pairing key for this run: the app and the test script share it
+          $env:ODM_BRIDGE_KEY = -join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+          $p = Start-Process $app.FullName -PassThru
+          Start-Sleep 15
+          if ($p.HasExited) { Write-Error "app exited early ($($p.ExitCode))"; exit 1 }
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          function Shot($name) {
+            $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+            [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+            $bmp.Save("ci-out/$name")
+          }
+          Shot "windows.png"
+          $env:PYTHON = 'python'
+          $dl = "$($env:USERPROFILE -replace '\\','/')/Downloads"
+          & "C:\Program Files\Git\bin\bash.exe" scripts/ci/e2e-download.sh $dl 2>&1 | Tee-Object -Append ci-out/install.log
+          $rc = $LASTEXITCODE
+          Shot "windows-after-download.png"
+          Stop-Process -Id $p.Id -Force
+          if ($rc -ne 0) { Write-Error "end-to-end download failed"; exit 1 }
+          "launch and download ok" | Tee-Object -Append ci-out/install.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-windows-x64
+          path: ci-out/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: OpenDownloadManager-Windows-x64
+          path: |
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/msi/*.msi
 
   linux:
     needs: checks
@@ -73,14 +146,7 @@ jobs:
         run: |
           mkdir -p ../ci-out
           # the CLI version is pinned in ui/package.json
-          ../ui/node_modules/.bin/tauri build --bundles deb,rpm 2>&1 | tee ../ci-out/build.log
-      - name: Name the packages as the webview fallback
-        run: |
-          # the native packages (linux-native workflow) are open-download-manager_*;
-          # both install the package "open-download-manager", so one replaces the other
-          for f in target/release/bundle/deb/*.deb target/release/bundle/rpm/*.rpm; do
-            mv "$f" "$(dirname "$f")/open-download-manager-webview-$(basename "$f" | sed 's/^Open Download Manager[_-]//')"
-          done
+          ../ui/node_modules/.bin/tauri build --bundles deb,rpm -- --locked 2>&1 | tee ../ci-out/build.log
       - name: Package info
         run: |
           ls -l target/release/bundle/deb target/release/bundle/rpm | tee ci-out/packages.txt
@@ -118,24 +184,28 @@ jobs:
           mkdir -p ci-out
           if [ "${{ matrix.distro }}" = debian ]; then
             apt-get update
-            apt-get install -y ./pkg/deb/*.deb xvfb xauth imagemagick dbus-x11 procps curl python3 git 2>&1 | tee ci-out/install.log
+            apt-get install -y ./pkg/deb/*.deb xvfb xauth imagemagick dbus-x11 procps curl python3 git nodejs openssl 2>&1 | tee ci-out/install.log
           else
-            dnf install -y ./pkg/rpm/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-x11 procps-ng curl python3 git 2>&1 | tee ci-out/install.log
+            dnf install -y ./pkg/rpm/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-x11 procps-ng curl python3 git nodejs openssl 2>&1 | tee ci-out/install.log
           fi
           command -v open-download-manager | tee -a ci-out/install.log
-      # only the e2e scripts are needed (the container job has no source)
+      # only the e2e scripts are needed (the container job has no source),
+      # and the extension's sealing code they send requests with
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-          sparse-checkout: scripts/ci
+          sparse-checkout: |
+            scripts/ci
+            extension/src
           path: src
       - name: Launch, download, screenshot
         run: |
           Xvfb :99 -screen 0 1440x900x24 &
           sleep 2
           export DISPLAY=:99 HOME=/root
-          # the app downloads this once the e2e script serves it
-          ODM_E2E_URL=http://127.0.0.1:8919/odm-ci-e2e.bin dbus-launch open-download-manager > ci-out/app.log 2>&1 &
+          # pairing key for this run: the app and the test script share it
+          export ODM_BRIDGE_KEY="$(openssl rand -hex 32)"
+          dbus-launch open-download-manager > ci-out/app.log 2>&1 &
           sleep 15
           pgrep -f open-download-manage[r] || { echo "app exited early"; cat ci-out/app.log; exit 1; }
           import -display :99 -window root ci-out/screen.png || true
@@ -150,6 +220,55 @@ jobs:
           path: ci-out/
 
   macos:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    needs: checks
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: macos
+      - name: Build app and DMG (universal)
+        run: |
+          mkdir -p ci-out
+          npm --prefix ui ci
+          scripts/build-macos-tauri.sh --universal 2>&1 | tee ci-out/build.log
+      - name: Launch, download, screenshot
+        run: |
+          APP="$PWD/dist/macos/Open Download Manager.app"
+          # pairing key for this run: the app and the test script share it
+          export ODM_BRIDGE_KEY="$(openssl rand -hex 32)"
+          open --env "ODM_BRIDGE_KEY=$ODM_BRIDGE_KEY" "$APP"
+          sleep 10
+          pgrep -fl open-download-manager || { echo "app exited early"; exit 1; }
+          screencapture -x ci-out/macos.png || true
+          bash scripts/ci/e2e-download.sh "$HOME/Downloads" 2>&1 | tee ci-out/install.log
+          screencapture -x ci-out/macos-after-download.png || true
+          osascript -e 'tell application "Open Download Manager" to quit' || true
+          sleep 3
+          pkill -f open-download-manager || true
+          echo "launch and download ok" >> ci-out/install.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-macos-universal
+          path: ci-out/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: OpenDownloadManager-macOS
+          path: dist/macos/*.dmg
+
+  # the native-toolkit apps, for releases
+  macos-native:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: checks
     permissions:
@@ -169,7 +288,7 @@ jobs:
     uses: ./.github/workflows/linux-native.yml
 
   report:
-    needs: [checks, linux, install-test]
+    needs: [checks, windows, linux, install-test, macos]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     permissions:
@@ -184,7 +303,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          SUMMARY: "checks=${{ needs.checks.result }} linux=${{ needs.linux.result }} install-test=${{ needs.install-test.result }}"
+          SUMMARY: "checks=${{ needs.checks.result }} windows=${{ needs.windows.result }} linux=${{ needs.linux.result }} install-test=${{ needs.install-test.result }} macos=${{ needs.macos.result }}"
         run: |
           mkdir -p ci-out
           cd ci-out
@@ -199,11 +318,14 @@ jobs:
           git -c http.extraheader="AUTHORIZATION: basic $auth" push -q -f "https://github.com/$REPO.git" ci-output-desktop
 
   release:
-    needs: [linux, install-test, macos, windows-native, linux-native]
+    needs: [windows, linux, install-test, macos, macos-native, windows-native, linux-native]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      # build provenance for the installers (signed by GitHub, not by us)
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -214,12 +336,30 @@ jobs:
         with:
           pattern: OpenDownloadManager-*
           path: out
-          merge-multiple: true
+      # The installers are not code-signed. So that a download can still be
+      # checked: SHA-256 sums of every file, and a provenance attestation
+      # tying each file to this workflow run
+      # (gh attestation verify <file> --repo <owner>/<repo>).
+      - name: Checksums
+        run: |
+          mkdir release
+          # one folder per artifact; the native-toolkit builds (artifacts
+          # named …Native…) get "-native" before the extension, so they
+          # cannot be mistaken for, or overwrite, the app's own files
+          find out -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.deb' -o -name '*.rpm' -o -name '*.dmg' \) | while read -r f; do
+            name="$(basename "$f")"
+            case "$f" in out/*Native*/*) name="${name%.*}-native.${name##*.}" ;; esac
+            [ ! -e "release/$name" ] || { echo "two release files are named $name"; exit 1; }
+            cp "$f" "release/$name"
+          done
+          (cd release && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        # attestations are available to public repositories (and to private
+        # ones only on GitHub Enterprise Cloud)
+        if: ${{ !github.event.repository.private }}
+        with:
+          subject-checksums: release/SHA256SUMS.txt
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           draft: true
-          files: |
-            out/**/*.exe
-            out/**/*.deb
-            out/**/*.rpm
-            out/**/*.dmg
+          files: release/*

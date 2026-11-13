@@ -17,6 +17,7 @@
 use crate::client::{self, Clients, HeaderSet};
 use crate::limiter::Limiter;
 use crate::model::*;
+use crate::pairing::{self, Pairing};
 use crate::store::Store;
 use crate::task::{self, Runtime, TaskCtx, TaskError, UNKNOWN};
 use crate::util;
@@ -103,6 +104,10 @@ struct Inner {
     events: broadcast::Sender<Event>,
     global: Limiter,
     clients: RwLock<Clients>,
+    /// key shared with the browser extension
+    pairing: Arc<Pairing>,
+    /// the pairing key was supplied through the environment
+    automated: bool,
     handle: Mutex<Option<Handle>>,
     shutting_down: AtomicBool,
     background_started: AtomicBool,
@@ -110,8 +115,6 @@ struct Inner {
     bg: CancellationToken,
     /// download runs and file operations
     tracker: TaskTracker,
-    /// the key shared with paired browser extensions
-    pairing: crate::pairing::Pairing,
 }
 
 #[derive(Clone)]
@@ -119,11 +122,30 @@ pub struct Manager {
     inner: Arc<Inner>,
 }
 
-/// Where the pairing code is kept (not reachable through `kv_get`'s `ui.` keys).
-const PAIRING_KEY: &str = "bridge.pairing";
-
 fn now_iso() -> String {
     Local::now().to_rfc3339()
+}
+
+/// Where the pairing key is kept in the database.
+const PAIRING_KEY: &str = "bridge.key";
+/// Environment variable that supplies the pairing key instead (64 hex
+/// digits), for automated tests that drive the bridge without the settings
+/// window. A key given this way is not stored.
+pub const PAIRING_KEY_ENV: &str = "ODM_BRIDGE_KEY";
+
+/// The stored pairing key; a new one is created (and stored) the first time.
+/// The flag says the key came from the environment (an automated run).
+fn load_pairing_key(store: &Store) -> ([u8; pairing::KEY_LEN], bool) {
+    if let Some(k) = std::env::var(PAIRING_KEY_ENV).ok().and_then(|t| pairing::parse_key(&t)) {
+        tracing::info!("using the pairing key from {PAIRING_KEY_ENV}");
+        return (k, true);
+    }
+    if let Some(k) = store.get_secret(PAIRING_KEY).and_then(|t| pairing::parse_key(&t)) {
+        return (k, false);
+    }
+    let k = pairing::generate_key();
+    store.set_secret(PAIRING_KEY, &pairing::key_text(&k));
+    (k, false)
 }
 
 /// Marks a runtime detached when its drive task ends (however it ends).
@@ -181,11 +203,6 @@ impl Manager {
                     d.manual = false;
                 }
             }
-            if d.status == Status::Complete && (d.cookies.is_some() || d.password.is_some() || d.headers.iter().any(|(k, _)| is_secret_header(k))) {
-                // finished before completed downloads forgot their secrets
-                d.forget_secrets();
-                store.save_download(&d);
-            }
             order.push(d.id.clone());
             entries.insert(d.id.clone(), Entry::new(d));
         }
@@ -196,12 +213,12 @@ impl Manager {
         let clients = client::build_clients(&settings)?;
         let global = Limiter::new(if settings.global_limit_enabled { settings.global_limit_bps } else { 0 });
         let (tx, _) = broadcast::channel(4096);
-        let (pairing, fresh) = crate::pairing::Pairing::load(store.get_kv(PAIRING_KEY).as_deref()).map_err(CoreError::Other)?;
-        if fresh {
-            store.set_kv(PAIRING_KEY, &pairing.code());
-        }
+        let (key, automated) = load_pairing_key(&store);
+        let pairing = Arc::new(Pairing::new(key));
         Ok(Self {
             inner: Arc::new(Inner {
+                pairing,
+                automated,
                 store,
                 state: Mutex::new(State {
                     entries,
@@ -221,7 +238,6 @@ impl Manager {
                 background_started: AtomicBool::new(false),
                 bg: CancellationToken::new(),
                 tracker: TaskTracker::new(),
-                pairing,
             }),
         })
     }
@@ -245,26 +261,6 @@ impl Manager {
         h.spawn(async move { m.scheduler().await });
         // finish completions that were interrupted by the last exit
         self.pump();
-        self.start_test_download(&h);
-    }
-
-    /// Automated end-to-end runs: `ODM_E2E_URL` (a link on this machine,
-    /// `http://127.0.0.1:…`, set in the environment the app is started
-    /// with) is downloaded as soon as its server answers. Nothing reaching
-    /// the app from outside (a link, the browser bridge) can set this.
-    fn start_test_download(&self, h: &Handle) {
-        let Some(url) = std::env::var("ODM_E2E_URL").ok().and_then(|u| url::Url::parse(u.trim()).ok()) else { return };
-        let (Some("127.0.0.1"), Some(port), "http") = (url.host_str(), url.port_or_known_default(), url.scheme()) else { return };
-        let m = self.clone();
-        h.spawn(async move {
-            for _ in 0..600 {
-                if tokio::net::TcpStream::connect(("127.0.0.1", port)).await.is_ok() {
-                    let _ = m.add(AddRequest { url: url.to_string(), start: true, ..Default::default() });
-                    return;
-                }
-                tokio::time::sleep(Duration::from_secs(1)).await;
-            }
-        });
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<Event> {
@@ -515,21 +511,42 @@ impl Manager {
         self.save_settings(s)
     }
 
-    /// Sealed messages to and from paired browser extensions.
-    pub fn pairing(&self) -> &crate::pairing::Pairing {
-        &self.inner.pairing
+    /// The key the browser extension must be paired with (see [`pairing`](crate::pairing)).
+    pub fn pairing(&self) -> Arc<Pairing> {
+        self.inner.pairing.clone()
     }
 
-    /// Replace the pairing key and return the new pairing code. Every
-    /// browser extension must be paired again.
-    pub fn reset_pairing(&self) -> Result<String, CoreError> {
-        let code = self.inner.pairing.reset().map_err(CoreError::Other)?;
-        self.inner.store.set_kv(PAIRING_KEY, &code);
-        Ok(code)
+    /// Is this an automated run (started with the pairing key in
+    /// `ODM_BRIDGE_KEY`)? Only then may a bridge request start a download
+    /// without showing the Add dialog: the browser extension never asks for
+    /// that, so in normal use a download always passes through the user.
+    pub fn automated(&self) -> bool {
+        self.inner.automated
+    }
+
+    /// The pairing key as text, to show in the settings.
+    pub fn bridge_key(&self) -> String {
+        self.inner.pairing.key_text()
+    }
+
+    /// Replace the pairing key. Every extension paired with the old key
+    /// stops working until it is given the new one.
+    pub fn regenerate_bridge_key(&self) -> String {
+        let key = pairing::generate_key();
+        self.inner.store.set_secret(PAIRING_KEY, &pairing::key_text(&key));
+        self.inner.pairing.set_key(key);
+        self.inner.pairing.key_text()
     }
 
     pub fn kv_get(&self, key: &str) -> Option<String> {
         self.inner.store.get_kv(key)
+    }
+
+    /// Like [`kv_get`](Self::kv_get), but a database error is reported
+    /// instead of looking like "nothing stored". For the front ends' own
+    /// key-value reads: they decide what to delete or overwrite from them.
+    pub fn kv_read(&self, key: &str) -> Result<Option<String>, CoreError> {
+        self.inner.store.try_get_kv(key).map_err(|e| CoreError::Other(format!("database: {e}")))
     }
 
     pub fn kv_set(&self, key: &str, value: &str) {
@@ -556,7 +573,7 @@ impl Manager {
             user.as_deref(),
             pass.as_deref(),
         );
-        let hs = HeaderSet::new(url, h);
+        let hs = HeaderSet::new(url, h).allow_downgrade(s.allow_insecure_redirects);
         let c = self.clients().probe;
         tokio::select! {
             _ = self.inner.bg.cancelled() => Err(CoreError::Other("shutting down".into())),
@@ -931,9 +948,18 @@ impl Manager {
 
     pub async fn refresh_link(&self, id: &str, new_url: &str) -> Result<(), CoreError> {
         let d = self.get(id).ok_or(CoreError::NotFound)?;
-        let p = self
-            .probe(new_url, d.referrer.clone(), d.cookies.clone(), d.headers.clone(), d.username.clone(), d.password.clone())
-            .await?;
+        // cookies, credentials and custom headers were given for the old
+        // link's site: a link on another site never receives them
+        let same_site = match (url::Url::parse(d.url.trim()), url::Url::parse(new_url.trim())) {
+            (Ok(old), Ok(new)) => client::credentials_allowed(&old, &new),
+            _ => false,
+        };
+        let p = if same_site {
+            self.probe(new_url, d.referrer.clone(), d.cookies.clone(), d.headers.clone(), d.username.clone(), d.password.clone())
+                .await?
+        } else {
+            self.probe(new_url, d.referrer.clone(), None, vec![], None, None).await?
+        };
         if let (Some(a), Some(b)) = (d.total_bytes, p.total_bytes) {
             if a != b {
                 return Err(CoreError::Other(format!(
@@ -945,6 +971,12 @@ impl Manager {
             let mut st = self.inner.state.lock();
             let e = st.entries.get_mut(id).ok_or(CoreError::NotFound)?;
             e.d.url = new_url.trim().to_string();
+            if !same_site {
+                e.d.cookies = None;
+                e.d.headers.clear();
+                e.d.username = None;
+                e.d.password = None;
+            }
             e.d.final_url = Some(p.final_url.clone());
             e.d.etag = p.etag.clone();
             e.d.last_modified = p.last_modified.clone();
@@ -1703,6 +1735,10 @@ impl Manager {
                         dest = dir.join(reserve_name(&st, &dir, &name, Some(id), false, false));
                     }
                 }
+                // marked while it still has its part-file name, so the file
+                // never exists under its final name without the mark (the
+                // mark travels with the rename)
+                util::mark_downloaded(&part, &url, referrer.as_deref());
                 if let Err(e) = std::fs::rename(&part, &dest) {
                     self.fail(id, rt, format!("could not move finished file into place: {e}"));
                     return;
@@ -1737,7 +1773,8 @@ impl Manager {
             let got = tokio::task::spawn_blocking(move || util::hash_file(&p, &algo)).await;
             checksum_ok = Some(matches!(got, Ok(Ok(ref h)) if h.eq_ignore_ascii_case(c.expected.trim())));
         }
-        // before anyone can open it
+        // again under the final name: covers a file moved into place by an
+        // earlier, interrupted completion
         util::mark_downloaded(&dest, &url, referrer.as_deref());
 
         let outcome = {
@@ -1767,7 +1804,11 @@ impl Manager {
                         e.d.completed_at = Some(now_iso());
                         e.d.status = Status::Complete;
                         e.d.error = None;
-                        e.d.forget_secrets();
+                        // the file is here: the session cookies, password and
+                        // custom headers that fetched it are not kept around
+                        e.d.cookies = None;
+                        e.d.password = None;
+                        e.d.headers.clear();
                     }
                     let q = e.d.queue_id.clone().filter(|_| !e.d.manual);
                     e.d.manual = false;

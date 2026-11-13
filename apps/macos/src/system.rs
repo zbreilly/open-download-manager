@@ -211,6 +211,12 @@ pub fn copy(text: &str) {
     }
 }
 
+/// Copy something clipboard managers should not keep in their history.
+pub fn copy_secret(text: &str) {
+    copy(text);
+    unsafe { NSPasteboard::generalPasteboard().setString_forType(&ns(""), &ns("org.nspasteboard.ConcealedType")) };
+}
+
 // ---------------------------------------------------------------------------
 // Finder
 

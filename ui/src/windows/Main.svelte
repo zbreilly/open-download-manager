@@ -4,7 +4,7 @@
   import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
-  import { api, errText, on, type Download, type PowerCountdown } from '../lib/ipc';
+  import { api, errText, on, type Download, type PowerCountdown, type Settings } from '../lib/ipc';
   import { store, initStore, byId, selection } from '../lib/store.svelte';
   import * as f from '../lib/format';
   import { modKey, isMac } from '../lib/theme';
@@ -15,6 +15,8 @@
   import ContextMenu, { type MenuItem } from '../components/ContextMenu.svelte';
   import Modal from '../components/Modal.svelte';
   import { toast } from '../components/Toast.svelte';
+  import WindowControls from '../components/WindowControls.svelte';
+  import { frame } from '../lib/frame.svelte';
 
   type Filter = { kind: 'lib' | 'cat' | 'queue'; id: string };
   let filter = $state<Filter>({ kind: 'lib', id: 'all' });
@@ -259,30 +261,30 @@
     const list = targetIds(d);
     const multi = list.length > 1;
     const items: MenuItem[] = [
-      { label: 'Open', icon: 'open-file', disabled: d.status !== 'complete' || multi, action: () => act(() => api.openFile(d.id)) },
-      { label: 'Open folder', icon: 'open-folder', disabled: multi, action: () => act(() => api.openFolder(d.id)) },
-      { label: 'Show progress window', icon: 'segments', disabled: d.status === 'complete' || multi, action: () => openProgress(d) },
+      { label: 'Open', icon: 'open-file', tone: 'green', disabled: d.status !== 'complete' || multi, action: () => act(() => api.openFile(d.id)) },
+      { label: 'Open folder', icon: 'open-folder', tone: 'orange', disabled: multi, action: () => act(() => api.openFolder(d.id)) },
+      { label: 'Show progress window', icon: 'segments', tone: 'blue', disabled: d.status === 'complete' || multi, action: () => openProgress(d) },
       { sep: true },
-      { label: 'Resume', icon: 'resume', disabled: !list.some((i) => ['paused', 'error', 'queued'].includes(byId(i)?.status ?? '')), action: () => resumeSel(list) },
-      { label: 'Pause', icon: 'pause', disabled: !list.some((i) => { const x = byId(i); return !!x && (isActive(x) || x.status === 'queued'); }), action: () => pauseSel(list) },
-      { label: 'Redownload', icon: 'redownload', disabled: multi, action: () => act(() => api.redownload(d.id)) },
-      { label: 'Refresh link…', icon: 'refresh-link', disabled: multi || d.status === 'complete', action: () => (refreshModal = { id: d.id, url: d.url, busy: false, err: '' }) },
-      { label: 'Copy link', icon: 'copy-link', disabled: multi, action: () => copyLink(d) },
+      { label: 'Resume', icon: 'resume', tone: 'green', disabled: !list.some((i) => ['paused', 'error', 'queued'].includes(byId(i)?.status ?? '')), action: () => resumeSel(list) },
+      { label: 'Pause', icon: 'pause', tone: 'amber', disabled: !list.some((i) => { const x = byId(i); return !!x && (isActive(x) || x.status === 'queued'); }), action: () => pauseSel(list) },
+      { label: 'Redownload', icon: 'redownload', tone: 'teal', disabled: multi, action: () => act(() => api.redownload(d.id)) },
+      { label: 'Refresh link…', icon: 'refresh-link', tone: 'violet', disabled: multi || d.status === 'complete', action: () => (refreshModal = { id: d.id, url: d.url, busy: false, err: '' }) },
+      { label: 'Copy link', icon: 'copy-link', tone: 'blue', disabled: multi, action: () => copyLink(d) },
       { sep: true },
       {
-        label: 'Move to queue', icon: 'add-to-queue',
+        label: 'Move to queue', icon: 'add-to-queue', tone: 'violet',
         sub: [
           ...store.queues.map((q) => ({ label: q.name, checked: !multi && d.queueId === q.id, action: () => act(() => api.moveToQueue(list, q.id)) })),
           { sep: true as const },
-          { label: 'Remove from queue', icon: 'remove-from-queue' as IconName, action: () => act(() => api.moveToQueue(list, null)) },
+          { label: 'Remove from queue', icon: 'remove-from-queue' as IconName, tone: 'red' as const, action: () => act(() => api.moveToQueue(list, null)) },
         ],
       },
       {
-        label: 'Category', icon: 'file-types',
+        label: 'Category', icon: 'file-types', tone: 'pink',
         sub: (store.settings?.categories ?? []).map((c) => ({ label: c.name, checked: !multi && d.category === c.id, action: () => act(() => api.setCategory(list, c.id)) })),
       },
       ...(fileExt(d) ? [{
-        label: `Always put .${fileExt(d)} files in`, icon: 'file-types' as IconName,
+        label: `Always put .${fileExt(d)} files in`, icon: 'file-types' as IconName, tone: 'pink' as const,
         sub: (store.settings?.categories ?? []).map((c) => ({
           label: c.name,
           checked: catForExt(fileExt(d)) === c.id,
@@ -296,7 +298,7 @@
           }),
         })),
       }] : []),
-      { label: 'Properties', icon: 'properties', disabled: multi, action: () => openProgress(d) },
+      { label: 'Properties', icon: 'properties', tone: 'muted', disabled: multi, action: () => openProgress(d) },
       { sep: true },
       { label: multi ? `Delete ${list.length} downloads` : 'Delete', icon: 'delete', danger: true, action: () => askDelete(list) },
     ];
@@ -323,9 +325,9 @@
     menu = {
       x: e.clientX, y: e.clientY,
       items: [
-        { label: 'Start', icon: 'start-queue', disabled: q.running, action: () => act(() => api.startQueue(qid)) },
-        { label: 'Stop', icon: 'stop-queue', disabled: !q.running, action: () => act(() => api.stopQueue(qid)) },
-        { label: 'Edit schedule…', icon: 'scheduler', action: () => act(() => api.openWindow('scheduler', null, { queueId: qid })) },
+        { label: 'Start', icon: 'start-queue', tone: 'green', disabled: q.running, action: () => act(() => api.startQueue(qid)) },
+        { label: 'Stop', icon: 'stop-queue', tone: 'red', disabled: !q.running, action: () => act(() => api.stopQueue(qid)) },
+        { label: 'Edit schedule…', icon: 'scheduler', tone: 'violet', action: () => act(() => api.openWindow('scheduler', null, { queueId: qid })) },
         { sep: true },
         { label: 'Delete queue', icon: 'delete', danger: true, disabled: q.builtin, action: () => act(() => api.deleteQueue(qid)) },
       ],
@@ -337,8 +339,8 @@
     menu = {
       x: e.clientX, y: e.clientY,
       items: [
-        { label: 'Add category…', icon: 'plus', action: open },
-        { label: 'Edit file types & folders…', icon: 'file-types', action: open },
+        { label: 'Add category…', icon: 'plus', tone: 'green', action: open },
+        { label: 'Edit file types & folders…', icon: 'file-types', tone: 'pink', action: open },
         { label: 'Delete category…', icon: 'delete', action: open },
       ],
     };
@@ -348,16 +350,17 @@
     menu = {
       x: r.right - 230, y: r.bottom + 4,
       items: [
-        { label: 'Add batch download…', icon: 'batch-download', action: () => addUrl({ batch: true }) },
-        { label: 'Add from clipboard', icon: 'add-from-clipboard', action: () => addUrl({ fromClipboard: true }) },
-        { label: 'Site grabber…', icon: 'site-grabber', action: () => act(() => api.openWindow('grabber')) },
+        { label: 'Add batch download…', icon: 'batch-download', tone: 'blue', action: () => addUrl({ batch: true }) },
+        { label: 'Add from clipboard', icon: 'add-from-clipboard', tone: 'teal', action: () => addUrl({ fromClipboard: true }) },
+        { label: 'Site grabber…', icon: 'site-grabber', tone: 'teal', action: () => act(() => api.openWindow('grabber')) },
         { sep: true },
-        { label: 'Import link list…', icon: 'import', action: importList },
-        { label: 'Export link list…', icon: 'export', action: exportList },
+        { label: 'Import link list…', icon: 'import', tone: 'green', action: importList },
+        { label: 'Export link list…', icon: 'export', tone: 'orange', action: exportList },
         { sep: true },
-        { label: 'Settings…', icon: 'options', action: () => act(() => api.openWindow('settings')) },
-        { label: 'About Open Download Manager', icon: 'help', action: () => act(() => api.openWindow('about')) },
-        { label: 'Quit', icon: 'exit', action: () => api.quit() },
+        { label: 'Theme studio…', icon: 'theme-dark', tone: 'violet', action: () => act(() => api.openWindow('theme')) },
+        { label: 'Settings…', icon: 'options', tone: 'muted', action: () => act(() => api.openWindow('settings')) },
+        { label: 'About Open Download Manager', icon: 'help', tone: 'blue', action: () => act(() => api.openWindow('about')) },
+        { label: 'Quit', icon: 'exit', tone: 'red', action: () => api.quit() },
       ],
     };
   }
@@ -507,7 +510,7 @@
         cols = restored;
         if (saved.sort) sort = saved.sort;
       } catch {}
-    });
+    }).catch(() => {}); // unreadable: the default columns stay
     // The backend re-emits the countdown every second: each event only
     // updates the one banner (never stacks), keyed by its token.
     const applyPower = (p: PowerCountdown | null) => {
@@ -543,13 +546,22 @@
     if (t.failed) parts.push(`${t.failed} failed`);
     return parts.join(' · ');
   });
+  /** Toolbar labels: 'hover' (icons that open on hover), 'always', or 'icons'. */
+  const labelMode = $derived(store.settings?.toolbarLabels ?? 'hover');
+  /** Switch every window between the app-drawn and the native title bar. */
+  function toggleFrame() {
+    const s = store.settings;
+    if (!s) return;
+    act(() => api.saveSettings({ ...($state.snapshot(s) as Settings), titleBar: frame.custom ? 'native' : 'custom' }));
+  }
   const powerLabel = (a: string) => (a === 'sleep' ? 'Sleeping' : a === 'shutdown' ? 'Shutting down' : 'Exiting');
 </script>
 
 <svelte:window onkeydown={onKey} ondragover={winDragOver} ondragleave={(e) => { if (!e.relatedTarget) dropOver = false; }} ondrop={winDrop} />
 
 <div class="app" class:drop={dropOver}>
-  <header class="head">
+  <!-- with the app-drawn frame the header is the title bar: drag it to move the window -->
+  <header class="head glass-chrome art-head" class:frameless={frame.custom} data-tauri-drag-region={frame.custom ? true : undefined}>
     <div class="brand">
       <span class="logo"><Icon name="odm-mark" size={19} stroke={2.6} /></span>
       <span>Open Download Manager</span>
@@ -564,6 +576,7 @@
       <span class="muted">Total</span>
       <span class="spd"><Icon name="download" size={13} stroke={2.4} />{f.speed(store.totals?.speedBps)}</span>
     </div>
+    {#if frame.custom}<WindowControls />{/if}
   </header>
 
   {#if power}
@@ -576,11 +589,11 @@
   {/if}
 
   <div class="body">
-    <aside class="side">
+    <aside class="side glass-chrome art-side">
       <nav aria-label="Library">
         <div class="label">Library</div>
         {#each libItems as it}
-          <button class="nav" class:on={sel('lib', it.id)} onclick={() => (filter = { kind: 'lib', id: it.id })}>
+          <button class="nav c-{f.iconTone(it.icon)}" class:on={sel('lib', it.id)} onclick={() => (filter = { kind: 'lib', id: it.id })}>
             <Icon name={it.icon} size={16} /><span>{it.label}</span><span class="cnt mono">{counts[it.id] ?? 0}</span>
           </button>
         {/each}
@@ -588,7 +601,7 @@
       <nav aria-label="Categories">
         <div class="label">Categories</div>
         {#each store.settings?.categories ?? [] as c (c.id)}
-          <button class="nav" class:on={sel('cat', c.id)} class:dropt={dragTarget === 'cat:' + c.id}
+          <button class="nav c-{f.iconTone(c.icon)}" class:on={sel('cat', c.id)} class:dropt={dragTarget === 'cat:' + c.id}
             onclick={() => (filter = { kind: 'cat', id: c.id })} oncontextmenu={categoryMenu}
             ondragover={(e) => sideDragOver(e, 'cat:' + c.id)} ondragleave={() => (dragTarget = null)} ondrop={(e) => sideDrop(e, 'cat', c.id)}>
             <Icon name={(c.icon in ICONS ? c.icon : 'cat-general') as IconName} size={16} /><span>{c.name}</span><span class="cnt mono">{counts['cat:' + c.id] ?? 0}</span>
@@ -598,7 +611,7 @@
       <nav aria-label="Queues">
         <div class="label">Queues</div>
         {#each store.queues as q (q.id)}
-          <button class="nav" class:on={sel('queue', q.id)} class:dropt={dragTarget === 'q:' + q.id}
+          <button class="nav c-violet" class:on={sel('queue', q.id)} class:dropt={dragTarget === 'q:' + q.id}
             onclick={() => (filter = { kind: 'queue', id: q.id })} oncontextmenu={(e) => queueMenu(e, q.id)}
             ondragover={(e) => sideDragOver(e, 'q:' + q.id)} ondragleave={() => (dragTarget = null)} ondrop={(e) => sideDrop(e, 'queue', q.id)}>
             <Icon name={q.builtin ? 'q-main' : 'st-scheduled'} size={16} />
@@ -611,30 +624,37 @@
     </aside>
 
     <main class="main">
-      <div role="toolbar" aria-label="Download actions" class="toolbar">
-        <button class="btn tb primary" onclick={() => addUrl()} title="Add URL ({modKey}N)"><Icon name="add-url" size={16} stroke={2.2} />Add URL</button>
+      <div role="toolbar" aria-label="Download actions" class="toolbar" data-labels={labelMode}>
+        <button class="btn tb primary" onclick={() => addUrl()} title="Add URL ({modKey}N)"><Icon name="add-url" size={16} stroke={2.2} /><span class="lbl">Add URL</span></button>
         <span class="div"></span>
-        <button class="btn tb" disabled={!canResume} onclick={() => resumeSel()}><Icon name="resume" size={16} />Resume</button>
-        <button class="btn tb" disabled={!canPause} onclick={() => pauseSel()}><Icon name="pause" size={16} />Pause</button>
-        <button class="btn tb" disabled={!store.totals?.active && !store.totals?.queued} onclick={() => act(() => api.pauseAll())}><Icon name="pause-all" size={16} />Pause all</button>
-        <button class="btn tb" disabled={!selected.size} onclick={() => askDelete()}><Icon name="delete" size={16} />Delete</button>
-        <button class="btn tb" disabled={!store.totals?.complete} onclick={() => act(async () => { const n = await api.deleteCompleted(); toast(`Removed ${n} completed`); })}><Icon name="delete-completed" size={16} />Delete completed</button>
+        <button class="btn tb c-green" title="Resume" disabled={!canResume} onclick={() => resumeSel()}><Icon name="resume" size={16} /><span class="lbl">Resume</span></button>
+        <button class="btn tb c-amber" title="Pause" disabled={!canPause} onclick={() => pauseSel()}><Icon name="pause" size={16} /><span class="lbl">Pause</span></button>
+        <button class="btn tb c-amber" title="Pause all" disabled={!store.totals?.active && !store.totals?.queued} onclick={() => act(() => api.pauseAll())}><Icon name="pause-all" size={16} /><span class="lbl">Pause all</span></button>
+        <button class="btn tb c-red" title="Delete" disabled={!selected.size} onclick={() => askDelete()}><Icon name="delete" size={16} /><span class="lbl">Delete</span></button>
+        <button class="btn tb c-red" title="Delete completed" disabled={!store.totals?.complete} onclick={() => act(async () => { const n = await api.deleteCompleted(); toast(`Removed ${n} completed`); })}><Icon name="delete-completed" size={16} /><span class="lbl">Delete completed</span></button>
         <span class="div"></span>
-        <button class="btn tb" onclick={() => act(() => api.startQueue(currentQueueId()))}><Icon name="start-queue" size={16} />Start queue</button>
-        <button class="btn tb" onclick={() => act(() => api.stopQueue(currentQueueId()))}><Icon name="stop-queue" size={16} />Stop queue</button>
-        <button class="btn tb" onclick={() => act(() => api.openWindow('scheduler', null, filter.kind === 'queue' ? { queueId: filter.id } : null))}><Icon name="scheduler" size={16} />Scheduler</button>
-        <button class="btn tb" onclick={() => act(() => api.openWindow('grabber'))}><Icon name="site-grabber" size={16} />Grabber</button>
-        <button class="btn tb" class:limit={limitOn} aria-pressed={limitOn} onclick={toggleLimit}
+        <button class="btn tb c-green" title="Start queue" onclick={() => act(() => api.startQueue(currentQueueId()))}><Icon name="start-queue" size={16} /><span class="lbl">Start queue</span></button>
+        <button class="btn tb c-red" title="Stop queue" onclick={() => act(() => api.stopQueue(currentQueueId()))}><Icon name="stop-queue" size={16} /><span class="lbl">Stop queue</span></button>
+        <button class="btn tb c-violet" title="Scheduler" onclick={() => act(() => api.openWindow('scheduler', null, filter.kind === 'queue' ? { queueId: filter.id } : null))}><Icon name="scheduler" size={16} /><span class="lbl">Scheduler</span></button>
+        <button class="btn tb c-teal" title="Site grabber" onclick={() => act(() => api.openWindow('grabber'))}><Icon name="site-grabber" size={16} /><span class="lbl">Grabber</span></button>
+        <button class="btn tb c-amber" class:limit={limitOn} aria-pressed={limitOn} onclick={toggleLimit}
           oncontextmenu={(e) => { e.preventDefault(); limitModal = { value: String(limitMB || 25) }; }}
-          title="Click to toggle · right-click to set the limit">
-          <Icon name="speed-limit" size={16} />{limitOn ? `Limit ${limitMB} MB/s` : 'No limit'}
+          title="{limitOn ? `Limit ${limitMB} MB/s` : 'No limit'} · click to toggle · right-click to set the limit">
+          <Icon name="speed-limit" size={16} /><span class="lbl">{limitOn ? `Limit ${limitMB} MB/s` : 'No limit'}</span>
         </button>
         <span class="push"></span>
-        <button class="btn tb icon" aria-label="More" onclick={moreMenu}><Icon name="more" size={16} /></button>
-        <button class="btn tb icon" aria-label="Options" title="Settings ({modKey},)" onclick={() => act(() => api.openWindow('settings'))}><Icon name="options" size={16} /></button>
+        {#if !isMac}
+          <button class="btn tb c-violet" aria-pressed={frame.custom} onclick={toggleFrame}
+            title="{frame.custom ? 'Custom title bar' : 'Native title bar'} · click to switch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M4 5h16v14H4z" /><path d="M4 9.5h16" /><path d="M16.5 7.2h.01" /></svg>
+            <span class="lbl">{frame.custom ? 'Custom title bar' : 'Native title bar'}</span>
+          </button>
+        {/if}
+        <button class="btn tb icon" aria-label="More" title="More" onclick={moreMenu}><Icon name="more" size={16} /></button>
+        <button class="btn tb icon c-blue" aria-label="Options" title="Settings ({modKey},)" onclick={() => act(() => api.openWindow('settings'))}><Icon name="options" size={16} /></button>
       </div>
 
-      <div class="tablewrap" bind:this={scroller} onscroll={() => (scrollTop = scroller!.scrollTop)}>
+      <div class="tablewrap glass art-list" bind:this={scroller} onscroll={() => (scrollTop = scroller!.scrollTop)}>
         <table style:width="{tableWidth}px">
           <colgroup>{#each visibleCols as c (c.key)}<col style:width="{colWidth(c)}px" />{/each}</colgroup>
           <thead oncontextmenu={headerMenu}>
@@ -668,7 +688,7 @@
                   {:else if c.key === 'progress'}
                     <td>
                       <div class="prog">
-                        <div class="track" class:ind={d.status === 'connecting' && !d.receivedBytes}><div class="fill" style:width="{f.pct(d)}%" style:background={f.statusColor(d.status)}></div></div>
+                        <div class="track" class:ind={d.status === 'connecting' && !d.receivedBytes}><div class="fill" style:width="{f.pct(d)}%" style:background-color={f.statusColor(d.status)}></div></div>
                         <span class="mono pct">{f.pct(d)}%</span>
                       </div>
                     </td>
@@ -693,7 +713,7 @@
           <div class="empty">
             <Icon name={search ? 'search' : 'download'} size={40} stroke={1.75} />
             <div class="muted">{search ? 'No downloads match your search' : 'No downloads here'}</div>
-            {#if !search}<button class="btn" onclick={() => addUrl()}><Icon name="add-url" size={16} />Add URL</button>{/if}
+            {#if !search}<button class="btn primary" onclick={() => addUrl()}><Icon name="add-url" size={16} />Add URL</button>{/if}
             {#if !search && !store.downloads.length}<div class="muted small">Tip: drag a link from your browser onto this window.</div>{/if}
           </div>
         {/if}
@@ -701,7 +721,7 @@
 
       {#if focused}
         {@const d = focused}
-        <section class="details" aria-label="Selected download">
+        <section class="details glass art-details" aria-label="Selected download">
           <div class="dtop">
             <FileBadge ext={d.ext} large />
             <div class="dname">
@@ -710,17 +730,17 @@
             </div>
             <StatusPill {d} />
             {#if isActive(d) || d.status === 'queued'}
-              <button class="btn tb" onclick={() => pauseSel([d.id])}><Icon name="pause" size={15} />Pause</button>
+              <button class="btn tb c-amber" onclick={() => pauseSel([d.id])}><Icon name="pause" size={15} />Pause</button>
             {:else if d.status === 'complete'}
-              <button class="btn tb" onclick={() => act(() => api.openFile(d.id))}><Icon name="open-file" size={15} />Open file</button>
+              <button class="btn tb c-green" onclick={() => act(() => api.openFile(d.id))}><Icon name="open-file" size={15} />Open file</button>
             {:else if d.status === 'error'}
-              <button class="btn tb" onclick={() => (refreshModal = { id: d.id, url: d.url, busy: false, err: '' })}><Icon name="refresh-link" size={15} />Refresh link</button>
-              <button class="btn tb" onclick={() => resumeSel([d.id])}><Icon name="resume" size={15} />Retry</button>
+              <button class="btn tb c-violet" onclick={() => (refreshModal = { id: d.id, url: d.url, busy: false, err: '' })}><Icon name="refresh-link" size={15} />Refresh link</button>
+              <button class="btn tb c-green" onclick={() => resumeSel([d.id])}><Icon name="resume" size={15} />Retry</button>
             {:else}
-              <button class="btn tb" onclick={() => resumeSel([d.id])}><Icon name="resume" size={15} />Resume</button>
+              <button class="btn tb c-green" onclick={() => resumeSel([d.id])}><Icon name="resume" size={15} />Resume</button>
             {/if}
-            <button class="btn tb" onclick={() => act(() => api.openFolder(d.id))}><Icon name="open-folder" size={15} />Open folder</button>
-            <button class="btn tb" onclick={() => copyLink(d)}><Icon name="copy-link" size={15} />Copy link</button>
+            <button class="btn tb c-orange" onclick={() => act(() => api.openFolder(d.id))}><Icon name="open-folder" size={15} />Open folder</button>
+            <button class="btn tb c-blue" onclick={() => copyLink(d)}><Icon name="copy-link" size={15} />Copy link</button>
           </div>
           {#if d.status === 'error' && d.error}<div class="errbox">{d.error}</div>{/if}
           <div class="dbody">
@@ -745,7 +765,7 @@
     </main>
   </div>
 
-  <footer class="status">
+  <footer class="status glass-chrome art-status">
     <span>{summary}</span>
     <span class="mono">↓ {f.speed(store.totals?.speedBps)}</span>
     <span>Speed limit: {limitOn ? `${limitMB} MB/s total` : 'off'}</span>
@@ -763,7 +783,7 @@
     <label class="check"><input type="checkbox" bind:checked={confirmDelete.files} />Also delete files from disk</label>
     {#snippet footer()}
       <button class="btn" onclick={() => (confirmDelete = null)}>Cancel</button>
-      <button class="btn primary" onclick={doDelete}>Delete</button>
+      <button class="btn primary destructive" onclick={doDelete}>Delete</button>
     {/snippet}
   </Modal>
 {/if}
@@ -796,47 +816,65 @@
 {/if}
 
 <style>
-  .app { height: 100%; display: flex; flex-direction: column; background: var(--bg); }
+  .app { height: 100%; display: flex; flex-direction: column; }
   .app.drop { outline: 2px dashed var(--accent); outline-offset: -6px; }
-  .head { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); flex: none; }
+  .head { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: var(--outline-w, 1px) solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--outline-neon, 0 0 0 transparent); flex: none; position: relative; z-index: 3; }
+  /* app-drawn frame: window buttons sit flush in the corner, and the brand and total let drags through to the header */
+  .head.frameless { padding: 0 0 0 16px; min-height: 54px; }
+  .head.frameless .brand, .head.frameless .total { pointer-events: none; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-lg); white-space: nowrap; }
-  .logo { width: 26px; height: 26px; border-radius: 7px; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; }
-  .search { flex: 1 1 280px; max-width: 460px; display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 34px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); }
-  .search:focus-within { border-color: var(--accent); }
+  .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(140deg, var(--accent-hi), var(--violet)); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 12px var(--accent-glow); }
+  .search { flex: 1 1 280px; max-width: 460px; display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 34px; border-radius: var(--r-md); background: var(--surface-sunken); border: 1px solid var(--border); color: var(--text-muted); transition: border-color var(--motion), box-shadow var(--motion); }
+  .search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); color: var(--accent); }
   .search input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--text); }
   .search input::-webkit-search-cancel-button { filter: grayscale(1); }
-  .kbd { font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); white-space: nowrap; }
-  .total { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: var(--fs-sm); white-space: nowrap; }
-  .spd { display: flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 500; }
+  .kbd { font-size: 11px; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border); background: var(--tint); color: var(--text-muted); white-space: nowrap; }
+  .total { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: var(--fs-sm); white-space: nowrap; }
+  .spd { display: flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 600; padding: 4px 10px; border-radius: var(--r-pill); background: var(--accent-soft); }
 
   .power { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--danger-soft); color: var(--text); border-bottom: 1px solid var(--danger); }
+  .power :global(svg) { color: var(--danger); }
 
   .body { flex: 1; min-height: 0; display: flex; }
-  .side { width: var(--sidebar-w); flex: none; background: var(--surface); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
+  .side { width: var(--sidebar-w); flex: none; border-right: var(--outline-w, 1px) solid var(--glass-border); padding: 14px 10px; display: flex; flex-direction: column; gap: 18px; overflow-y: auto; }
   .side nav { display: flex; flex-direction: column; gap: 2px; }
   .side .label { padding: 0 10px 6px; }
-  .nav { display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border-radius: 7px; border: 0; background: transparent; color: var(--text-muted); text-align: left; transition: background var(--motion); }
+  .nav { position: relative; display: flex; align-items: center; gap: 9px; width: 100%; padding: 7px 10px; border-radius: 8px; border: 0; background: transparent; color: var(--text-muted); text-align: left; transition: background var(--motion), color var(--motion); }
+  .nav :global(svg) { color: var(--c); }
   .nav span:nth-of-type(1) { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nav:hover { background: var(--surface-2); color: var(--text); }
-  .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-  .nav.on :global(svg) { color: var(--accent); }
-  .nav.dropt { outline: 1px solid var(--accent); }
-  .cnt { font-size: 11px; color: var(--text-muted); font-weight: 400; }
-  .run { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex: none; }
+  .nav:hover { background: var(--hover); color: var(--text); }
+  .nav.on { background: var(--c-soft); color: var(--text); font-weight: 600; }
+  .nav.on::before { content: ''; position: absolute; left: 0; top: 7px; bottom: 7px; width: 3px; border-radius: 2px; background: var(--c); }
+  .nav.dropt { outline: 1px solid var(--accent); background: var(--accent-soft); }
+  .cnt { font-size: 11px; color: var(--text-muted); font-weight: 500; min-width: 22px; text-align: center; padding: 1px 6px; border-radius: var(--r-pill); background: var(--tint); }
+  .nav.on .cnt { background: var(--c-soft); color: var(--c); }
+  .run { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); flex: none; }
 
   .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 16px; }
   .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; flex: none; }
   .toolbar .div { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
   .toolbar .push { margin-left: auto; }
-  .btn.limit { border-color: var(--warning); color: var(--warning); }
+  .btn.limit { border-color: var(--warning); color: var(--warning); background: var(--amber-soft); }
 
-  .tablewrap { flex: 1; min-height: 120px; overflow: auto; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); position: relative; }
+  /* Toolbar labels. 'hover' and 'icons' fold each button down to its icon;
+     'hover' opens the one under the pointer (or keyboard focus). */
+  .toolbar .lbl { display: inline-block; overflow: hidden; white-space: nowrap; }
+  .toolbar:not([data-labels='always']) { flex-wrap: nowrap; }
+  .toolbar:not([data-labels='always']) .btn.tb:not(.icon) { padding: 0 9px; gap: 0; min-width: var(--control-h); }
+  .toolbar:not([data-labels='always']) .lbl { max-width: 0; opacity: 0; margin-left: 0; transition: max-width 180ms ease-out, opacity 140ms ease-out, margin-left 180ms ease-out; }
+  .toolbar[data-labels='hover'] .btn.tb:hover .lbl,
+  .toolbar[data-labels='hover'] .btn.tb:focus-visible .lbl { max-width: 170px; opacity: 1; margin-left: 7px; transition-delay: 90ms; }
+  @media (prefers-reduced-motion: reduce) { .toolbar .lbl { transition: none !important; } }
+
+  .tablewrap { flex: 1; min-height: 120px; overflow: auto; border-radius: var(--r-lg); position: relative; }
   table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: var(--fs-md); }
-  thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); text-align: left; padding: 0; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: var(--fs-sm); font-weight: 500; }
-  th .th { display: flex; align-items: center; gap: 4px; width: 100%; height: 36px; padding: 0 14px; border: 0; background: transparent; color: inherit; font-weight: 500; text-align: left; }
+  thead th { position: sticky; top: 0; z-index: 2; background: var(--surface-2); text-align: left; padding: 0; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: var(--fs-sm); font-weight: 600; }
+  th .th { display: flex; align-items: center; gap: 4px; width: 100%; height: 36px; padding: 0 14px; border: 0; background: transparent; color: inherit; font-weight: inherit; text-align: left; }
+  th .th:hover { color: var(--text); }
+  th[aria-sort='ascending'], th[aria-sort='descending'] { color: var(--accent); }
   th.r .th { justify-content: flex-end; }
   th .grip { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: col-resize; z-index: 3; touch-action: none; }
-  th .grip::after { content: ''; position: absolute; left: 7px; top: 9px; bottom: 9px; width: 1px; background: var(--border-subtle); }
+  th .grip::after { content: ''; position: absolute; left: 7px; top: 9px; bottom: 9px; width: 1px; background: var(--border); }
   th .grip:hover::after { background: var(--accent); width: 2px; left: 6px; }
   :global(body.resizing), :global(body.resizing *) { cursor: col-resize !important; }
 
@@ -846,20 +884,21 @@
   td.r { text-align: right; }
   .small { font-size: var(--fs-sm); }
   tbody tr { transition: background var(--motion); }
-  tbody tr:hover { background: var(--surface-2); }
+  tbody tr:hover { background: var(--hover); }
   tbody tr.sel { background: var(--row-selected); box-shadow: inset 3px 0 0 var(--accent); }
   .name { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .fname { font-weight: 500; min-width: 0; }
   .prog { display: flex; align-items: center; gap: 10px; }
-  .track { flex: 1; max-width: 120px; height: var(--progress-h); border-radius: 3px; background: var(--track); overflow: hidden; position: relative; }
-  .fill { height: 100%; }
+  .track { flex: 1; max-width: 120px; height: var(--progress-h); border-radius: 3px; background: var(--track); overflow: hidden; position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,.2); }
+  .fill { height: 100%; border-radius: 3px; background-image: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0) 70%); }
   .track.ind::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(-45deg, transparent 0 6px, var(--accent-soft) 6px 12px); animation: stripe .8s linear infinite; }
   @keyframes stripe { from { background-position: 0 0; } to { background-position: 17px 0; } }
   .pct { font-size: var(--fs-sm); width: 38px; text-align: right; }
   .empty { position: absolute; inset: 37px 0 0 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-muted); pointer-events: none; }
+  .empty > :global(svg) { color: var(--accent); opacity: .8; }
   .empty button { pointer-events: auto; }
 
-  .details { flex: none; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .details { flex: none; border-radius: var(--r-lg); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
   .dtop { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .dname { flex: 1 1 260px; min-width: 0; }
   .big { font-weight: 600; font-size: var(--fs-xl); }
@@ -869,12 +908,14 @@
   dd { margin: 0; min-width: 0; }
   .viz { flex: 2 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
   .cap { display: flex; justify-content: space-between; font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: 6px; }
+  .cap .mono { color: var(--accent); font-weight: 600; }
 
-  .status { flex: none; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; padding: 7px 16px; background: var(--surface); border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--fs-sm); }
+  .status { flex: none; display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; padding: 7px 16px; border-top: var(--outline-w, 1px) solid var(--glass-border); color: var(--text-muted); font-size: var(--fs-sm); }
+  .status > .mono:nth-of-type(2) { color: var(--accent); font-weight: 600; }
   .ext { display: flex; align-items: center; gap: 6px; }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
-  .dot.ok { background: var(--success); opacity: 1; }
-  .dot.bad { background: var(--danger); opacity: 1; }
+  .dot.ok { background: var(--success); opacity: 1; box-shadow: 0 0 6px var(--success); }
+  .dot.bad { background: var(--danger); opacity: 1; box-shadow: 0 0 6px var(--danger); }
 
   @media (max-height: 760px) { .details .dbody { display: none; } }
   @media (max-width: 1000px) { .side { width: 180px; } }

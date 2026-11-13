@@ -32,9 +32,9 @@ pub fn theme_param(app: &AppHandle) -> String {
 fn bg_for(theme: &str) -> tauri::window::Color {
     let light = theme == "light";
     if light {
-        tauri::window::Color(0xF3, 0xF4, 0xF6, 0xFF)
+        tauri::window::Color(0xD3, 0xDA, 0xE8, 0xFF)
     } else {
-        tauri::window::Color(0x0D, 0x0F, 0x12, 0xFF)
+        tauri::window::Color(0x06, 0x08, 0x0C, 0xFF)
     }
 }
 

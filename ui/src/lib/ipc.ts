@@ -81,6 +81,8 @@ export interface Settings {
   proxyMode: string; proxyHost: string; proxyPort: number; proxyUser: string; proxyPass: string;
   notifyComplete: boolean; notifyFailure: boolean; notifyQueueFinished: boolean;
   theme: string; density: string; traySpeed: boolean;
+  /** Main toolbar buttons: 'hover' (icons that open on hover), 'always' (full size) or 'icons' (always collapsed). */
+  toolbarLabels: 'hover' | 'always' | 'icons';
   userAgent: string; maxRetries: number; retryDelaySecs: number; timeoutSecs: number; minSegmentKb: number; verifyTls: boolean;
   allowInsecureRedirects: boolean;
 }

@@ -368,6 +368,9 @@ pub struct Settings {
     pub theme: String,
     pub density: String,
     pub tray_speed: bool,
+    /// main toolbar buttons: "hover" (icons that open on hover),
+    /// "always" (full size) or "icons" (always collapsed)
+    pub toolbar_labels: String,
     // Advanced
     pub user_agent: String,
     pub max_retries: u32,
@@ -480,6 +483,7 @@ impl Default for Settings {
             theme: "dark".into(),
             density: "comfortable".into(),
             tray_speed: false,
+            toolbar_labels: "hover".into(),
             user_agent: DEFAULT_UA.into(),
             max_retries: 10,
             retry_delay_secs: 3,

@@ -1,49 +1,112 @@
 /* Design tokens. Dark is the default theme.
-   Apply: <html data-theme="dark|light">. "system" resolves via prefers-color-scheme at startup. */
+   Apply: <html data-theme="dark|light">. "system" resolves via prefers-color-scheme at startup.
+
+   Layers, back to front: --bg (window, with two soft colour glows) -> --glass-chrome
+   (header, sidebar, status bar) -> --glass (cards, table, dialogs) -> --surface-2 / --raised.
+   The glass layers are translucent and blur what is behind them. */
 
 :root,
 :root[data-theme="dark"] {
-  --bg: #0D0F12;            /* window background */
-  --surface: #14171C;       /* sidebar, header, cards, table */
-  --surface-2: #1A1E24;     /* inputs-in-cards, footers of dialogs, sparkline bg */
-  --surface-sunken: #0D0F12;/* text inputs, segmented-control tracks */
-  --raised: #222831;        /* file-type badges */
-  --border: #262C35;
-  --border-subtle: #1F242B; /* row dividers inside lists */
-  --text: #E7E9EC;
-  --text-muted: #98A1AD;    /* labels, secondary text; 7:1 on --surface */
+  --bg: #06080C;            /* window background */
+  --surface: #161B24;       /* opaque card colour (select menus, list rows) */
+  --surface-2: #1F2632;     /* inputs-in-cards, sparkline bg */
+  --surface-sunken: #0B0E14;/* text inputs, segmented-control tracks */
+  --raised: #2B3444;        /* neutral badges, toasts */
+  --border: #343D4D;
+  --border-subtle: #252C39; /* row dividers inside lists */
+  --text: #F4F6FA;
+  --text-muted: #A6B0C0;    /* labels, secondary text */
   --accent: #5B9DFF;        /* primary action, active progress, focus ring */
-  --on-accent: #0A1426;     /* text on accent fills */
-  --accent-soft: rgba(91,157,255,0.16); /* selected nav item, sparkline fill */
-  --row-selected: rgba(91,157,255,0.10);
-  --track: #232933;         /* empty part of progress bars and segments */
-  --success: #4CC38A;       /* complete */
-  --warning: #F0A04B;       /* paused, limiter on, reconnecting */
-  --danger: #F26B75;        /* failed, destructive */
-  --danger-soft: rgba(242,107,117,0.12);
-  --switch-off: #333A45;
+  --accent-hi: #7DB2FF;     /* top of accent gradients */
+  --accent-lo: #3E7BF0;     /* bottom of accent gradients */
+  --on-accent: #06122B;     /* text on accent fills */
+  --accent-soft: rgba(91,157,255,0.20); /* selected nav item, sparkline fill */
+  --accent-glow: rgba(91,157,255,0.35);
+  --row-selected: rgba(91,157,255,0.16);
+  --hover: rgba(255,255,255,0.06);      /* hover wash on any layer */
+  --tint: rgba(255,255,255,0.035);      /* table header, dialog footers */
+  --track: #2A3240;         /* empty part of progress bars and segments */
+  --switch-off: #3C4658;
+
+  /* hues: icons, badges, status */
+  --green: #3DD68C;  --green-soft: rgba(61,214,140,0.16);
+  --amber: #FFB224;  --amber-soft: rgba(255,178,36,0.16);
+  --red: #FF6B78;    --red-soft: rgba(255,107,120,0.16);
+  --violet: #A98BFF; --violet-soft: rgba(169,139,255,0.18);
+  --teal: #2DD4BF;   --teal-soft: rgba(45,212,191,0.16);
+  --pink: #F57AB8;   --pink-soft: rgba(245,122,184,0.16);
+  --orange: #FF9548; --orange-soft: rgba(255,149,72,0.16);
+  --muted-soft: rgba(166,176,192,0.14);
+
+  /* glass */
+  --glass: rgba(27,33,44,0.78);
+  --glass-chrome: rgba(20,25,34,0.74);
+  --glass-pop: rgba(30,37,49,0.86);     /* menus, modals, toasts */
+  --glass-border: rgba(255,255,255,0.10);
+  --glass-hi: rgba(255,255,255,0.07);   /* 1px highlight along the top edge */
+  --glow-1: rgba(64,120,255,0.26);
+  --glow-2: rgba(150,100,255,0.20);
+  --glow-3: rgba(45,212,191,0.10);
+  --shadow-card: 0 1px 2px rgba(0,0,0,.35), 0 8px 24px rgba(0,0,0,.22);
+  --shadow-pop: 0 18px 50px rgba(0,0,0,.55);
+  --scrim: rgba(3,5,9,0.55);
+  --btn-bg: rgba(255,255,255,0.055);
+  --on-danger: #2A0508;     /* text on a solid red button */
 }
 
 :root[data-theme="light"] {
-  --bg: #F3F4F6;
+  --bg: #D3DAE8;
   --surface: #FFFFFF;
-  --surface-2: #F6F7F9;
-  --surface-sunken: #F3F4F6;
-  --raised: #ECEEF1;
-  --border: #DADEE4;
-  --border-subtle: #E8EBEF;
-  --text: #14171C;
-  --text-muted: #555E6B;
-  --accent: #2563EB;
+  --surface-2: #EEF1F7;
+  --surface-sunken: #F4F6FA;
+  --raised: #E2E7F0;
+  --border: #BEC7D6;
+  --border-subtle: #DCE2EC;
+  --text: #0A0E16;
+  --text-muted: #465064;
+  --accent: #2257E6;
+  --accent-hi: #3B6EF5;
+  --accent-lo: #1A47C8;
   --on-accent: #FFFFFF;
-  --accent-soft: rgba(37,99,235,0.12);
-  --row-selected: rgba(37,99,235,0.07);
-  --track: #E3E6EA;
-  --success: #15803D;
-  --warning: #B45309;
-  --danger: #C2353F;
-  --danger-soft: rgba(194,53,63,0.08);
-  --switch-off: #C9CED6;
+  --accent-soft: rgba(34,87,230,0.13);
+  --accent-glow: rgba(34,87,230,0.30);
+  --row-selected: rgba(34,87,230,0.11);
+  --hover: rgba(15,23,42,0.055);
+  --tint: rgba(15,23,42,0.04);
+  --track: #D5DBE6;
+  --switch-off: #B4BDCC;
+
+  --green: #0B8043;  --green-soft: rgba(11,128,67,0.13);
+  --amber: #B45B00;  --amber-soft: rgba(180,91,0,0.13);
+  --red: #CC2B3B;    --red-soft: rgba(204,43,59,0.11);
+  --violet: #6A3FD9; --violet-soft: rgba(106,63,217,0.12);
+  --teal: #0A7C76;   --teal-soft: rgba(10,124,118,0.12);
+  --pink: #C22679;   --pink-soft: rgba(194,38,121,0.11);
+  --orange: #C2510C; --orange-soft: rgba(194,81,12,0.12);
+  --muted-soft: rgba(70,80,100,0.10);
+
+  --glass: rgba(255,255,255,0.86);
+  --glass-chrome: rgba(255,255,255,0.70);
+  --glass-pop: rgba(255,255,255,0.90);
+  --glass-border: rgba(15,23,42,0.16);
+  --glass-hi: rgba(255,255,255,0.95);
+  --glow-1: rgba(34,87,230,0.22);
+  --glow-2: rgba(124,77,255,0.18);
+  --glow-3: rgba(10,160,150,0.12);
+  --shadow-card: 0 1px 2px rgba(15,23,42,.08), 0 8px 24px rgba(15,23,42,.08);
+  --shadow-pop: 0 18px 50px rgba(15,23,42,.28);
+  --scrim: rgba(15,23,42,0.32);
+  --btn-bg: rgba(255,255,255,0.75);
+  --on-danger: #FFFFFF;
+}
+
+:root {
+  /* status colours are the hues above */
+  --success: var(--green);      /* complete */
+  --warning: var(--amber);      /* paused, limiter on, reconnecting */
+  --danger: var(--red);         /* failed, destructive */
+  --danger-soft: var(--red-soft);
+  --blur: blur(18px) saturate(150%);
 }
 
 :root {

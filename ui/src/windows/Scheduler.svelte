@@ -150,10 +150,10 @@
           <h2>{draft.name}</h2>
           {#if draft.running}<span class="runlbl"><span class="run"></span>Running</span>{/if}
           <span class="spacer"></span>
-          <button class="btn sm" disabled={draft.running} onclick={() => act(() => api.startQueue(draft!.id))}><Icon name="start-queue" size={15} />Start now</button>
-          <button class="btn sm" disabled={!draft.running} onclick={() => act(() => api.stopQueue(draft!.id))}><Icon name="stop-queue" size={15} />Stop</button>
+          <button class="btn sm c-green" disabled={draft.running} onclick={() => act(() => api.startQueue(draft!.id))}><Icon name="start-queue" size={15} />Start now</button>
+          <button class="btn sm c-red" disabled={!draft.running} onclick={() => act(() => api.stopQueue(draft!.id))}><Icon name="stop-queue" size={15} />Stop</button>
           {#if !draft.builtin}
-            <button class="btn sm icon" style="width:32px;padding:0" aria-label="Delete queue" onclick={() => act(async () => { await api.deleteQueue(draft!.id); store.queues = await api.listQueues(); pick('main'); })}><Icon name="delete" size={15} /></button>
+            <button class="btn sm icon c-red" style="width:32px;padding:0" aria-label="Delete queue" onclick={() => act(async () => { await api.deleteQueue(draft!.id); store.queues = await api.listQueues(); pick('main'); })}><Icon name="delete" size={15} /></button>
           {/if}
         </div>
 
@@ -263,14 +263,13 @@
 
 <style>
   .body { flex: 1; min-height: 0; display: flex; }
-  .rail { width: 210px; flex: none; border-right: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; background: #111418; overflow: auto; }
-  :global([data-theme='light']) .rail { background: var(--surface-2); }
+  .rail { width: 210px; flex: none; border-right: 1px solid var(--border); padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; background: var(--glass-chrome); overflow: auto; }
   .qi { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 7px; border: 0; background: transparent; color: var(--text-muted); text-align: left; }
   .qi span:first-child { flex: 1; }
-  .qi:hover { background: var(--surface-2); color: var(--text); }
-  .qi.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
+  .qi:hover { background: var(--hover); color: var(--text); }
+  .qi.on { background: var(--violet-soft); color: var(--text); font-weight: 600; box-shadow: inset 3px 0 0 var(--violet); }
   .cnt { font-size: 11px; font-weight: 400; color: var(--text-muted); }
-  .run { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex: none; display: inline-block; }
+  .run { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); flex: none; display: inline-block; }
   .runlbl { display: flex; align-items: center; gap: 6px; color: var(--success); font-size: var(--fs-sm); }
   .newq { margin-top: 8px; display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 7px; border: 1px dashed var(--switch-off); background: transparent; color: var(--text-muted); }
   .pane { flex: 1; min-width: 0; padding: 18px 20px; display: flex; flex-direction: column; gap: 18px; overflow: auto; }
@@ -287,7 +286,7 @@
   .small { font-size: var(--fs-sm); }
   .days { display: flex; gap: 6px; flex-wrap: wrap; }
   .day { width: 52px; height: 34px; border-radius: var(--r-md); border: 1px solid var(--border); background: transparent; color: var(--text-muted); }
-  .day.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); font-weight: 600; }
+  .day.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
   .stepper { display: flex; align-items: center; height: var(--input-h); border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-sunken); overflow: hidden; }
   .stepper button { width: 36px; height: 100%; border: 0; background: transparent; color: var(--text-muted); font-size: 16px; }
   .stepper input { flex: 1; min-width: 0; text-align: center; border: 0; background: transparent; font-size: var(--fs-lg); outline: none; -moz-appearance: textfield; appearance: textfield; }

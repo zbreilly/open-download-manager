@@ -78,6 +78,55 @@ export function statusColor(s: DownloadStatus): string {
   }
 }
 
+/** Soft (tinted background) partner of statusColor. */
+export function statusSoft(s: DownloadStatus): string {
+  switch (s) {
+    case 'downloading':
+    case 'connecting':
+    case 'assembling': return 'var(--accent-soft)';
+    case 'paused': return 'var(--amber-soft)';
+    case 'error': return 'var(--red-soft)';
+    case 'complete': return 'var(--green-soft)';
+    default: return 'var(--muted-soft)';
+  }
+}
+
+export type Tone = 'blue' | 'green' | 'amber' | 'red' | 'violet' | 'teal' | 'pink' | 'orange' | 'muted';
+
+const EXT_TONES: [Tone, string[]][] = [
+  ['violet', ['mp4', 'mkv', 'avi', 'mov', 'webm', 'wmv', 'flv', 'm4v', 'mpg', 'mpeg', 'ts', '3gp']],
+  ['pink', ['mp3', 'flac', 'wav', 'aac', 'ogg', 'm4a', 'opus', 'wma', 'aiff']],
+  ['amber', ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'zst', 'tgz', 'cab']],
+  ['blue', ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'epub', 'odt', 'csv', 'md', 'rtf', 'mobi']],
+  ['teal', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff', 'heic', 'avif', 'psd', 'ico']],
+  ['green', ['exe', 'msi', 'dmg', 'pkg', 'deb', 'rpm', 'apk', 'appimage', 'bat', 'sh', 'jar']],
+  ['orange', ['iso', 'img', 'bin', 'vhd', 'vmdk']],
+];
+const EXT_TONE = new Map<string, Tone>(EXT_TONES.flatMap(([t, exts]) => exts.map((e) => [e, t] as [string, Tone])));
+/** Hue for a file type, so the list can be scanned by colour. */
+export function extTone(ext: string | null | undefined): Tone {
+  return EXT_TONE.get((ext ?? '').toLowerCase()) ?? 'muted';
+}
+
+/** Hue for a sidebar / category icon. */
+export function iconTone(icon: string): Tone {
+  switch (icon) {
+    case 'cat-video': return 'violet';
+    case 'cat-music': return 'pink';
+    case 'cat-documents': return 'blue';
+    case 'cat-compressed': return 'amber';
+    case 'cat-programs': return 'green';
+    case 'cat-images': return 'teal';
+    case 'file-disc': return 'orange';
+    case 'cat-grabber': return 'teal';
+    case 'cat-all': return 'blue';
+    case 'cat-active': return 'green';
+    case 'cat-unfinished': return 'amber';
+    case 'cat-finished': return 'teal';
+    default: return 'orange';
+  }
+}
+
 export function host(url: string): string {
   try { return new URL(url).host; } catch { return ''; }
 }

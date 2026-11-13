@@ -201,7 +201,7 @@
 </script>
 
 <div class="wrap">
-  <nav aria-label="Settings sections">
+  <nav class="glass-chrome" aria-label="Settings sections">
     <h1>Settings</h1>
     {#each PAGES as p}
       <button class="nav" class:on={page === p.id} onclick={() => (page = p.id)}><Icon name={p.icon} size={16} />{p.label}</button>
@@ -399,6 +399,10 @@
               <div class="t"><div class="tt">List density</div><div class="d">Row height in the download list.</div></div>
               <Segmented label="List density" bind:value={s.density} options={[{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]} />
             </div>
+            <div class="rowc card">
+              <div class="t"><div class="tt">Toolbar buttons</div><div class="d">{s.toolbarLabels === 'always' ? 'Every button shows its icon and name.' : s.toolbarLabels === 'icons' ? 'Icons only. Hold the pointer over a button for its name.' : 'Icons only; a button opens to show its name while the pointer is on it.'}</div></div>
+              <Segmented label="Toolbar buttons" bind:value={s.toolbarLabels} options={[{ value: 'hover', label: 'Expand on hover' }, { value: 'always', label: 'Always full size' }, { value: 'icons', label: 'Always collapsed' }]} />
+            </div>
             <label class="check"><input type="checkbox" bind:checked={s.traySpeed} />Show speed in the {isMac ? 'menu bar' : 'system tray'}</label>
           </section>
         {:else if page === 'advanced'}
@@ -436,15 +440,14 @@
 </div>
 
 <style>
-  .wrap { height: 100%; display: flex; background: var(--surface); }
-  nav { width: 220px; flex: none; border-right: 1px solid var(--border); background: #111418; padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
-  :global([data-theme='light']) nav { background: var(--surface-2); }
+  .wrap { height: 100%; display: flex; }
+  nav { width: 220px; flex: none; border-right: 1px solid var(--glass-border); padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
   h1 { margin: 0 10px 12px; font-size: var(--fs-xl); font-weight: 600; }
   .nav { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 7px; border: 0; background: transparent; color: var(--text-muted); text-align: left; }
-  .nav:hover { background: var(--surface-2); color: var(--text); }
-  .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; }
-  .nav.on :global(svg) { color: var(--accent); }
-  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .nav :global(svg) { color: var(--accent); }
+  .nav:hover { background: var(--hover); color: var(--text); }
+  .nav.on { background: var(--accent-soft); color: var(--text); font-weight: 600; box-shadow: inset 3px 0 0 var(--accent); }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); }
   .scroll { flex: 1; overflow: auto; padding: 22px 28px; }
   section { display: flex; flex-direction: column; gap: 14px; }
   h2 { margin: 0; font-size: var(--fs-lg); font-weight: 600; }
@@ -463,8 +466,8 @@
   .small { font-size: var(--fs-sm); }
   .status { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm); }
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); opacity: .6; }
-  .dot.ok { background: var(--success); opacity: 1; }
-  .dot.bad { background: var(--danger); opacity: 1; }
+  .dot.ok { background: var(--success); opacity: 1; box-shadow: 0 0 6px var(--success); }
+  .dot.bad { background: var(--danger); opacity: 1; box-shadow: 0 0 6px var(--danger); }
   .bridge-err { color: var(--danger); }
   .path { flex: 2; min-width: 0; }
   .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -475,7 +478,7 @@
   .catname { width: 170px; font-weight: 500; }
   .fold { display: flex; gap: 6px; min-width: 0; flex: 1; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 9px; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-sunken); font-size: var(--fs-sm); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 9px; border-radius: 7px; border: 1px solid var(--accent-soft); background: var(--accent-soft); font-size: var(--fs-sm); }
   .chip button { display: flex; border: 0; background: transparent; color: var(--text-muted); padding: 3px; border-radius: 4px; }
   .chip button:hover { color: var(--danger); background: var(--danger-soft); }
   .chipin { height: 26px; width: 110px; border: 1px dashed var(--border); border-radius: 7px; background: transparent; padding: 0 8px; font-size: var(--fs-sm); outline: none; }

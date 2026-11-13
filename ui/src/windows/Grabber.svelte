@@ -204,7 +204,7 @@
     </div>
   </div>
   <div class="dialog-foot">
-    <button class="btn" disabled={!chosen.length || busy} onclick={() => add(false)}><Icon name="add-to-queue" size={15} />Add to queue</button>
+    <button class="btn c-violet" disabled={!chosen.length || busy} onclick={() => add(false)}><Icon name="add-to-queue" size={15} />Add to queue</button>
     <span class="spacer"></span>
     <button class="btn" onclick={() => win.close()}>Cancel</button>
     <button class="btn primary" disabled={!chosen.length || busy} onclick={() => add(true)}>Download {chosen.length || ''}</button>
@@ -216,9 +216,9 @@
   .small { font-size: var(--fs-sm); }
   .listhead { display: flex; align-items: center; gap: 12px; }
   .filt { height: 30px; width: 200px; }
-  .list { flex: 1; min-height: 200px; overflow: auto; background: var(--surface); }
+  .list { flex: 1; min-height: 200px; overflow: auto; background: var(--surface-sunken); }
   .item { display: grid; grid-template-columns: 16px 34px minmax(120px, 1fr) minmax(0, 1.4fr); gap: 10px; align-items: center; padding: 6px 12px; border-bottom: 1px solid var(--border-subtle); }
-  .item:hover { background: var(--surface-2); }
+  .item:hover { background: var(--hover); }
   .nm { font-weight: 500; }
   .empty { padding: 30px; text-align: center; }
 </style>

@@ -35,6 +35,7 @@ use tokio_util::sync::CancellationToken;
 pub const PROTECTED: &str =
     "This stream is protected with DRM (copy protection), so Open Download Manager can't download it.";
 pub const LIVE: &str = "This is a live stream. Only complete (on-demand) streams can be downloaded.";
+pub const INSECURE: &str = "This secure (https) stream sends its parts over insecure http addresses. If you trust the source, allow redirects from https to http under Settings → Advanced.";
 
 /// Largest manifest accepted.
 const MAX_MANIFEST: usize = 16 * 1024 * 1024;
@@ -357,6 +358,30 @@ fn dash_track(reps: &[&dash::Rep], audio_only: bool) -> Track {
     Track { container, audio_only, pieces }
 }
 
+// ---------------------------------------------------------------- https stays https
+
+/// An address `listed` by the manifest at `manifest`. A manifest fetched
+/// over https must not send the download on over plain http, where anyone
+/// on the network path can alter it: the rule [`client::send`] applies to
+/// redirects, applied to playlists, segments and keys a manifest names.
+fn check_listed(hs: &HeaderSet, manifest: &str, listed: &str) -> Result<(), CoreError> {
+    match (url::Url::parse(manifest), url::Url::parse(listed)) {
+        (Ok(m), Ok(l)) if hs.refuses_downgrade(&m, &l) => Err(CoreError::Other(INSECURE.into())),
+        _ => Ok(()),
+    }
+}
+
+/// [`check_listed`] for every piece of a track and its decryption keys.
+fn check_track(hs: &HeaderSet, manifest: &str, track: &Track) -> Result<(), CoreError> {
+    for p in &track.pieces {
+        check_listed(hs, manifest, &p.url)?;
+        if let Some(k) = &p.key {
+            check_listed(hs, manifest, &k.uri)?;
+        }
+    }
+    Ok(())
+}
+
 // ---------------------------------------------------------------- fetching
 
 /// GET a manifest. Returns (final URL, text).
@@ -403,6 +428,7 @@ pub async fn inspect(client: &reqwest::Client, hs: &HeaderSet, url: &str, text: 
                 let best = list.first().map(|x| x.1).ok_or_else(|| CoreError::Other("the playlist lists no qualities".into()))?;
                 // the best quality's playlist tells the length, the format
                 // and whether it is protected or live
+                check_listed(hs, url, &best.uri)?;
                 let (murl, mtext) = fetch_text(client, &best.uri, hs).await?;
                 let mut ext = "ts";
                 if let Ok(hls::Playlist::Media(mm)) = hls::parse(&mtext, &murl) {
@@ -525,6 +551,7 @@ pub async fn resolve(client: &reqwest::Client, hs: &HeaderSet, url: &str, choice
                     let list = hls_variants(&m);
                     let (_, v) = pick_variant(&list, choice.variant.as_deref()).ok_or_else(|| CoreError::Other("the playlist lists no qualities".into()))?;
                     let audio = hls_audio(&m, v.audio.as_deref());
+                    check_listed(hs, &url, &v.uri)?;
                     let (murl, mtext) = fetch_text(client, &v.uri, hs).await?;
                     let hls::Playlist::Media(mm) = hls::parse(&mtext, &murl).map_err(|e| CoreError::Other(e.to_string()))? else {
                         return Err(CoreError::Other("a quality's playlist is not a media playlist".into()));
@@ -534,12 +561,16 @@ pub async fn resolve(client: &reqwest::Client, hs: &HeaderSet, url: &str, choice
                     }
                     est_bytes = est(v.average_bandwidth.or(v.bandwidth), Some(mm.duration()));
                     let main = hls_track(&mm, false)?;
+                    check_track(hs, &murl, &main)?;
                     tracks.push(main);
                     if let Some(r) = pick_audio(&audio, choice.audio.as_deref()) {
                         let au = r.uri.clone().unwrap_or_default();
+                        check_listed(hs, &url, &au)?;
                         let (aurl, atext) = fetch_text(client, &au, hs).await?;
                         if let hls::Playlist::Media(am) = hls::parse(&atext, &aurl).map_err(|e| CoreError::Other(e.to_string()))? {
-                            tracks.push(hls_track(&am, true)?);
+                            let track = hls_track(&am, true)?;
+                            check_track(hs, &aurl, &track)?;
+                            tracks.push(track);
                         }
                     }
                     mm
@@ -549,7 +580,9 @@ pub async fn resolve(client: &reqwest::Client, hs: &HeaderSet, url: &str, choice
                 if media.is_live() {
                     return Err(CoreError::Other(LIVE.into()));
                 }
-                tracks.push(hls_track(&media, false)?);
+                let track = hls_track(&media, false)?;
+                check_track(hs, &url, &track)?;
+                tracks.push(track);
             }
         }
         Kind::Dash => {
@@ -602,6 +635,9 @@ pub async fn resolve(client: &reqwest::Client, hs: &HeaderSet, url: &str, choice
             tracks.push(dash_track(&main, !has_video));
             if !audio.is_empty() {
                 tracks.push(dash_track(&audio, true));
+            }
+            for t in &tracks {
+                check_track(hs, &url, t)?;
             }
         }
     }
@@ -992,6 +1028,25 @@ mod tests {
         assert_eq!(manifest_kind("https://x/a/video.mp4", Some("video/mp4")), None);
         assert_eq!(sniff("#EXTM3U\n"), Some(Kind::Hls));
         assert_eq!(sniff("<?xml version=\"1.0\"?><MPD></MPD>"), Some(Kind::Dash));
+    }
+
+    #[test]
+    fn https_manifests_list_https_only() {
+        let hs = HeaderSet::new("https://a.example/v/master.m3u8", reqwest::header::HeaderMap::new());
+        let piece = |url: &str, key: Option<&str>| Piece { url: url.into(), range: None, key: key.map(|k| Key { uri: k.into(), iv: [0; 16] }) };
+        let track = |pieces: Vec<Piece>| Track { container: Container::Ts, audio_only: false, pieces };
+        let secure = "https://a.example/v/720.m3u8";
+        // another https host is fine; plain http is not, for a segment or a key
+        assert!(check_track(&hs, secure, &track(vec![piece("https://cdn.example/s1.ts", Some("https://a.example/k"))])).is_ok());
+        let seg = check_track(&hs, secure, &track(vec![piece("https://cdn.example/s1.ts", None), piece("http://cdn.example/s2.ts", None)]));
+        assert_eq!(seg.unwrap_err().to_string(), INSECURE);
+        assert!(check_track(&hs, secure, &track(vec![piece("https://cdn.example/s1.ts", Some("http://a.example/k"))])).is_err());
+        assert!(check_listed(&hs, "https://a.example/v/master.m3u8", "http://a.example/v/720.m3u8").is_err());
+        // a manifest that came over http has nothing to lose
+        assert!(check_track(&hs, "http://a.example/v/720.m3u8", &track(vec![piece("http://cdn.example/s1.ts", None)])).is_ok());
+        // the user's setting allows it, as for redirects
+        let allowed = hs.allow_downgrade(true);
+        assert!(check_track(&allowed, secure, &track(vec![piece("http://cdn.example/s1.ts", Some("http://a.example/k"))])).is_ok());
     }
 
     #[test]

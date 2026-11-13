@@ -999,17 +999,26 @@ impl Manager {
 
     pub async fn refresh_link(&self, id: &str, new_url: &str) -> Result<(), CoreError> {
         let d = self.get(id).ok_or(CoreError::NotFound)?;
+        // a user name and password in an FTP link are kept with the
+        // download's other credentials (stored sealed), not in its URL
+        let (new_url, link_user, link_pass) = crate::ftp::split_credentials(new_url);
+        let new_url = new_url.as_str();
         // cookies, credentials and custom headers were given for the old
         // link's site: a link on another site never receives them
-        let same_site = match (url::Url::parse(d.url.trim()), url::Url::parse(new_url.trim())) {
+        let same_site = match (url::Url::parse(d.url.trim()), url::Url::parse(new_url)) {
             (Ok(old), Ok(new)) => client::credentials_allowed(&old, &new),
             _ => false,
         };
+        // the new link's own user name and password replace the stored ones
+        let (user, pass) = match link_user {
+            Some(u) => (Some(u), link_pass),
+            None if same_site => (d.username.clone(), d.password.clone()),
+            None => (None, None),
+        };
         let p = if same_site {
-            self.probe(new_url, d.referrer.clone(), d.cookies.clone(), d.headers.clone(), d.username.clone(), d.password.clone())
-                .await?
+            self.probe(new_url, d.referrer.clone(), d.cookies.clone(), d.headers.clone(), user.clone(), pass.clone()).await?
         } else {
-            self.probe(new_url, d.referrer.clone(), None, vec![], None, None).await?
+            self.probe(new_url, d.referrer.clone(), None, vec![], user.clone(), pass.clone()).await?
         };
         if let (Some(a), Some(b), None) = (d.total_bytes, p.total_bytes, &d.stream) {
             if a != b {
@@ -1021,13 +1030,13 @@ impl Manager {
         let rt = {
             let mut st = self.inner.state.lock();
             let e = st.entries.get_mut(id).ok_or(CoreError::NotFound)?;
-            e.d.url = new_url.trim().to_string();
+            e.d.url = new_url.to_string();
             if !same_site {
                 e.d.cookies = None;
                 e.d.headers.clear();
-                e.d.username = None;
-                e.d.password = None;
             }
+            e.d.username = user;
+            e.d.password = pass;
             e.d.final_url = Some(p.final_url.clone());
             e.d.etag = p.etag.clone();
             e.d.last_modified = p.last_modified.clone();

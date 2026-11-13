@@ -92,6 +92,31 @@ async fn split_download_with_credentials_from_the_url() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn refreshed_link_keeps_its_password_out_of_the_url() {
+    let srv = ftpsrv::start(opts()).await;
+    let size = 200_000;
+    srv.put("/old.bin", common::expected(size));
+    srv.put("/new.bin", common::expected(size));
+    let dir = tempfile::tempdir().unwrap();
+    let m = mgr(dir.path());
+    // added without credentials and not started
+    let id = m.add(AddRequest { url: srv.url("/old.bin"), ..Default::default() }).unwrap();
+    assert_eq!(m.get(&id).unwrap().username, None);
+    // the new link carries them: they move to the credential fields
+    m.refresh_link(&id, &format!("ftp://alice:s3cret@127.0.0.1:{}/new.bin", srv.port)).await.unwrap();
+    let d = m.get(&id).unwrap();
+    assert!(!d.url.contains("s3cret") && !d.url.contains("alice") && d.url.ends_with("/new.bin"), "{}", d.url);
+    assert_eq!((d.username.as_deref(), d.password.as_deref()), (Some("alice"), Some("s3cret")));
+    // a later link without any keeps them (same server)
+    m.refresh_link(&id, &srv.url("/old.bin")).await.unwrap();
+    let d = m.get(&id).unwrap();
+    assert_eq!((d.username.as_deref(), d.password.as_deref()), (Some("alice"), Some("s3cret")));
+    m.resume(std::slice::from_ref(&id));
+    let d = wait_status(&m, &id, Status::Complete, 30).await;
+    assert_eq!(std::fs::read(d.final_path()).unwrap(), common::expected(size));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn resumes_after_dropped_connections() {
     let srv = ftpsrv::start(FtpOpts { drop_after: Some(100_000), drops: 3, no_epsv: true, ..opts() }).await;
     let size = 400_000;

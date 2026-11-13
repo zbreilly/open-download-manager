@@ -164,6 +164,14 @@ impl HeaderSet {
         self
     }
 
+    /// Is going on from `from` to `to` refused? A secure (https) download
+    /// must not continue over plain http, where anyone on the network path
+    /// can alter it, unless the user allowed that. The rule for redirects,
+    /// and for the addresses a stream manifest lists.
+    pub fn refuses_downgrade(&self, from: &url::Url, to: &url::Url) -> bool {
+        from.scheme() == "https" && to.scheme() == "http" && !self.allow_downgrade
+    }
+
     /// Headers for a request to `target`.
     pub fn for_url(&self, target: &url::Url) -> HeaderMap {
         let mut h = self.common.clone();
@@ -262,7 +270,7 @@ pub async fn send(
             if let Some(next) = next {
                 // a secure download must not silently continue over plain
                 // http, where anyone on the network path can alter the file
-                if cur.scheme() == "https" && next.scheme() == "http" && !hs.allow_downgrade {
+                if hs.refuses_downgrade(&cur, &next) {
                     return Err(CoreError::InsecureRedirect);
                 }
                 cur = next;
@@ -442,6 +450,18 @@ mod tests {
         assert!(!other.contains_key("cookie") && !other.contains_key("authorization") && !other.contains_key("x-key"));
         assert_eq!(other.get("user-agent").unwrap(), "ua");
         assert!(other.contains_key("referer"));
+    }
+
+    #[test]
+    fn downgrade_rule() {
+        let hs = HeaderSet::new("https://a.example/f", HeaderMap::new());
+        assert!(hs.refuses_downgrade(&u("https://a.example/f"), &u("http://a.example/f")));
+        assert!(hs.refuses_downgrade(&u("https://a.example/f"), &u("http://cdn.example/f")));
+        assert!(!hs.refuses_downgrade(&u("https://a.example/f"), &u("https://cdn.example/f")));
+        assert!(!hs.refuses_downgrade(&u("http://a.example/f"), &u("http://cdn.example/f")));
+        assert!(!hs.refuses_downgrade(&u("http://a.example/f"), &u("https://a.example/f")));
+        let allowed = hs.allow_downgrade(true);
+        assert!(!allowed.refuses_downgrade(&u("https://a.example/f"), &u("http://a.example/f")));
     }
 
     #[test]

@@ -2,13 +2,18 @@
 //! Same protocol as the Tauri app; instead of opening windows it emits
 //! `show_add` / `show_links` events for the native UI.
 //!
+//! * Every request that does anything is sealed with the pairing key
+//!   (`bridge_key` method; see `odm_core::pairing`). Without the key a
+//!   client learns only that the app is running; a process that took over
+//!   the port cannot read what the extension sends.
 //! * The `Host` header must be `127.0.0.1:<port>` or `localhost:<port>`
 //!   (DNS-rebinding guard).
 //! * Requests that carry an `Origin` must come from a browser-extension
-//!   origin, so web pages cannot queue downloads. Requests without an Origin
-//!   (local tools) are allowed but cannot add downloads silently.
+//!   origin, so web pages cannot reach the bridge.
 
 use crate::core;
+use axum::body::Bytes;
+use axum::extract::DefaultBodyLimit;
 use axum::http::{header, HeaderMap, HeaderValue, Method, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -21,6 +26,12 @@ use std::time::Instant;
 
 /// Longest capture pause accepted from the extension (one day).
 const MAX_PAUSE_MINUTES: i64 = 1440;
+/// Largest request body (a page's links with their cookies, sealed).
+const MAX_BODY_BYTES: usize = 8 * 1024 * 1024;
+/// How long a browser counts as connected after its last request.
+const BROWSER_SEEN_SECS: u64 = 150;
+/// Most browsers remembered as connected.
+const MAX_BROWSERS: usize = 16;
 
 fn host_ok(h: &HeaderMap, port: u16) -> bool {
     let Some(host) = h.get(header::HOST).and_then(|v| v.to_str().ok()) else { return false };
@@ -54,20 +65,26 @@ fn with_cors(mut r: Response, origin: Option<String>) -> Response {
     r
 }
 
+/// Remember the browser of a paired extension (only called for requests
+/// that opened with the pairing key).
 fn note_browser(h: &HeaderMap) {
     let Some(c) = core() else { return };
-    if h.get("origin").is_none() && h.get("x-odm-browser").is_none() {
-        return;
-    }
     let name: String = h
         .get("x-odm-browser")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("Browser")
         .chars()
+        .filter(|ch| !ch.is_control())
         .take(40)
         .collect();
     let was = c.extension_browsers();
-    c.ext_seen.lock().insert(name, Instant::now());
+    {
+        let mut seen = c.ext_seen.lock();
+        seen.retain(|_, t| t.elapsed().as_secs() < BROWSER_SEEN_SECS);
+        if seen.len() < MAX_BROWSERS || seen.contains_key(&name) {
+            seen.insert(name, Instant::now());
+        }
+    }
     let now = c.extension_browsers();
     if was != now {
         c.emit("extension_status", &json!({ "connected": !now.is_empty(), "browsers": now }));
@@ -100,10 +117,11 @@ fn capture_info() -> Value {
     })
 }
 
+/// Unsealed: says only that the app is here and that pairing is needed.
 async fn ping(h: HeaderMap) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    note_browser(&h);
-    with_cors(Json(capture_info()).into_response(), origin)
+    let hello = json!({ "ok": true, "app": "Open Download Manager", "version": env!("CARGO_PKG_VERSION"), "pairing": "required" });
+    with_cors(Json(hello).into_response(), origin)
 }
 
 async fn preflight(h: HeaderMap) -> Response {
@@ -124,16 +142,16 @@ struct AddBody {
     url: String,
     /// several links, each with the cookies for that URL
     items: Vec<AddItem>,
-    /// several links without cookies (older extensions)
+    /// several links without cookies
     urls: Vec<String>,
     referrer: Option<String>,
     file_name: Option<String>,
-    /// cookies for `url` (or, in the older form, for the first link)
+    /// cookies for `url`
     cookies: Option<String>,
     user_agent: Option<String>,
     total_bytes: Option<u64>,
     mime: Option<String>,
-    /// add & start without asking (browser extensions only)
+    /// add & start without asking
     silent: bool,
 }
 
@@ -162,37 +180,17 @@ fn collect_links(b: &AddBody) -> Vec<(String, Option<String>)> {
     for u in &b.urls {
         push(u, None);
     }
-    // older extensions sent the first link's cookies at the top level
-    if let Some(first) = out.first_mut() {
-        if first.1.is_none() {
-            first.1 = nz(&b.cookies);
-        }
-    }
     out
 }
 
-async fn add(h: HeaderMap, body: axum::body::Bytes) -> Response {
-    let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    let json_ct = h
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v.starts_with("application/json"))
-        .unwrap_or(false);
-    if !json_ct {
-        return StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response();
-    }
-    let Ok(b) = serde_json::from_slice::<AddBody>(&body) else {
-        return with_cors((StatusCode::BAD_REQUEST, "bad json").into_response(), origin);
-    };
-    note_browser(&h);
-    let Some(c) = core() else { return StatusCode::SERVICE_UNAVAILABLE.into_response() };
+/// Hand links from a paired extension to the app.
+fn add(body: Value) -> Result<(), String> {
+    let b: AddBody = serde_json::from_value(body).map_err(|_| "bad request".to_string())?;
+    let c = core().ok_or("engine not started")?;
     let links = collect_links(&b);
     if links.is_empty() {
-        return with_cors((StatusCode::BAD_REQUEST, "no valid URL").into_response(), origin);
+        return Err("no valid URL".into());
     }
-    // no app setting allows starting captures without asking, so only a
-    // browser extension (never a local client without Origin) may do it
-    let silent = b.silent && origin.is_some();
     if links.len() > 1 {
         let links: Vec<Value> = links
             .iter()
@@ -202,7 +200,7 @@ async fn add(h: HeaderMap, body: axum::body::Bytes) -> Response {
             })
             .collect();
         c.emit("show_links", &json!({ "links": links, "referrer": b.referrer, "userAgent": b.user_agent }));
-    } else if silent {
+    } else if b.silent {
         let (url, cookies) = links.into_iter().next().unwrap_or_default();
         let req = AddRequest {
             url,
@@ -215,9 +213,7 @@ async fn add(h: HeaderMap, body: axum::body::Bytes) -> Response {
             start: true,
             ..Default::default()
         };
-        if let Err(e) = c.mgr.add(req) {
-            return with_cors((StatusCode::BAD_REQUEST, e.to_string()).into_response(), origin);
-        }
+        c.mgr.add(req).map_err(|e| e.to_string())?;
     } else {
         let (url, cookies) = links.into_iter().next().unwrap_or_default();
         c.emit(
@@ -233,7 +229,7 @@ async fn add(h: HeaderMap, body: axum::body::Bytes) -> Response {
             }),
         );
     }
-    with_cors(Json(json!({ "ok": true })).into_response(), origin)
+    Ok(())
 }
 
 #[derive(Deserialize)]
@@ -250,21 +246,52 @@ fn pause_until(now: i64, minutes: i64) -> Option<i64> {
     m.checked_mul(60_000).and_then(|ms| now.checked_add(ms))
 }
 
-async fn pause_capture(h: HeaderMap, Json(b): Json<PauseBody>) -> Response {
+fn pause_capture(body: Value) -> Result<(), String> {
+    let b: PauseBody = serde_json::from_value(body).map_err(|_| "bad request".to_string())?;
+    let c = core().ok_or("engine not started")?;
+    let mut s = c.mgr.settings();
+    s.capture_paused_until = pause_until(now_ms(), b.minutes);
+    c.mgr.save_settings(s).map_err(|e| e.to_string())
+}
+
+fn failed(msg: String) -> Value {
+    json!({ "ok": false, "error": msg })
+}
+
+/// The one sealed endpoint: `{op, body}` in, the operation's result out.
+async fn rpc(h: HeaderMap, body: Bytes) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    if let Some(c) = core() {
-        let mut s = c.mgr.settings();
-        s.capture_paused_until = pause_until(now_ms(), b.minutes);
-        let _ = c.mgr.save_settings(s);
-    }
-    with_cors(Json(capture_info()).into_response(), origin)
+    let Some(c) = core() else { return StatusCode::SERVICE_UNAVAILABLE.into_response() };
+    let pairing = c.mgr.pairing();
+    let req = match pairing.open(&body, now_ms()) {
+        Ok(r) => r,
+        Err(e) => {
+            let refused = (StatusCode::UNAUTHORIZED, Json(json!({ "ok": false, "error": e.code() })));
+            return with_cors(refused.into_response(), origin);
+        }
+    };
+    note_browser(&h);
+    let result = match req.op.as_str() {
+        "ping" => capture_info(),
+        "add" => match add(req.body.clone()) {
+            Ok(()) => json!({ "ok": true }),
+            Err(e) => failed(e),
+        },
+        "capture-pause" => match pause_capture(req.body.clone()) {
+            Ok(()) => capture_info(),
+            Err(e) => failed(e),
+        },
+        _ => failed("unknown operation".into()),
+    };
+    let sealed = pairing.seal(&req, &result);
+    with_cors(([(header::CONTENT_TYPE, "application/json")], sealed).into_response(), origin)
 }
 
 fn router(port: u16) -> Router {
     Router::new()
-        .route("/api/ping", get(ping).post(ping))
-        .route("/api/add", post(add))
-        .route("/api/capture-pause", post(pause_capture))
+        .route("/api/ping", get(ping))
+        .route("/api/rpc", post(rpc))
+        .layer(DefaultBodyLimit::max(MAX_BODY_BYTES))
         .layer(axum::middleware::from_fn(
             move |req: axum::extract::Request, next: axum::middleware::Next| async move {
                 if !host_ok(req.headers(), port) {

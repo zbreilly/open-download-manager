@@ -9,9 +9,16 @@ async function render() {
   $("port").value = st.port;
   const dot = $("dot");
   dot.className = "dot";
+  $("key").placeholder = st.paired ? "Saved — paste a new key to replace it" : "Paste the key from the app";
   if (!st.connected) {
-    $("status").textContent = "App not running — start Open Download Manager";
+    $("status").textContent = !st.appRunning
+      ? "App not running — start Open Download Manager"
+      : st.keyRejected
+        ? "The pairing key doesn't match the app — paste the current key below"
+        : "Not paired — paste the pairing key from the app below";
     $("capture-box").hidden = true;
+    // pairing is the next step: show where the key goes
+    if (st.appRunning || !st.paired) $("connection").open = true;
   } else {
     const c = st.capture;
     dot.classList.add(c.paused || !c.enabled ? "warn" : "ok");
@@ -61,6 +68,13 @@ $("add").onclick = async () => {
 };
 $("url").addEventListener("keydown", (e) => { if (e.key === "Enter") $("add").click(); });
 $("save").onclick = async () => { await B.runtime.sendMessage({ type: "odm-set-port", port: $("port").value }); render(); };
+$("save-key").onclick = async () => {
+  const r = await B.runtime.sendMessage({ type: "odm-set-key", key: $("key").value });
+  if (r?.error) { $("key-desc").textContent = r.error; return; }
+  $("key").value = "";
+  render();
+};
+$("key").addEventListener("keydown", (e) => { if (e.key === "Enter") $("save-key").click(); });
 
 (async () => {
   try { [tab] = await B.tabs.query({ active: true, currentWindow: true }); } catch {}

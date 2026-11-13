@@ -1,12 +1,16 @@
 #!/bin/bash
 # End-to-end check against a running app: hand a download to the browser
-# bridge the way the extension does (silent capture), then wait for the
-# finished file and compare it byte for byte with the source.
+# bridge the way the extension does (sealed with the pairing key), then wait
+# for the finished file and compare it byte for byte with the source.
 #
-# usage: e2e-download.sh DOWNLOAD_DIR [BRIDGE_PORT]
+# The app must have been started with ODM_BRIDGE_KEY set to the same 64 hex
+# digits as this script's environment (the pairing key for this run).
+#
+# usage: ODM_BRIDGE_KEY=... e2e-download.sh DOWNLOAD_DIR [BRIDGE_PORT]
 set -euo pipefail
 DL="$1"
 PORT="${2:-8901}"
+: "${ODM_BRIDGE_KEY:?set ODM_BRIDGE_KEY to the pairing key the app was started with}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$(mktemp -d)"
 NAME="odm-ci-$$.bin"
@@ -27,10 +31,22 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Origin: https://evil.example' 
 code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: evil.example:$PORT" "http://127.0.0.1:$PORT/api/ping")
 [ "$code" = 403 ] || { echo "bridge accepted a forged Host ($code)"; exit 1; }
 
-curl -sf -X POST "http://127.0.0.1:$PORT/api/add" \
-  -H 'Origin: chrome-extension://odmcitest' -H 'X-ODM-Browser: CI' -H 'Content-Type: application/json' \
-  -d "{\"url\":\"http://127.0.0.1:$SRV/$NAME\",\"silent\":true}"
-echo
+# without the pairing key nothing is accepted: not the routes of earlier
+# versions, not an unsealed request, not a request sealed with another key
+ADD="{\"url\":\"http://127.0.0.1:$SRV/$NAME\",\"silent\":true}"
+ext=(-H 'Origin: chrome-extension://odmcitest' -H 'X-ODM-Browser: CI' -H 'Content-Type: application/json')
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${ext[@]}" -d "$ADD" "http://127.0.0.1:$PORT/api/add")
+[ "$code" = 404 ] || { echo "bridge still has the unsealed add route ($code)"; exit 1; }
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "${ext[@]}" -d "$ADD" "http://127.0.0.1:$PORT/api/rpc")
+[ "$code" = 401 ] || { echo "bridge accepted an unsealed request ($code)"; exit 1; }
+out=$(ODM_BRIDGE_KEY=$(printf 'ab%.0s' $(seq 1 32)) node "$HERE/bridge-rpc.mjs" "$PORT" add "$ADD" || true)
+[ "$out" = "HTTP 401" ] || { echo "bridge accepted a request sealed with another key ($out)"; exit 1; }
+sleep 2
+[ -z "$(find "$DL" -maxdepth 3 -name "$NAME*" 2>/dev/null | head -1)" ] || { echo "a refused request started a download"; exit 1; }
+
+# the paired way
+node "$HERE/bridge-rpc.mjs" "$PORT" ping | grep -q '"capture"' || { echo "sealed ping failed"; exit 1; }
+node "$HERE/bridge-rpc.mjs" "$PORT" add "$ADD"
 
 # wait for the finished file (the engine renames .odmpart when done)
 OUT=""

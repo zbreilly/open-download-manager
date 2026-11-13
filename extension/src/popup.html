@@ -28,8 +28,12 @@
     <ul id="media"></ul>
   </section>
 
-  <details>
+  <details id="connection">
     <summary>Connection</summary>
+    <div class="label">Pairing key</div>
+    <div class="row"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste the key from the app"><button id="save-key" class="sec">Save key</button></div>
+    <div class="d" id="key-desc">Copy it from Settings → Browser integration in the app. Links and their cookies are only sent to an app that holds this key.</div>
+    <div class="label">Port</div>
     <div class="row"><input id="port" inputmode="numeric" style="width:90px;flex:none"><button id="save" class="sec">Save port</button></div>
     <div class="d">Must match Settings → Advanced → Extension port in the app.</div>
   </details>

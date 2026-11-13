@@ -31,6 +31,15 @@
       const t = e.target as HTMLElement;
       if (!t.closest('input, textarea, .selectable')) e.preventDefault();
     });
+    // a file dropped on a window must never replace the app's page (the
+    // webview would open it); links and text are handled by the windows
+    const refuseFiles = (e: DragEvent) => {
+      if (!e.dataTransfer?.types.includes('Files')) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'none';
+    };
+    window.addEventListener('dragover', refuseFiles);
+    window.addEventListener('drop', refuseFiles);
     window.addEventListener('keydown', (e) => {
       if ((e.key === 'r' && (e.metaKey || e.ctrlKey)) || e.key === 'F5') e.preventDefault();
     });

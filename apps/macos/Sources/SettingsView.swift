@@ -186,6 +186,7 @@ private struct BrowserPane: View {
     @EnvironmentObject var store: AppStore
     @Binding var s: AppSettings
     @State private var extText = ""
+    @State private var confirmNewKey = false
 
     private var paused: Bool {
         guard let until = s.capturePausedUntil else { return false }
@@ -208,6 +209,22 @@ private struct BrowserPane: View {
                 Text("Chrome, Edge, Brave, Arc, Vivaldi, Opera: open the extensions page, turn on Developer mode, choose “Load unpacked” and select the chromium folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → firefox/manifest.json.")
                     .font(.caption).foregroundStyle(.secondary)
                 Button("Show Extension Folder") { revealExtension() }
+            }
+            Section("Pairing") {
+                LabeledContent("Pairing key") {
+                    HStack {
+                        Button("Copy Key") { copyKey(new: false) }
+                        Button("New Key…") { confirmNewKey = true }
+                    }
+                }
+                Text("Copy this key and paste it into the extension: click its toolbar button, open Connection and save it under Pairing key. Links and their cookies are sealed with it, so only this app and your extension can read them. Anyone who has the key can add downloads; a new key unpairs every browser.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .confirmationDialog("Make a new pairing key?", isPresented: $confirmNewKey, titleVisibility: .visible) {
+                Button("New Key") { copyKey(new: true) }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Every browser paired with the current key stops sending downloads to the app until you paste the new key into its extension. The new key is copied to the clipboard.")
             }
             Section("Capture") {
                 Toggle("Take over browser downloads", isOn: $s.captureEnabled)
@@ -243,6 +260,17 @@ private struct BrowserPane: View {
         }
         .formStyle(.grouped)
         .onAppear { extText = s.captureExtensions.joined(separator: " ") }
+    }
+
+    /// Put the pairing key (or a newly made one) on the clipboard.
+    private func copyKey(new: Bool) {
+        do {
+            let key: String = try Engine.shared.call(new ? "regenerate_bridge_key" : "bridge_key")
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(key, forType: .string)
+        } catch {
+            store.report(error.localizedDescription)
+        }
     }
 
     private func revealExtension() {

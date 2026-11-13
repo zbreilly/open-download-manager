@@ -548,6 +548,10 @@ async fn run_segment(ctx: &TaskCtx, seg: &Seg, stop: &CancellationToken) -> Resu
         };
         let resp = match resp {
             Ok(r) => r,
+            // refused by policy or malformed: trying again cannot help
+            Err(e @ (crate::CoreError::InsecureRedirect | crate::CoreError::BadUrl(_))) => {
+                return Err(SegErr::Fatal(e.to_string()));
+            }
             Err(e) => {
                 attempts += 1;
                 if attempts > ctx.max_retries {

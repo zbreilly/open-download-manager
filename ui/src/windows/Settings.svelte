@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
-  import { open as openDialog } from '@tauri-apps/plugin-dialog';
+  import { ask, open as openDialog } from '@tauri-apps/plugin-dialog';
+  import { writeText } from '@tauri-apps/plugin-clipboard-manager';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
   import Switch from '../components/Switch.svelte';
@@ -112,6 +113,24 @@
       toast(errText(e), 'error');
     } finally {
       busy = false;
+    }
+  }
+  async function copyKey() {
+    try {
+      await writeText(await api.bridgeKey());
+      toast('Pairing key copied — paste it into the extension');
+    } catch (e) {
+      toast(errText(e), 'error');
+    }
+  }
+  async function newKey() {
+    try {
+      const yes = await ask('Every browser paired with the current key stops sending downloads to the app until you paste the new key into its extension.', { title: 'Make a new pairing key?', kind: 'warning', okLabel: 'New key', cancelLabel: 'Cancel' });
+      if (!yes) return;
+      await writeText(await api.regenerateBridgeKey());
+      toast('New pairing key copied — paste it into the extension');
+    } catch (e) {
+      toast(errText(e), 'error');
     }
   }
   async function restore() {
@@ -237,12 +256,17 @@
             <h2>Browser integration</h2>
             <div class="group card">
               <div class="rowc">
-                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only browser-extension origins are accepted.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
+                <div class="t"><div class="tt">Extension status</div><div class="d">The extension talks to the app on <span class="mono">127.0.0.1:{s.extensionPort}</span>. Only an extension that holds the pairing key is listened to.</div>{#if ext.bridgeError}<div class="d bridge-err">{ext.bridgeError}. Another app may be using this port; pick a different one under Advanced.</div>{/if}</div>
                 <span class="status"><span class="dot" class:ok={ext.connected && !ext.bridgeError} class:bad={!!ext.bridgeError}></span>{ext.bridgeError ? 'Not listening' : ext.connected ? 'Connected' : 'Not detected'}</span>
               </div>
               <div class="rowc">
                 <div class="t"><div class="tt">Install the extension</div><div class="d">Chrome, Edge, Brave, Opera, Vivaldi: open the extensions page, turn on Developer mode, choose “Load unpacked” and pick the <span class="mono">chromium</span> folder. Firefox: about:debugging → This Firefox → Load Temporary Add-on → <span class="mono">firefox/manifest.json</span>.</div></div>
                 <button class="btn sm" onclick={async () => { const d = await api.extensionDir(); if (d) api.openPath(d); else toast('Extension files not found in this build', 'error'); }}><Icon name="open-folder" size={14} />Show extension folder</button>
+              </div>
+              <div class="rowc">
+                <div class="t"><div class="tt">Pairing key</div><div class="d">Copy this key and paste it into the extension: click its toolbar button, open Connection and save it under Pairing key. Links and their cookies are sealed with it, so only this app and your extension can read them. Anyone who has the key can add downloads; a new key unpairs every browser.</div></div>
+                <button class="btn sm" onclick={copyKey}>Copy key</button>
+                <button class="btn sm" onclick={newKey}>New key</button>
               </div>
               {#each BROWSERS as b}
                 <div class="rowc">
@@ -393,6 +417,11 @@
               <Switch label="Verify TLS" bind:checked={s.verifyTls} />
             </div>
             {#if !s.verifyTls}<div class="errbox">Certificate checks are off. Anyone on the network path can alter what you download.</div>{/if}
+            <div class="rowc card">
+              <div class="t"><div class="tt">Allow redirects from https to http</div><div class="d">Keep this off. A secure download that a server sends on to a plain http address fails instead of continuing unprotected.</div></div>
+              <Switch label="Allow insecure redirects" bind:checked={s.allowInsecureRedirects} />
+            </div>
+            {#if s.allowInsecureRedirects}<div class="errbox">Secure downloads may continue over plain http, where anyone on the network path can alter the file.</div>{/if}
           </section>
         {/if}
       {/if}

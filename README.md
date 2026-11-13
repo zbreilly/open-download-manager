@@ -40,7 +40,9 @@ The extensions are built into `extension/dist/`. In the app, **Settings → Brow
 - **Chrome / Edge / Brave / Opera / Vivaldi**: open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and pick `extension/dist/chromium`.
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. A permanent install needs the add-on to be signed through addons.mozilla.org.
 
-The extension talks to the app on `127.0.0.1:8901`. The app only accepts requests that come from browser-extension origins, so web pages cannot queue downloads.
+Then pair the extension with the app, once per browser: in the app open **Settings → Browser integration** and press **Copy key**; click the extension's toolbar button, open **Connection**, paste the key under **Pairing key** and save.
+
+The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links and the cookies that go with them) is encrypted with the pairing key, and the app's answers are too. Another program that listens on that port learns nothing and is not believed, and nothing that lacks the key — a web page, another extension, a local script — can make the app start a download. **New key** in the same settings page unpairs every browser.
 
 ## Features
 
@@ -111,7 +113,7 @@ npm --prefix ui run check
 - **`macos-native`** (pushes that touch the macOS app or the engine): type-checks and builds the native app and DMG, then runs the same download check.
 - **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The workflow builds everything (a universal macOS DMG included) and creates a draft release with all of the installers attached.
 
-Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one.
+Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release (`sha256sum -c SHA256SUMS.txt`, or `Get-FileHash` on Windows). Once the repository is public, each release file also carries a build provenance attestation: `gh attestation verify <file> --repo <owner>/<repo>` confirms it was built by this repository's workflow.
 
 ## Layout
 

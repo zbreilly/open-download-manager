@@ -31,7 +31,7 @@ jobs:
       - name: Engine and FFI tests
         run: |
           mkdir -p ci-out
-          { cargo test -p odm-core && cargo test -p odm-ffi --features test-hooks; } 2>&1 | tee ci-out/test.log
+          { cargo test --locked -p odm-core && cargo test --locked -p odm-ffi --features test-hooks; } 2>&1 | tee ci-out/test.log
       - name: Clippy
         run: cargo clippy -p odm-core -p odm-ffi --all-targets -- -D warnings 2>&1 | tee ci-out/clippy.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -66,5 +66,7 @@ jobs:
         run: |
           bash extension/build.sh
           for f in extension/src/*.js; do node --check "$f"; done
+          # the extension and the app seal messages the same way
+          node extension/test/pairing.test.mjs
       - name: Versions agree
         run: scripts/ci/check-versions.sh

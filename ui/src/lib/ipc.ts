@@ -82,6 +82,7 @@ export interface Settings {
   notifyComplete: boolean; notifyFailure: boolean; notifyQueueFinished: boolean;
   theme: string; density: string; traySpeed: boolean;
   userAgent: string; maxRetries: number; retryDelaySecs: number; timeoutSecs: number; minSegmentKb: number; verifyTls: boolean;
+  allowInsecureRedirects: boolean;
 }
 
 export interface ProbeResult {
@@ -155,6 +156,10 @@ export const api = {
     invoke<void>('open_window', { view, key: key ?? null, params: params ?? null }),
   takeParams: (token: string) => invoke<any>('take_params', { token }),
   extensionStatus: () => invoke<{ connected: boolean; browsers: string[]; port: number; bridgeError?: string | null }>('extension_status'),
+  /** The key the browser extension must be given to talk to the app. */
+  bridgeKey: () => invoke<string>('bridge_key'),
+  /** Replace the key; paired extensions stop working until they get the new one. */
+  regenerateBridgeKey: () => invoke<string>('regenerate_bridge_key'),
   cancelPowerAction: () => invoke<void>('cancel_power_action'),
   getPowerCountdown: () => invoke<PowerCountdown | null>('get_power_countdown'),
   exportList: (path: string, onlyUnfinished: boolean) => invoke<number>('export_list', { path, onlyUnfinished }),

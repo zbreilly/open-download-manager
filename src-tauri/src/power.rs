@@ -132,7 +132,8 @@ fn sleep_now() {
 #[cfg(windows)]
 fn shutdown_cmd() -> std::process::Command {
     use std::os::windows::process::CommandExt;
-    let mut c = std::process::Command::new("shutdown");
+    // by full path: a bare name would be looked up in the app's own folder first
+    let mut c = std::process::Command::new(win::system_dir().join("shutdown.exe"));
     c.args(["/s", "/t", "0"]);
     c.creation_flags(win::CREATE_NO_WINDOW);
     c
@@ -148,6 +149,20 @@ mod win {
     use windows_sys::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
 
     pub const CREATE_NO_WINDOW: u32 = windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
+
+    /// The Windows system folder (`C:\Windows\System32`).
+    pub fn system_dir() -> std::path::PathBuf {
+        use std::os::windows::ffi::OsStringExt;
+        let mut buf = [0u16; 512];
+        // SAFETY: the buffer is valid for `buf.len()` UTF-16 units
+        let n = unsafe {
+            windows_sys::Win32::System::SystemInformation::GetSystemDirectoryW(buf.as_mut_ptr(), buf.len() as u32)
+        } as usize;
+        if n == 0 || n >= buf.len() {
+            return std::path::PathBuf::from(r"C:\Windows\System32");
+        }
+        std::path::PathBuf::from(std::ffi::OsString::from_wide(&buf[..n]))
+    }
 
     /// SetSuspendState needs SeShutdownPrivilege enabled in the process token.
     pub fn enable_shutdown_privilege() {

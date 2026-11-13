@@ -375,6 +375,8 @@ pub struct Settings {
     pub timeout_secs: u64,
     pub min_segment_kb: u64,
     pub verify_tls: bool,
+    /// follow a redirect from https to plain http (off: such a download fails)
+    pub allow_insecure_redirects: bool,
 }
 
 pub const DEFAULT_UA: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -484,6 +486,7 @@ impl Default for Settings {
             timeout_secs: 30,
             min_segment_kb: 512,
             verify_tls: true,
+            allow_insecure_redirects: false,
         }
     }
 }

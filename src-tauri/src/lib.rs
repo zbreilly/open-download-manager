@@ -20,6 +20,9 @@ use tauri_plugin_opener::OpenerExt;
 /// How long quitting waits for downloads to stop and flush.
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Arguments of the launch-at-login entry.
+pub(crate) const AUTOSTART_ARGS: &[&str] = &["--minimized"];
+
 /// Stop the bridge, release keep-awake and shut the engine down, waiting
 /// (bounded) for downloads to flush. Runs once; a call made while another
 /// is in progress waits for it to finish.
@@ -313,7 +316,7 @@ pub fn run() {
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--minimized"]),
+            Some(AUTOSTART_ARGS.to_vec()),
         ))
         .setup(|app| {
             let handle = app.handle().clone();
@@ -420,6 +423,8 @@ pub fn run() {
             commands::open_window,
             commands::take_params,
             commands::extension_status,
+            commands::bridge_key,
+            commands::regenerate_bridge_key,
             commands::cancel_power_action,
             commands::get_power_countdown,
             commands::export_list,

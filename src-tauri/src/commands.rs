@@ -307,7 +307,78 @@ pub async fn save_settings(app: AppHandle, st: State<'_, AppState>, settings: Se
 fn set_autostart(app: &AppHandle, on: bool) -> R<()> {
     use tauri_plugin_autostart::ManagerExt;
     let al = app.autolaunch();
-    if on { al.enable() } else { al.disable() }.map_err(err)
+    if on { al.enable() } else { al.disable() }.map_err(err)?;
+    if on {
+        quote_autostart_entry(app);
+    }
+    Ok(())
+}
+
+/// The launch-at-login entry the autostart plugin writes on Windows is
+/// `C:\path with spaces\app.exe --minimized`, without quotes. Windows
+/// resolves such a command word by word, so a program planted at
+/// `C:\path.exe` or `C:\path with.exe` would be started instead. Rewrite
+/// the entry with the program path quoted (only if it is exactly the entry
+/// the plugin wrote for this executable).
+#[cfg(windows)]
+fn quote_autostart_entry(app: &AppHandle) {
+    use std::ffi::c_void;
+    use windows_sys::Win32::System::Registry::{RegGetValueW, RegSetKeyValueW, HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_SZ};
+
+    let wide = |s: &str| -> Vec<u16> { s.encode_utf16().chain(Some(0)).collect() };
+    let Ok(exe) = std::env::current_exe() else { return };
+    let (plain, quoted) = autostart_commands(&exe.display().to_string(), crate::AUTOSTART_ARGS);
+    let key = wide(r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run");
+    let name = wide(&app.package_info().name);
+
+    let mut buf = vec![0u16; 4096];
+    let mut size = (buf.len() * 2) as u32;
+    // SAFETY: key and name are NUL-terminated; `buf` is valid for `size` bytes
+    let rc = unsafe {
+        RegGetValueW(
+            HKEY_CURRENT_USER,
+            key.as_ptr(),
+            name.as_ptr(),
+            RRF_RT_REG_SZ,
+            std::ptr::null_mut(),
+            buf.as_mut_ptr() as *mut c_void,
+            &mut size,
+        )
+    };
+    if rc != 0 {
+        return; // no entry for this user
+    }
+    let len = (size as usize / 2).min(buf.len());
+    let current = String::from_utf16_lossy(&buf[..len]);
+    if current.trim_end_matches('\0').trim() != plain {
+        return;
+    }
+    let data = wide(&quoted);
+    // SAFETY: all strings are NUL-terminated and `data` is `data.len() * 2` bytes long
+    let rc = unsafe {
+        RegSetKeyValueW(
+            HKEY_CURRENT_USER,
+            key.as_ptr(),
+            name.as_ptr(),
+            REG_SZ,
+            data.as_ptr() as *const c_void,
+            (data.len() * 2) as u32,
+        )
+    };
+    if rc != 0 {
+        tracing::warn!("could not quote the launch-at-login entry (error {rc})");
+    }
+}
+
+#[cfg(not(windows))]
+fn quote_autostart_entry(_app: &AppHandle) {}
+
+/// The launch-at-login command as the autostart plugin writes it, and the
+/// same command with the program path quoted.
+#[cfg_attr(not(any(windows, test)), allow(dead_code))]
+fn autostart_commands(exe: &str, args: &[&str]) -> (String, String) {
+    let args = args.join(" ");
+    (format!("{exe} {args}").trim().to_string(), format!("\"{exe}\" {args}").trim().to_string())
 }
 
 fn autostart_enabled(app: &AppHandle) -> Option<bool> {
@@ -319,6 +390,10 @@ fn autostart_enabled(app: &AppHandle) -> Option<bool> {
 /// outside the app); store what the OS says.
 pub fn reconcile_autostart(app: &AppHandle) {
     let Some(os) = autostart_enabled(app) else { return };
+    if os {
+        // entries written by earlier versions
+        quote_autostart_entry(app);
+    }
     let st = app.state::<AppState>();
     let mut s = st.mgr.settings();
     if s.launch_at_login != os {
@@ -403,6 +478,22 @@ pub async fn extension_status(st: State<'_, AppState>) -> R<Value> {
         // why the bridge isn't listening (port taken), or null
         "bridgeError": st.bridge_error.lock().clone(),
     }))
+}
+
+/// The key the browser extension is paired with (shown in the settings).
+#[tauri::command]
+pub async fn bridge_key(st: State<'_, AppState>) -> R<String> {
+    Ok(st.mgr.bridge_key())
+}
+
+/// Replace the pairing key; paired extensions must be given the new one.
+#[tauri::command]
+pub async fn regenerate_bridge_key(app: AppHandle, st: State<'_, AppState>) -> R<String> {
+    let key = st.mgr.regenerate_bridge_key();
+    // nothing is paired any more
+    st.ext_seen.lock().clear();
+    let _ = app.emit("extension_status", json!({ "connected": false, "browsers": [] }));
+    Ok(key)
 }
 
 #[tauri::command]
@@ -498,4 +589,20 @@ fn extension_dirs(app: &AppHandle) -> Vec<PathBuf> {
 #[tauri::command]
 pub async fn assign_extensions(st: State<'_, AppState>, category: String, extensions: Vec<String>) -> R<()> {
     st.mgr.assign_extensions(&category, &extensions).map_err(err)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn autostart_entry_is_quoted() {
+        let exe = r"C:\Users\Jo Smith\AppData\Local\Open Download Manager\open-download-manager.exe";
+        let (plain, quoted) = autostart_commands(exe, &["--minimized"]);
+        assert_eq!(plain, format!("{exe} --minimized"));
+        assert_eq!(quoted, format!("\"{exe}\" --minimized"));
+        let (plain, quoted) = autostart_commands(exe, &[]);
+        assert_eq!(plain, exe);
+        assert_eq!(quoted, format!("\"{exe}\""));
+    }
 }

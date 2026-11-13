@@ -522,6 +522,15 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
                 "bridgeError": c.bridge_error.lock().clone(),
             }))
         }
+        // the key the browser extension is paired with (shown in settings)
+        "bridge_key" => ok(mgr.bridge_key()),
+        "regenerate_bridge_key" => {
+            let key = mgr.regenerate_bridge_key();
+            // nothing is paired any more
+            c.ext_seen.lock().clear();
+            c.emit("extension_status", &json!({ "connected": false, "browsers": [] }));
+            ok(key)
+        }
         "export_list" => {
             let path: String = arg(&a, "path")?;
             let only: bool = arg::<Option<bool>>(&a, "onlyUnfinished")?.unwrap_or(false);

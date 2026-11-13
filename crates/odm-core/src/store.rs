@@ -2,13 +2,17 @@
 //! stored as JSON documents (schema-tolerant across versions).
 
 use crate::model::{Download, Queue, Settings};
+use crate::secret;
 use parking_lot::Mutex;
 use rusqlite::{params, Connection};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 pub struct Store {
     conn: Mutex<Connection>,
+    /// a secret was found stored unprotected (see [`Store::protect_existing`])
+    plain_seen: AtomicBool,
 }
 
 fn log_err<T>(what: &str, r: rusqlite::Result<T>) -> Option<T> {
@@ -21,13 +25,20 @@ fn log_err<T>(what: &str, r: rusqlite::Result<T>) -> Option<T> {
     }
 }
 
-/// Copy of a download with the live-only fields cleared.
+/// Copy of a download with the live-only fields cleared and its secrets
+/// (cookies, password, custom header values) protected.
 fn stored(d: &Download) -> Download {
     let mut d = d.clone();
     d.speed_bps = 0;
     d.eta_secs = None;
     d.speed_history.clear();
     d.active_connections = 0;
+    let seal = |v: &mut Option<String>| *v = v.take().map(|s| secret::seal(&s)).filter(|s| !s.is_empty());
+    seal(&mut d.cookies);
+    seal(&mut d.password);
+    for (_, v) in d.headers.iter_mut() {
+        *v = secret::seal(v);
+    }
     d
 }
 
@@ -40,7 +51,9 @@ impl Store {
             let _ = std::fs::create_dir_all(d);
         }
         let conn = Connection::open(path)?;
-        Self::init(conn)
+        let store = Self::init(conn)?;
+        store.protect_existing();
+        Ok(store)
     }
 
     pub fn in_memory() -> rusqlite::Result<Self> {
@@ -52,15 +65,54 @@ impl Store {
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
              PRAGMA synchronous=NORMAL;
+             PRAGMA secure_delete=ON;
              CREATE TABLE IF NOT EXISTS downloads (id TEXT PRIMARY KEY, added TEXT, data TEXT NOT NULL);
              CREATE TABLE IF NOT EXISTS queues (id TEXT PRIMARY KEY, data TEXT NOT NULL);
              CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL);",
         )?;
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self { conn: Mutex::new(conn), plain_seen: AtomicBool::new(false) })
+    }
+
+    /// Open a stored secret, remembering if it was stored unprotected.
+    fn reveal(&self, stored: &str) -> String {
+        let o = secret::open(stored);
+        if o.was_plain {
+            self.plain_seen.store(true, Ordering::Relaxed);
+        }
+        o.value
+    }
+
+    /// Databases written by versions that stored secrets as plain text:
+    /// store everything again (protected) and rebuild the file so the old
+    /// text does not linger in freed pages.
+    fn protect_existing(&self) {
+        let downloads = self.load_downloads();
+        let settings = self.get_kv("settings").map(|_| self.load_settings());
+        if !self.plain_seen.swap(false, Ordering::Relaxed) {
+            return;
+        }
+        tracing::info!("protecting cookies and passwords stored by an earlier version");
+        let items: Vec<(String, Option<Download>)> = downloads.into_iter().map(|d| (d.id.clone(), Some(d))).collect();
+        self.write_downloads(&items);
+        if let Some(s) = settings {
+            self.save_settings(&s);
+        }
+        let c = self.conn.lock();
+        log_err("checkpoint", c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |r| r.get::<_, i64>(0)));
+        log_err("vacuum", c.execute_batch("VACUUM"));
     }
 
     pub fn load_downloads(&self) -> Vec<Download> {
-        self.load_json("SELECT data FROM downloads ORDER BY added", "load downloads")
+        let mut list: Vec<Download> = self.load_json("SELECT data FROM downloads ORDER BY added", "load downloads");
+        for d in list.iter_mut() {
+            let open = |v: &mut Option<String>| *v = v.take().map(|s| self.reveal(&s)).filter(|s| !s.is_empty());
+            open(&mut d.cookies);
+            open(&mut d.password);
+            for (_, v) in d.headers.iter_mut() {
+                *v = self.reveal(v);
+            }
+        }
+        list
     }
 
     fn load_json<T: serde::de::DeserializeOwned>(&self, sql: &str, what: &str) -> Vec<T> {
@@ -167,8 +219,18 @@ impl Store {
         );
     }
 
+    /// A secret kept in the key/value table (protected at rest).
+    pub fn get_secret(&self, key: &str) -> Option<String> {
+        self.get_kv(key).map(|v| secret::open(&v).value).filter(|v| !v.is_empty())
+    }
+
+    pub fn set_secret(&self, key: &str, value: &str) {
+        self.set_kv(key, &secret::seal(value));
+    }
+
     pub fn load_settings(&self) -> Settings {
-        self.get_kv("settings")
+        let mut s: Settings = self
+            .get_kv("settings")
             .and_then(|s| match serde_json::from_str(&s) {
                 Ok(v) => Some(v),
                 Err(e) => {
@@ -176,11 +238,15 @@ impl Store {
                     None
                 }
             })
-            .unwrap_or_default()
+            .unwrap_or_default();
+        s.proxy_pass = self.reveal(&s.proxy_pass);
+        s
     }
 
     pub fn save_settings(&self, s: &Settings) {
-        match serde_json::to_string(s) {
+        let mut s = s.clone();
+        s.proxy_pass = secret::seal(&s.proxy_pass);
+        match serde_json::to_string(&s) {
             Ok(j) => self.set_kv("settings", &j),
             Err(e) => tracing::error!("database: encode settings: {e}"),
         }

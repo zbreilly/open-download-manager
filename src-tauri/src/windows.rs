@@ -57,6 +57,16 @@ pub fn open(app: &AppHandle, view: &str, key: Option<&str>, params: Option<serde
         let _ = w.set_focus();
         return Ok(w);
     }
+    if view == "add" && !can_open_add(app) {
+        // links arriving faster than they are dealt with (a page firing
+        // odm: links, a script): bring an open Add window forward instead
+        // of opening ever more
+        if let Some(w) = add_windows(app).into_iter().next() {
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+            return Ok(w);
+        }
+    }
     let state = app.state::<AppState>();
     let token = uuid::Uuid::new_v4().simple().to_string();
     if let Some(p) = params {
@@ -76,6 +86,9 @@ pub fn open(app: &AppHandle, view: &str, key: Option<&str>, params: Option<serde
         .background_color(bg_for(&theme))
         // HTML5 drag & drop (rows -> queues, links dropped from a browser)
         .disable_drag_drop_handler()
+        // with that, a file dropped on the window would make the webview
+        // load it: the windows only ever show the app's own pages
+        .on_navigation(is_app_url)
         .visible(true);
     b = match theme.as_str() {
         "light" => b.theme(Some(tauri::Theme::Light)),
@@ -89,6 +102,33 @@ pub fn open(app: &AppHandle, view: &str, key: Option<&str>, params: Option<serde
     let w = b.build()?;
     let _ = w.set_focus();
     Ok(w)
+}
+
+/// Most Add download windows open at once.
+pub const MAX_ADD_WINDOWS: usize = 8;
+
+fn add_windows(app: &AppHandle) -> Vec<WebviewWindow> {
+    app.webview_windows().into_iter().filter(|(label, _)| label.starts_with("add-")).map(|(_, w)| w).collect()
+}
+
+/// May another Add download window be opened?
+pub fn can_open_add(app: &AppHandle) -> bool {
+    add_windows(app).len() < MAX_ADD_WINDOWS
+}
+
+/// Is `u` one of the app's own pages (the bundled frontend, or the dev
+/// server in development builds)?
+fn is_app_url(u: &tauri::Url) -> bool {
+    match u.scheme() {
+        "tauri" => true,
+        "about" => u.path() == "blank",
+        "http" | "https" => match u.host_str() {
+            Some("tauri.localhost") => true,
+            Some("localhost") => tauri::is_dev(),
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 pub fn show_main(app: &AppHandle) {
@@ -113,5 +153,23 @@ pub fn retheme_all(app: &AppHandle, theme: &str) {
             _ => None,
         };
         let _ = w.set_theme(t);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_app_pages_load() {
+        let u = |s: &str| tauri::Url::parse(s).unwrap();
+        assert!(is_app_url(&u("http://tauri.localhost/index.html?view=main")));
+        assert!(is_app_url(&u("https://tauri.localhost/index.html")));
+        assert!(is_app_url(&u("tauri://localhost/index.html")));
+        assert!(is_app_url(&u("about:blank")));
+        assert!(!is_app_url(&u("file:///C:/Users/me/Downloads/page.html")));
+        assert!(!is_app_url(&u("https://example.com/")));
+        assert!(!is_app_url(&u("http://tauri.localhost.evil.example/")));
+        assert!(!is_app_url(&u("data:text/html,<script>1</script>")));
     }
 }

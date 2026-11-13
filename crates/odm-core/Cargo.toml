@@ -10,6 +10,9 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"
 tokio-util = { version = "0.7", features = ["rt"] }
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "http2", "system-proxy", "socks", "stream", "charset"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+# AES-GCM and randomness for the browser-extension pairing (already used by rustls)
+ring = "0.17"
+base64 = "0.22"
 futures-util = "0.3"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
@@ -30,6 +33,10 @@ tracing = "0.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+# DPAPI, for secrets stored in the database
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["full", "test-util"] }

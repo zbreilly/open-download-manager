@@ -82,7 +82,9 @@ jobs:
         run: |
           set -x
           APP="$PWD/dist/macos-native/Open Download Manager.app"
-          open "$APP"
+          # pairing key for this run: the app and the test script share it
+          export ODM_BRIDGE_KEY="$(openssl rand -hex 32)"
+          open --env "ODM_BRIDGE_KEY=$ODM_BRIDGE_KEY" "$APP"
           sleep 8
           pgrep -fl OpenDownloadManager || { echo "app exited early"; exit 1; }
           screencapture -x ci-out/01-main.png || true

@@ -447,6 +447,16 @@ pub fn to_hex(bytes: &[u8]) -> String {
     s
 }
 
+/// Bytes of a hex string (either case); None if it isn't one.
+pub fn from_hex(s: &str) -> Option<Vec<u8>> {
+    let b = s.as_bytes();
+    if !b.len().is_multiple_of(2) {
+        return None;
+    }
+    let digit = |c: u8| (c as char).to_digit(16).map(|d| d as u8);
+    b.chunks(2).map(|p| Some(digit(p[0])? << 4 | digit(p[1])?)).collect()
+}
+
 /// Hash a file with the named algorithm ("sha256" | "sha1" | "md5").
 pub fn hash_file(path: &Path, algo: &str) -> std::io::Result<String> {
     use std::io::Read;

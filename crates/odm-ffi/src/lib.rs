@@ -1,9 +1,8 @@
 //! C interface to the Open Download Manager engine.
 //!
-//! The native macOS app (SwiftUI) links this as a static library, the
-//! native Windows app (WinUI) loads it as a DLL, and the native Linux apps
-//! (GTK, Kirigami) use the same contract from Rust through [`api`]. Every
-//! call takes a method name and JSON arguments and returns JSON, so the
+//! The native apps (AppKit, WinUI, GTK, Kirigami) are Rust and use the same
+//! contract through [`api`]; the C functions remain for front ends in other
+//! languages. Every call takes a method name and JSON arguments and returns JSON, so the
 //! interface stays small and stable while the engine evolves.
 //!
 //! Contract (see include/odm.h):

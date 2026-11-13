@@ -160,8 +160,7 @@ Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will wa
 ## Layout
 
 ```
-apps/macos/          macOS app (Rust, AppKit through objc2), build.sh, Info.plist; Sources/ holds the earlier
-                     SwiftUI interface (build.sh --swift) until the Rust one has replaced it
+apps/macos/          macOS app (Rust, AppKit through objc2), build.sh, Info.plist
 apps/windows/        Windows app (Rust, WinUI 3 through windows-reactor), build.ps1, installer/
 apps/gnome/          GTK 4 + libadwaita app (Rust)
 apps/plasma/         Kirigami app: Rust backend, list model and view-models (src/), QML views (qml/)

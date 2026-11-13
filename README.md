@@ -110,6 +110,8 @@ The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links a
 - Basic auth, cookies, referrer, custom user agent and custom headers
 - Checksum verification (SHA-256, SHA-1, MD5)
 - Uses the system trust store for TLS (rustls with the platform verifier)
+- A redirect from https to plain http fails unless you allow it in Settings → Advanced
+- Stored cookies, passwords, custom header values and the proxy password are encrypted on Windows (DPAPI); on macOS and Linux the database is readable only by your account. A finished download forgets its cookies, password and custom headers
 
 **App**
 - Main window with a library, categories and queues, a sortable list with multi-select, context menus and keyboard shortcuts, a details panel with the segment map and a 60-second speed graph, and a status bar
@@ -127,11 +129,24 @@ The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links a
 - Context menus: download a link, media, an image, the links in a selection, or every link on the page
 - Detects audio and video files a page loads and lists them in the popup, and shows a "Download" button over videos
 
-- Theme studio: color profiles that restyle every window (colors, outlines, fonts, panel art, button pictures), and a title bar drawn by the app that follows the profile
+**Theme studio**
 
-The native-toolkit apps have everything in this list except the Theme studio, the custom title bar and the list density; the Plasma app follows the desktop's color scheme.
+The Theme studio (More menu, or Settings → Appearance) builds color profiles that restyle every window of the app. Changes preview live in all open windows while you edit.
 
-If a colour profile from the Theme studio ever makes the windows hard to use, choose **Use the default theme** from the tray menu, or start the app with `--reset-theme`. The profile stays in the Theme studio's list.
+- Colors: one for each window layer (window, header and sidebar, panels, cards, fields, menus), for text and secondary text, the accent, and each status color. An HSV picker with a hue ring, a saturation/brightness triangle, and hex and H/S/V fields
+- Outlines: separate color and width for the window, layers and controls, an optional neon glow, and corner roundness
+- Glass: panel and header opacity, background blur, background glows, and a flat mode with no highlights or shadows
+- Fonts: the interface font and the number font, picked from the fonts installed on your computer or from an imported font file, with a size scale
+- Panel art: a `.png` or `.svg` picture behind the window, header, sidebar, download list, details panel, status bar and dialogs. Each can cover, fit, stretch, tile or take a custom size, be dragged into position, and be tinted with the panel's color
+- Buttons: your own pictures for 16 toolbar and menu buttons, and background skins for ordinary and primary buttons
+- Presets to start from: all black, all white, high contrast dark and light, and black or white with neon outlines
+- Profiles export to a single `.odmtheme` file that carries its pictures and fonts, and import from one. An imported profile is checked field by field before it is used, and can't replace status icons or make one action look like another
+- Text and status colors that can't be read against one of the profile's backgrounds are shown in black or white instead, and the studio tells you
+- A title bar drawn by the app, so the profile reaches the window frame too (Settings → Appearance; macOS keeps its own title bar)
+
+If a profile ever makes the windows hard to use, choose **Use the default theme** from the tray menu, or start the app with `--reset-theme`. The profile stays in the Theme studio's list.
+
+The native-toolkit apps have everything under Engine, App and Browser extension except the list density; they don't have the Theme studio or the custom title bar. The Plasma app follows the desktop's color scheme.
 
 ## Not supported yet
 

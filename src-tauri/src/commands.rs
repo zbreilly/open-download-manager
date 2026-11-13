@@ -650,7 +650,9 @@ pub async fn app_info(app: AppHandle) -> R<Value> {
 
 #[tauri::command]
 pub async fn kv_get(st: State<'_, AppState>, key: String) -> R<Option<String>> {
-    Ok(st.mgr.kv_get(&format!("ui.{key}")))
+    // a read error is an error, not "nothing stored": the windows decide
+    // what to delete or overwrite from what they read here
+    st.mgr.kv_read(&format!("ui.{key}")).map_err(err)
 }
 
 #[tauri::command]

@@ -553,7 +553,8 @@ fn dispatch(cx: &Cx, m: &str, a: Value) -> Result<Value, String> {
                 .map(String::from)
                 .collect::<Vec<_>>())
         }
-        "kv_get" => ok(mgr.kv_get(&format!("ui.{}", arg::<String>(&a, "key")?))),
+        // a read error is an error, not "nothing stored"
+        "kv_get" => ok(mgr.kv_read(&format!("ui.{}", arg::<String>(&a, "key")?)).map_err(|e| e.to_string())?),
         "kv_set" => {
             mgr.kv_set(&format!("ui.{}", arg::<String>(&a, "key")?), &arg::<String>(&a, "value")?);
             done()

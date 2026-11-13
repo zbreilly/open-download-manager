@@ -542,6 +542,13 @@ impl Manager {
         self.inner.store.get_kv(key)
     }
 
+    /// Like [`kv_get`](Self::kv_get), but a database error is reported
+    /// instead of looking like "nothing stored". For the front ends' own
+    /// key-value reads: they decide what to delete or overwrite from them.
+    pub fn kv_read(&self, key: &str) -> Result<Option<String>, CoreError> {
+        self.inner.store.try_get_kv(key).map_err(|e| CoreError::Other(format!("database: {e}")))
+    }
+
     pub fn kv_set(&self, key: &str, value: &str) {
         self.inner.store.set_kv(key, value)
     }

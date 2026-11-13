@@ -223,15 +223,24 @@ impl Store {
         log_err("delete queue", self.conn.lock().execute("DELETE FROM queues WHERE id = ?1", params![id]));
     }
 
-    pub fn get_kv(&self, key: &str) -> Option<String> {
+    /// The value stored under `key`; `Ok(None)` when there is none. An
+    /// error means the database could not be read, which callers that would
+    /// act on "nothing stored" (deleting, overwriting) must not mistake for it.
+    pub fn try_get_kv(&self, key: &str) -> rusqlite::Result<Option<String>> {
         match self.conn.lock().query_row("SELECT value FROM kv WHERE key = ?1", params![key], |r| r.get(0)) {
-            Ok(v) => Some(v),
-            Err(rusqlite::Error::QueryReturnedNoRows) => None,
-            Err(e) => {
-                tracing::error!("database: read {key}: {e}");
-                None
-            }
+            Ok(v) => Ok(Some(v)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e),
         }
+    }
+
+    /// Like [`try_get_kv`](Self::try_get_kv), with a read error logged and
+    /// treated as "nothing stored".
+    pub fn get_kv(&self, key: &str) -> Option<String> {
+        self.try_get_kv(key).unwrap_or_else(|e| {
+            tracing::error!("database: read {key}: {e}");
+            None
+        })
     }
 
     pub fn set_kv(&self, key: &str, value: &str) {

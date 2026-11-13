@@ -355,9 +355,11 @@ export const newProfileId = () => newId('p');
 // uses (an import that was never saved, a picture that was replaced) can be
 // found and removed instead of staying in the database for good.
 const ASSET_INDEX = 'theme_assets';
+/** The listed file ids. Throws if the database cannot be read: that is not an empty list. */
 async function readIndex(): Promise<string[]> {
+  const raw = await api.kvGet(ASSET_INDEX);
   try {
-    const list = JSON.parse((await api.kvGet(ASSET_INDEX)) || '[]');
+    const list = JSON.parse(raw || '[]');
     return Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string' && ID_RE.test(x)) : [];
   } catch {
     return [];
@@ -379,8 +381,15 @@ export async function putAsset(dataUrl: string): Promise<string> {
  * Remove every stored file that is not in `keep`. Call only when nothing
  * unsaved can refer to a file: right after saving, or before the Theme
  * studio has any draft.
+ *
+ * Does nothing unless the saved profiles were read in full
+ * (`themeState.complete`): `keep` is built from them, and a list that is
+ * short because the database could not be read, or because an entry was
+ * not understood, would otherwise get the files of the missing profiles
+ * deleted.
  */
 export async function collectAssets(keep: Iterable<string>) {
+  if (!themeState.complete) return;
   const wanted = new Set(keep);
   const listed = await readIndex();
   await dropAssets(listed.filter((id) => !wanted.has(id)));
@@ -409,6 +418,10 @@ export const themeState = $state({
   icons: {} as Record<string, { url: string; tint: boolean }>,
   profiles: [] as ThemeProfile[],
   activeId: '',
+  /** `profiles` is everything that is saved: the list was read and every entry understood. */
+  complete: false,
+  /** The saved profiles could not be read at all (a database error). */
+  unreadable: false,
 });
 
 const STYLE_ID = 'odm-theme';
@@ -531,14 +544,32 @@ export async function applyProfile(p: ThemeProfile | null) {
 export const findProfile = (id: string): ThemeProfile | null =>
   BUILTIN.find((b) => b.id === id) ?? themeState.profiles.find((x) => x.id === id) ?? null;
 
-async function readSaved() {
-  const [rawList, active] = await Promise.all([api.kvGet('theme_profiles').catch(() => null), api.kvGet('theme_active').catch(() => null)]);
-  let list: ThemeProfile[] = [];
+/**
+ * What a stored `theme_profiles` value holds. `complete` is false when the
+ * value is not a list or an entry in it was not understood (and dropped).
+ */
+export function parseProfiles(raw: string | null): { list: ThemeProfile[]; complete: boolean } {
+  if (!raw) return { list: [], complete: true }; // nothing saved yet
   try {
-    const arr = JSON.parse(rawList || '[]');
-    if (Array.isArray(arr)) list = arr.map(sanitizeProfile).filter((x): x is ThemeProfile => !!x);
-  } catch {}
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return { list: [], complete: false };
+    const list = arr.map(sanitizeProfile).filter((x): x is ThemeProfile => !!x);
+    return { list, complete: list.length === arr.length };
+  } catch {
+    return { list: [], complete: false };
+  }
+}
+
+async function readSaved() {
+  let unreadable = false;
+  const [rawList, active] = await Promise.all([
+    api.kvGet('theme_profiles').catch(() => { unreadable = true; return null; }),
+    api.kvGet('theme_active').catch(() => null),
+  ]);
+  const { list, complete } = parseProfiles(rawList);
   themeState.profiles = list;
+  themeState.unreadable = unreadable;
+  themeState.complete = complete && !unreadable;
   themeState.activeId = active && findProfile(active) ? active : '';
 }
 
@@ -568,6 +599,9 @@ export function previewEverywhere(p: ThemeProfile | null) {
 
 /** Save the user's profiles and choose the one in use; every window follows. */
 export async function saveThemes(profiles: ThemeProfile[], activeId: string) {
+  // the studio starts from what was read: saving after a failed read would
+  // replace every saved profile with an empty list
+  if (themeState.unreadable) throw new Error('Your saved themes could not be read, so nothing was saved. Close the Theme studio and open it again.');
   const clean = profiles.filter((p) => !p.builtin);
   const keep = new Set(clean.flatMap(assetIds));
   const gone = themeState.profiles.flatMap(assetIds).filter((id) => !keep.has(id));

@@ -510,7 +510,7 @@
         cols = restored;
         if (saved.sort) sort = saved.sort;
       } catch {}
-    });
+    }).catch(() => {}); // unreadable: the default columns stay
     // The backend re-emits the countdown every second: each event only
     // updates the one banner (never stacks), keyed by its token.
     const applyPower = (p: PowerCountdown | null) => {

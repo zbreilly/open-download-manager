@@ -400,6 +400,12 @@
               <div class="t"><div class="tt">List density</div><div class="d">Row height in the download list.</div></div>
               <Segmented label="List density" bind:value={s.density} options={[{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]} />
             </div>
+            {#if !isMac}
+              <div class="rowc card">
+                <div class="t"><div class="tt">Title bar</div><div class="d">{s.titleBar === 'native' ? 'Windows are framed by the operating system; colour profiles do not reach the title bar.' : 'The app draws its own title bar, so it follows your theme and colour profile.'}</div></div>
+                <Segmented label="Title bar" bind:value={s.titleBar} options={[{ value: 'custom', label: 'Custom' }, { value: 'native', label: 'Native' }]} />
+              </div>
+            {/if}
             <div class="rowc card">
               <div class="t"><div class="tt">Toolbar buttons</div><div class="d">{s.toolbarLabels === 'always' ? 'Every button shows its icon and name.' : s.toolbarLabels === 'icons' ? 'Icons only. Hold the pointer over a button for its name.' : 'Icons only; a button opens to show its name while the pointer is on it.'}</div></div>
               <Segmented label="Toolbar buttons" bind:value={s.toolbarLabels} options={[{ value: 'hover', label: 'Expand on hover' }, { value: 'always', label: 'Always full size' }, { value: 'icons', label: 'Always collapsed' }]} />

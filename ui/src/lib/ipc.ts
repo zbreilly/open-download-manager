@@ -83,6 +83,8 @@ export interface Settings {
   theme: string; density: string; traySpeed: boolean;
   /** Main toolbar buttons: 'hover' (icons that open on hover), 'always' (full size) or 'icons' (always collapsed). */
   toolbarLabels: 'hover' | 'always' | 'icons';
+  /** Window title bars: 'custom' (drawn by the app) or 'native' (the operating system's). */
+  titleBar: 'custom' | 'native';
   userAgent: string; maxRetries: number; retryDelaySecs: number; timeoutSecs: number; minSegmentKb: number; verifyTls: boolean;
   allowInsecureRedirects: boolean;
 }

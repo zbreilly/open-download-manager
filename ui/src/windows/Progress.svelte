@@ -11,6 +11,7 @@
   import { store, initStore, byId } from '../lib/store.svelte';
   import * as f from '../lib/format';
   import { toast } from '../components/Toast.svelte';
+  import { frame } from '../lib/frame.svelte';
 
   let { id }: { id: string } = $props();
   const win = getCurrentWindow();
@@ -27,7 +28,8 @@
 
   $effect(() => {
     if (!d) return;
-    win.setTitle(`${pct}% ${d.fileName}`).catch(() => {});
+    frame.title = `${pct}% ${d.fileName}`;
+    win.setTitle(frame.title).catch(() => {});
     const complete = d.status === 'complete';
     if (wasComplete === false && complete) closeIn = 5;
     wasComplete = complete;

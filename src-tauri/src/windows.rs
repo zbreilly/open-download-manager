@@ -26,6 +26,13 @@ pub fn spec(view: &str) -> ViewSpec {
     }
 }
 
+/// Do windows keep the operating system's title bar and frame? macOS
+/// always does; elsewhere the app draws its own unless the user chose
+/// "native" (Settings > Appearance > Title bar).
+pub fn native_frame(title_bar: &str) -> bool {
+    cfg!(target_os = "macos") || title_bar == "native"
+}
+
 pub fn theme_param(app: &AppHandle) -> String {
     app.state::<AppState>().mgr.settings().theme
 }
@@ -74,7 +81,9 @@ pub fn open(app: &AppHandle, view: &str, key: Option<&str>, params: Option<serde
         state.pending.lock().insert(token.clone(), p);
     }
     let theme = theme_param(app);
-    let mut url = format!("index.html?view={view}&theme={theme}&t={token}");
+    let native = native_frame(&state.mgr.settings().title_bar);
+    let frame = if native { "native" } else { "custom" };
+    let mut url = format!("index.html?view={view}&theme={theme}&frame={frame}&t={token}");
     if let Some(k) = key {
         url.push_str(&format!("&id={}", url_escape(k)));
     }
@@ -84,6 +93,7 @@ pub fn open(app: &AppHandle, view: &str, key: Option<&str>, params: Option<serde
         .inner_size(s.w, s.h)
         .min_inner_size(s.min_w, s.min_h)
         .resizable(s.resizable)
+        .decorations(native)
         .background_color(bg_for(&theme))
         // HTML5 drag & drop (rows -> queues, links dropped from a browser)
         .disable_drag_drop_handler()
@@ -142,6 +152,14 @@ fn sanitize_label(s: &str) -> String {
 
 fn url_escape(s: &str) -> String {
     url::form_urlencoded::byte_serialize(s.as_bytes()).collect()
+}
+
+/// Switch every open window between the native and the app-drawn frame.
+pub fn reframe_all(app: &AppHandle, title_bar: &str) {
+    let native = native_frame(title_bar);
+    for (_, w) in app.webview_windows() {
+        let _ = w.set_decorations(native);
+    }
 }
 
 /// Apply a theme change to every open window.

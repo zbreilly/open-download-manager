@@ -371,6 +371,9 @@ pub struct Settings {
     /// main toolbar buttons: "hover" (icons that open on hover),
     /// "always" (full size) or "icons" (always collapsed)
     pub toolbar_labels: String,
+    /// window title bars: "custom" (drawn by the app, follows the colour
+    /// profile) or "native" (the operating system's)
+    pub title_bar: String,
     // Advanced
     pub user_agent: String,
     pub max_retries: u32,
@@ -484,6 +487,7 @@ impl Default for Settings {
             density: "comfortable".into(),
             tray_speed: false,
             toolbar_labels: "hover".into(),
+            title_bar: "custom".into(),
             user_agent: DEFAULT_UA.into(),
             max_retries: 10,
             retry_delay_secs: 3,

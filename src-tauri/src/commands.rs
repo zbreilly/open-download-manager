@@ -298,6 +298,10 @@ pub async fn save_settings(app: AppHandle, st: State<'_, AppState>, settings: Se
     if old.theme != settings.theme {
         windows::retheme_all(&app, &settings.theme);
     }
+    if old.title_bar != settings.title_bar {
+        let (a, title_bar) = (app.clone(), settings.title_bar.clone());
+        let _ = app.run_on_main_thread(move || windows::reframe_all(&a, &title_bar));
+    }
     match autostart_err {
         Some(e) => Err(format!("Couldn't change launch at login: {e}")),
         None => Ok(()),

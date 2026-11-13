@@ -4,7 +4,7 @@
   import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
-  import { api, errText, on, type Download, type PowerCountdown } from '../lib/ipc';
+  import { api, errText, on, type Download, type PowerCountdown, type Settings } from '../lib/ipc';
   import { store, initStore, byId, selection } from '../lib/store.svelte';
   import * as f from '../lib/format';
   import { modKey, isMac } from '../lib/theme';
@@ -15,6 +15,8 @@
   import ContextMenu, { type MenuItem } from '../components/ContextMenu.svelte';
   import Modal from '../components/Modal.svelte';
   import { toast } from '../components/Toast.svelte';
+  import WindowControls from '../components/WindowControls.svelte';
+  import { frame } from '../lib/frame.svelte';
 
   type Filter = { kind: 'lib' | 'cat' | 'queue'; id: string };
   let filter = $state<Filter>({ kind: 'lib', id: 'all' });
@@ -546,13 +548,20 @@
   });
   /** Toolbar labels: 'hover' (icons that open on hover), 'always', or 'icons'. */
   const labelMode = $derived(store.settings?.toolbarLabels ?? 'hover');
+  /** Switch every window between the app-drawn and the native title bar. */
+  function toggleFrame() {
+    const s = store.settings;
+    if (!s) return;
+    act(() => api.saveSettings({ ...($state.snapshot(s) as Settings), titleBar: frame.custom ? 'native' : 'custom' }));
+  }
   const powerLabel = (a: string) => (a === 'sleep' ? 'Sleeping' : a === 'shutdown' ? 'Shutting down' : 'Exiting');
 </script>
 
 <svelte:window onkeydown={onKey} ondragover={winDragOver} ondragleave={(e) => { if (!e.relatedTarget) dropOver = false; }} ondrop={winDrop} />
 
 <div class="app" class:drop={dropOver}>
-  <header class="head glass-chrome art-head">
+  <!-- with the app-drawn frame the header is the title bar: drag it to move the window -->
+  <header class="head glass-chrome art-head" class:frameless={frame.custom} data-tauri-drag-region={frame.custom ? true : undefined}>
     <div class="brand">
       <span class="logo"><Icon name="odm-mark" size={19} stroke={2.6} /></span>
       <span>Open Download Manager</span>
@@ -567,6 +576,7 @@
       <span class="muted">Total</span>
       <span class="spd"><Icon name="download" size={13} stroke={2.4} />{f.speed(store.totals?.speedBps)}</span>
     </div>
+    {#if frame.custom}<WindowControls />{/if}
   </header>
 
   {#if power}
@@ -633,6 +643,13 @@
           <Icon name="speed-limit" size={16} /><span class="lbl">{limitOn ? `Limit ${limitMB} MB/s` : 'No limit'}</span>
         </button>
         <span class="push"></span>
+        {#if !isMac}
+          <button class="btn tb c-violet" aria-pressed={frame.custom} onclick={toggleFrame}
+            title="{frame.custom ? 'Custom title bar' : 'Native title bar'} · click to switch">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none"><path d="M4 5h16v14H4z" /><path d="M4 9.5h16" /><path d="M16.5 7.2h.01" /></svg>
+            <span class="lbl">{frame.custom ? 'Custom title bar' : 'Native title bar'}</span>
+          </button>
+        {/if}
         <button class="btn tb icon" aria-label="More" title="More" onclick={moreMenu}><Icon name="more" size={16} /></button>
         <button class="btn tb icon c-blue" aria-label="Options" title="Settings ({modKey},)" onclick={() => act(() => api.openWindow('settings'))}><Icon name="options" size={16} /></button>
       </div>
@@ -802,6 +819,9 @@
   .app { height: 100%; display: flex; flex-direction: column; }
   .app.drop { outline: 2px dashed var(--accent); outline-offset: -6px; }
   .head { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: var(--outline-w, 1px) solid var(--glass-border); box-shadow: inset 0 1px 0 var(--glass-hi), var(--outline-neon, 0 0 0 transparent); flex: none; position: relative; z-index: 3; }
+  /* app-drawn frame: window buttons sit flush in the corner, and the brand and total let drags through to the header */
+  .head.frameless { padding: 0 0 0 16px; min-height: 54px; }
+  .head.frameless .brand, .head.frameless .total { pointer-events: none; }
   .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: var(--fs-lg); white-space: nowrap; }
   .logo { width: 28px; height: 28px; border-radius: 8px; background: linear-gradient(140deg, var(--accent-hi), var(--violet)); color: #fff; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 12px var(--accent-glow); }
   .search { flex: 1 1 280px; max-width: 460px; display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 34px; border-radius: var(--r-md); background: var(--surface-sunken); border: 1px solid var(--border); color: var(--text-muted); transition: border-color var(--motion), box-shadow var(--motion); }

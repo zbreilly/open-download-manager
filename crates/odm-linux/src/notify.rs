@@ -22,6 +22,14 @@ struct Server {
     conn: Connection,
     state: Mutex<State>,
     actions: bool,
+    /// the server reads the body as markup (`<b>`, `<a href>`, `<img>`)
+    markup: bool,
+}
+
+/// `text` for a body the server reads as markup: shown as written, never
+/// as tags. File names and error messages come from servers.
+fn escape(text: &str) -> String {
+    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 /// One connection and one signal listener for the life of the process.
@@ -35,7 +43,8 @@ fn server() -> Option<&'static Server> {
                 .ok()
                 .and_then(|r| r.body().deserialize().ok())
                 .unwrap_or_default();
-            let s = Server { conn, state: Mutex::new(State::default()), actions: caps.iter().any(|c| c == "actions") };
+            let has = |name: &str| caps.iter().any(|c| c == name);
+            let s = Server { conn, state: Mutex::new(State::default()), actions: has("actions"), markup: has("body-markup") };
             std::thread::Builder::new().name("odm-notify".into()).spawn(listen).ok()?;
             Some(s)
         })
@@ -85,6 +94,7 @@ pub fn show(id: &str, title: &str, body: &str, actions: &[(&str, &str)], on_acti
             list.extend(["default", "Open"]);
             list.extend(actions.iter().map(String::as_str));
         }
+        let body = if s.markup { escape(&body) } else { body };
         let mut hints: HashMap<&str, Value> = HashMap::new();
         hints.insert("desktop-entry", Value::from(crate::APP_ID));
         let sent = s.conn.call_method(
@@ -99,4 +109,12 @@ pub fn show(id: &str, title: &str, body: &str, actions: &[(&str, &str)], on_acti
         st.by_key.insert(id, nid);
         st.callbacks.insert(nid, Box::new(on_action));
     });
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn body_text_is_never_markup() {
+        assert_eq!(super::escape("<img src=\"http://x/\"> a&b"), "&lt;img src=\"http://x/\"&gt; a&amp;b");
+    }
 }

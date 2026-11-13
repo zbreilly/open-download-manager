@@ -277,11 +277,58 @@ export const BUILTIN: ThemeProfile[] = [
 // Profiles come from disk and from imported files: nothing in one is trusted.
 // Every value that ends up in CSS is checked against a strict shape.
 
-const ASSET_RE = /^data:(image\/png|image\/svg\+xml|font\/(ttf|otf|woff2?)|application\/(x-font-(ttf|otf|woff)|font-(sfnt|woff2?)|octet-stream));base64,[A-Za-z0-9+/]+=*$/;
+// A stored file is a PNG the app wrote itself, or a font (see `cleanAsset`).
+const ASSET_RE = /^data:(image\/png|font\/(ttf|otf|woff2?));base64,[A-Za-z0-9+/]+=*$/;
 export const isAssetUrl = (s: unknown): s is string => typeof s === 'string' && s.length <= MAX_ASSET && ASSET_RE.test(s);
 export const isImageUrl = (s: unknown): s is string => isAssetUrl(s) && s.startsWith('data:image/');
-/** Largest imported file, as a data: URL (about 6 MB of file). */
-export const MAX_ASSET = 8_400_000;
+/** Largest stored file, as a data: URL (a rebuilt picture can be larger than the file it came from). */
+export const MAX_ASSET = 15_000_000;
+/** Largest file that can be imported, in bytes. */
+export const MAX_IMPORT = 6 * 1024 * 1024;
+/** Longest side an SVG is drawn at when it is turned into a picture. */
+const SVG_SIDE = 2048;
+
+/**
+ * Draw an SVG the user picked and return it as a PNG. An SVG is a document
+ * (it can carry scripts, links and other documents), so one is never kept
+ * or shared: only the picture it draws is.
+ */
+async function rasterizeSvg(dataUrl: string): Promise<string> {
+  const img = new Image();
+  img.src = dataUrl;
+  try { await img.decode(); } catch { throw new Error('That SVG could not be read'); }
+  const w = img.naturalWidth, h = img.naturalHeight;
+  if (!w || !h) throw new Error('That SVG has no size; give it a width and height');
+  // small drawings (icons) are drawn larger so they stay sharp
+  const scale = Math.min(SVG_SIDE / Math.max(w, h), Math.max(1, 1024 / Math.max(w, h)));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(w * scale));
+  canvas.height = Math.max(1, Math.round(h * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('That SVG could not be read');
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  // throws if the drawing pulled in anything the page may not read
+  try { return canvas.toDataURL('image/png'); } catch { throw new Error('That SVG cannot be used: it embeds other content'); }
+}
+
+/**
+ * A file in the form the app keeps. Every picture is decoded and written
+ * out again by the app (`clean_theme_asset`), so what is stored, drawn and
+ * exported holds the pixels and nothing else the file carried. `svg`: also
+ * take an SVG (a file the user picked), as the picture it draws.
+ */
+export async function cleanAsset(dataUrl: unknown, svg = false): Promise<string> {
+  const unsupported = 'That file type is not supported, or the file is too large';
+  if (typeof dataUrl !== 'string' || dataUrl.length > MAX_ASSET) throw new Error(unsupported);
+  let url = dataUrl;
+  if (/^data:image\/svg\+xml;base64,/.test(url)) {
+    if (!svg) throw new Error(unsupported);
+    url = await rasterizeSvg(url);
+  }
+  const clean = await api.cleanThemeAsset(url);
+  if (!isAssetUrl(clean)) throw new Error(unsupported);
+  return clean;
+}
 const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 const ICON_SLOTS = new Set<string>(BUTTON_SLOTS.map((b) => b.icon));
 // a font family name goes into CSS inside double quotes: anything that could end the string or the rule is out
@@ -366,14 +413,14 @@ async function readIndex(): Promise<string[]> {
   }
 }
 
-/** Store an imported file; returns its asset id. */
-export async function putAsset(dataUrl: string): Promise<string> {
-  if (!isAssetUrl(dataUrl)) throw new Error('That file type is not supported, or the file is too large');
+/** Store an imported file (cleaned first, see `cleanAsset`); returns its asset id. */
+export async function putAsset(dataUrl: unknown, svg = false): Promise<string> {
+  const clean = await cleanAsset(dataUrl, svg);
   const id = newId('a');
   // listed before it is stored: a file can be listed and missing, never stored and unlisted
   await api.kvSet(ASSET_INDEX, JSON.stringify([...(await readIndex()), id]));
-  assets.set(id, dataUrl);
-  await api.kvSet(`theme_asset.${id}`, dataUrl);
+  assets.set(id, clean);
+  await api.kvSet(`theme_asset.${id}`, clean);
   return id;
 }
 
@@ -400,7 +447,13 @@ export const assetUrl = (id: string | undefined) => (id ? assets.get(id) : undef
 async function loadAssets(ids: string[]) {
   await Promise.all(ids.filter((id) => !assets.has(id)).map(async (id) => {
     const v = await api.kvGet(`theme_asset.${id}`).catch(() => null);
-    if (isAssetUrl(v)) assets.set(id, v);
+    if (isAssetUrl(v)) { assets.set(id, v); return; }
+    if (!v) return;
+    // stored by a version that kept files as they were picked: clean it now, once
+    const clean = await cleanAsset(v, true).catch(() => null);
+    if (!clean) return;
+    assets.set(id, clean);
+    await api.kvSet(`theme_asset.${id}`, clean).catch(() => {});
   }));
 }
 /** Free the stored copies of assets no saved profile uses any more. */
@@ -639,8 +692,9 @@ export async function importTheme(text: string): Promise<ThemeProfile> {
   // store each referenced file under a fresh id; drop references to missing or invalid ones
   const map = new Map<string, string>();
   for (const id of assetIds(p)) {
-    const u = file.assets?.[id];
-    if (isAssetUrl(u)) map.set(id, await putAsset(u));
+    // a file that is not a picture or a font is dropped, not the whole theme
+    const stored = await putAsset(file.assets?.[id]).catch(() => null);
+    if (stored) map.set(id, stored);
   }
   const re = (id?: string) => (id ? map.get(id) : undefined);
   p.fonts.uiAsset = re(p.fonts.uiAsset);

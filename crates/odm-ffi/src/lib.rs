@@ -178,6 +178,11 @@ fn start_with(dir: std::path::PathBuf, sink: Option<Sink>) -> Result<(), (i32, S
         .thread_name("odm-engine")
         .build()
         .map_err(|e| (-3, format!("runtime: {e}")))?;
+    // before the database is opened: what is stored from here on is sealed
+    // with the keystore's key (not under test: tests have no keystore)
+    if !cfg!(feature = "test-hooks") && odm_core::secret::keystore_wanted() {
+        odm_core::secret::use_keystore();
+    }
     let mgr = rt.block_on(async { Manager::open(&dir.join("odm.db")) }).map_err(|e| (-4, e.to_string()))?;
     let core = Core {
         rt,

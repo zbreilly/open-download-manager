@@ -5,6 +5,7 @@ mod bridge;
 mod commands;
 mod power;
 mod state;
+mod theme_asset;
 mod tray;
 mod windows;
 
@@ -337,6 +338,11 @@ pub fn run() {
             let handle = app.handle().clone();
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
+            // before the database is opened: what is stored from here on is
+            // sealed with the keystore's key
+            if odm_core::secret::keystore_wanted() {
+                odm_core::secret::use_keystore();
+            }
             let engine = Engine::open(&data_dir.join("odm.db")).map_err(|e| e.to_string())?;
             app.manage(AppState::new(engine.clone()));
 
@@ -455,6 +461,7 @@ pub fn run() {
             commands::read_url_list,
             commands::write_theme_file,
             commands::list_fonts,
+            commands::clean_theme_asset,
             commands::app_info,
             commands::kv_get,
             commands::kv_set,

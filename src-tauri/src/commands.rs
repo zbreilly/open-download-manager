@@ -625,6 +625,16 @@ pub async fn write_theme_file(path: String, contents: String) -> R<()> {
     std::fs::write(p, contents).map_err(err)
 }
 
+/// A picture or font for a colour profile, in the form the app keeps (see
+/// `theme_asset`): a picture is decoded and written out again, so nothing
+/// but its pixels is left of the file. The Theme studio passes every file
+/// through here, whether the user picked it or it came inside a shared
+/// profile, before it is stored or drawn.
+#[tauri::command]
+pub async fn clean_theme_asset(data_url: String) -> R<String> {
+    tauri::async_runtime::spawn_blocking(move || crate::theme_asset::clean(&data_url)).await.map_err(err)?
+}
+
 #[tauri::command]
 pub async fn read_url_list(path: String) -> R<Vec<String>> {
     let text = std::fs::read_to_string(absolute(&path)?).map_err(err)?;

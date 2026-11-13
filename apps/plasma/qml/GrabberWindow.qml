@@ -9,6 +9,11 @@ import org.opendm.app
 QQC2.ApplicationWindow {
     id: win
 
+    // An inline message draws tags in its text; ours is always plain text.
+    function plain(t) {
+        return "<span>" + String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>") + "</span>"
+    }
+
     // a list of links to show instead of scanning a page
     property var links: null
     property var s: vm.state.length > 0 ? JSON.parse(vm.state) : null
@@ -133,7 +138,7 @@ QQC2.ApplicationWindow {
             Layout.fillWidth: true
             type: Kirigami.MessageType.Error
             visible: win.s !== null && win.s.error.length > 0
-            text: win.s ? win.s.error : ""
+            text: win.s ? win.plain(win.s.error) : ""
         }
 
         RowLayout {

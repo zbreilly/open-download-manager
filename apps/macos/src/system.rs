@@ -21,8 +21,14 @@ use std::path::{Path, PathBuf};
 pub fn record_failure(message: &str) {
     eprintln!("Open Download Manager: {message}");
     let dir = crate::engine::data_dir();
-    let _ = std::fs::create_dir_all(&dir);
-    let _ = std::fs::write(dir.join("startup-error.log"), format!("{message}\n"));
+    use std::io::Write;
+    use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
+    // private to the user, like the rest of the data folder
+    let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(&dir);
+    let log = std::fs::OpenOptions::new().write(true).create(true).truncate(true).mode(0o600).open(dir.join("startup-error.log"));
+    if let Ok(mut log) = log {
+        let _ = writeln!(log, "{message}");
+    }
 }
 
 /// Running from an app bundle (notifications and the login item need one).

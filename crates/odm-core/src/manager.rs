@@ -141,9 +141,19 @@ fn load_pairing_key(store: &Store) -> ([u8; pairing::KEY_LEN], bool) {
         return (k, true);
     }
     if let Some(k) = store.get_secret(PAIRING_KEY).and_then(|t| pairing::parse_key(&t)) {
+        if store.secret_was_plain(PAIRING_KEY) {
+            store.set_secret(PAIRING_KEY, &pairing::key_text(&k));
+        }
         return (k, false);
     }
     let k = pairing::generate_key();
+    if store.secret_unreadable(PAIRING_KEY) {
+        // the stored key is sealed and the keystore did not answer: keep it.
+        // Nothing is paired with this run's key, so the extension waits;
+        // the stored key is back the next time the keystore answers.
+        tracing::warn!("the pairing key could not be read from the keystore: the browser extension cannot connect in this run");
+        return (k, false);
+    }
     store.set_secret(PAIRING_KEY, &pairing::key_text(&k));
     (k, false)
 }

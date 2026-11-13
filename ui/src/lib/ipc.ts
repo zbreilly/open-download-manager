@@ -180,6 +180,12 @@ export const api = {
   listFonts: () => invoke<{ name: string; mono: boolean }[]>('list_fonts'),
   /** Write an exported colour profile; `path` must end in .odmtheme. */
   writeThemeFile: (path: string, contents: string) => invoke<void>('write_theme_file', { path, contents }),
+  /**
+   * A picture or font for a colour profile in the form the app keeps: a
+   * picture is decoded and written out again, so only its pixels are left.
+   * Rejects anything that is not a PNG picture or a font.
+   */
+  cleanThemeAsset: (dataUrl: string) => invoke<string>('clean_theme_asset', { dataUrl }),
   extensionDir: () => invoke<string | null>('extension_dir'),
   assignExtensions: (category: string, extensions: string[]) => invoke<void>('assign_extensions', { category, extensions }),
 };

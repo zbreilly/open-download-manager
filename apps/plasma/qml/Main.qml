@@ -10,6 +10,11 @@ import org.opendm.app
 Kirigami.ApplicationWindow {
     id: root
 
+    // An inline message draws tags in its text; ours is always plain text.
+    function plain(t) {
+        return "<span>" + String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>") + "</span>"
+    }
+
     // what to show, from the view-model
     property var s: vm.state.length > 0 ? JSON.parse(vm.state) : null
     // open secondary windows (kept so they aren't collected)
@@ -117,7 +122,7 @@ Kirigami.ApplicationWindow {
         case "scheduler": openSingle("scheduler", schedulerComponent); break
         case "settings": openSingle("settings", settingsComponent); break
         case "copy": Backend.copy(payload); break
-        case "error": errorMessage.text = payload; errorMessage.visible = true; break
+        case "error": errorMessage.text = root.plain(payload); errorMessage.visible = true; break
         case "quit": quit(); break
         }
     }
@@ -490,7 +495,7 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     type: Kirigami.MessageType.Warning
                     visible: root.s !== null && root.s.power !== null
-                    text: visible ? root.s.power : ""
+                    text: visible ? root.plain(root.s.power) : ""
                     actions: [
                         Kirigami.Action {
                             text: "Cancel"
@@ -502,7 +507,7 @@ Kirigami.ApplicationWindow {
                     Layout.fillWidth: true
                     type: Kirigami.MessageType.Error
                     visible: root.s !== null && root.s.startError.length > 0
-                    text: visible ? "The download engine failed to start: " + root.s.startError : ""
+                    text: visible ? root.plain("The download engine failed to start: " + root.s.startError) : ""
                 }
                 Kirigami.InlineMessage {
                     id: errorMessage

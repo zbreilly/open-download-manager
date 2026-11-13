@@ -3598,6 +3598,7 @@ dependencies = [
  "rusqlite",
  "rustls",
  "scraper",
+ "security-framework",
  "serde",
  "serde_json",
  "sha1",
@@ -3610,6 +3611,7 @@ dependencies = [
  "url",
  "uuid",
  "windows-sys 0.61.2",
+ "zbus",
 ]
 
 [[package]]
@@ -3733,10 +3735,12 @@ version = "0.2.0"
 dependencies = [
  "arboard",
  "axum",
+ "base64 0.22.1",
  "fontdb",
  "libc",
  "odm-core",
  "parking_lot",
+ "png 0.17.16",
  "serde",
  "serde_json",
  "tauri",

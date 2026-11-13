@@ -32,6 +32,9 @@ uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 fontdb = "0.24.0"
+# colour profiles: pictures are decoded and written out again (theme_asset.rs)
+png = "0.17"
+base64 = "0.22"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }

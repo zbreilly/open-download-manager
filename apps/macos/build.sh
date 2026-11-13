@@ -1,14 +1,19 @@
 #!/bin/bash
-# Build the native macOS app: SwiftUI interface + Rust engine (crates/odm-ffi).
+# Build the native macOS app: AppKit interface in Rust (apps/macos/src) on
+# the Rust engine.
 #
 #   apps/macos/build.sh                 # this Mac's CPU, .app only
 #   apps/macos/build.sh --dmg           # also a DMG
 #   apps/macos/build.sh --universal     # Apple silicon + Intel
 #   apps/macos/build.sh --install       # copy to /Applications and open
-#   apps/macos/build.sh --typecheck     # Swift type-check only (fast, no Rust build)
+#   apps/macos/build.sh --swift         # the earlier SwiftUI interface
+#                                       # (apps/macos/Sources), kept until
+#                                       # the Rust one has replaced it
+#   apps/macos/build.sh --typecheck     # type-check that Swift interface only
 #
-# Needs Xcode (or the Command Line Tools) and Rust. With a Developer ID
-# certificate and ODM_NOTARY_PROFILE set, the app (and DMG) are notarized.
+# Needs the Xcode Command Line Tools and Rust (Xcode itself only for
+# --swift). With a Developer ID certificate and ODM_NOTARY_PROFILE set, the
+# app (and DMG) are notarized.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -21,14 +26,15 @@ MIN_OS="13.0"
 VERSION="$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)"
 OUT="dist/macos-native"
 
-UNIVERSAL=0; DMG=0; INSTALL=0; TYPECHECK=0
+UNIVERSAL=0; DMG=0; INSTALL=0; TYPECHECK=0; SWIFT=0
 for a in "$@"; do
   case "$a" in
     --universal) UNIVERSAL=1 ;;
     --dmg) DMG=1 ;;
     --install) INSTALL=1 ;;
     --typecheck) TYPECHECK=1 ;;
-    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
+    --swift) SWIFT=1 ;;
+    -h|--help) sed -n '2,16p' "$0"; exit 0 ;;
     *) echo "unknown option: $a"; exit 2 ;;
   esac
 done
@@ -37,7 +43,9 @@ step() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
 
 [ "$(uname -s)" = "Darwin" ] || die "the native app builds on macOS only"
-command -v swiftc >/dev/null || die "swiftc not found. Install Xcode or run: xcode-select --install"
+if [ "$SWIFT" = 1 ] || [ "$TYPECHECK" = 1 ]; then
+  command -v swiftc >/dev/null || die "swiftc not found. Install Xcode or run: xcode-select --install"
+fi
 SWIFT_SRC=("$HERE"/Sources/*.swift)
 HEADER="crates/odm-ffi/include/odm.h"
 
@@ -62,25 +70,32 @@ export MACOSX_DEPLOYMENT_TARGET="$MIN_OS"
 BINS=()
 for arch in $ARCHS; do
   t="$(rust_target "$arch")"
-  step "Rust engine ($t)"
   rustup target add "$t" >/dev/null 2>&1 || true
-  cargo build --release -p odm-ffi --target "$t"
-  LIBDIR="target/$t/release"
-  [ -f "$LIBDIR/libodm_ffi.a" ] || die "missing $LIBDIR/libodm_ffi.a"
+  if [ "$SWIFT" = 1 ]; then
+    step "Rust engine ($t)"
+    cargo build --release -p odm-ffi --target "$t"
+    LIBDIR="target/$t/release"
+    [ -f "$LIBDIR/libodm_ffi.a" ] || die "missing $LIBDIR/libodm_ffi.a"
 
-  step "Swift interface ($arch)"
-  mkdir -p "$OUT/build/$arch"
-  swiftc -O -parse-as-library -swift-version 5 \
-    -module-name "$EXE" \
-    -target "$arch-apple-macos$MIN_OS" \
-    -import-objc-header "$HEADER" \
-    "${SWIFT_SRC[@]}" \
-    -L "$LIBDIR" -lodm_ffi \
-    -framework AppKit -framework SwiftUI -framework UserNotifications \
-    -framework ServiceManagement -framework UniformTypeIdentifiers \
-    -framework Security -framework SystemConfiguration -framework CoreFoundation \
-    -Xlinker -dead_strip \
-    -o "$OUT/build/$arch/$EXE"
+    step "Swift interface ($arch)"
+    mkdir -p "$OUT/build/$arch"
+    swiftc -O -parse-as-library -swift-version 5 \
+      -module-name "$EXE" \
+      -target "$arch-apple-macos$MIN_OS" \
+      -import-objc-header "$HEADER" \
+      "${SWIFT_SRC[@]}" \
+      -L "$LIBDIR" -lodm_ffi \
+      -framework AppKit -framework SwiftUI -framework UserNotifications \
+      -framework ServiceManagement -framework UniformTypeIdentifiers \
+      -framework Security -framework SystemConfiguration -framework CoreFoundation \
+      -Xlinker -dead_strip \
+      -o "$OUT/build/$arch/$EXE"
+  else
+    step "App ($t)"
+    cargo build --release -p odm-macos --target "$t"
+    mkdir -p "$OUT/build/$arch"
+    cp "target/$t/release/$EXE" "$OUT/build/$arch/$EXE"
+  fi
   BINS+=("$OUT/build/$arch/$EXE")
 done
 

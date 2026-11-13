@@ -1,20 +1,20 @@
 # Open Download Manager
 
-A cross-platform download manager modeled on Internet Download Manager. One Rust engine drives a native app on each platform: SwiftUI on macOS, WinUI 3 on Windows, GTK/libadwaita on GNOME and Kirigami on KDE Plasma.
+A cross-platform download manager modeled on Internet Download Manager. One Rust engine drives a native app on each platform: AppKit on macOS, WinUI 3 on Windows, GTK/libadwaita on GNOME and Kirigami on KDE Plasma.
 
 ## Platforms
 
 | Platform | Interface | Build |
 |---|---|---|
-| macOS 13+ (Apple silicon, Intel) | SwiftUI/AppKit (`apps/macos`) | `scripts/build-macos.sh --install`, or the `macos-native` workflow (DMG) |
+| macOS 13+ (Apple silicon, Intel) | AppKit, written in Rust with [objc2](https://github.com/madsmtm/objc2) (`apps/macos`) | `scripts/build-macos.sh --install`, or the `macos-native` workflow (DMG) |
 | Windows 10/11 (x64, ARM64) | WinUI 3, written in Rust with [windows-reactor](https://github.com/microsoft/windows-rs) (`apps/windows`) | `apps\windows\build.ps1 -Installer`, or the `windows-native` workflow (setup `.exe`) |
 | GNOME and other Linux desktops (x64, ARM64) | GTK 4 + libadwaita, in Rust (`apps/gnome`) | `packaging/linux/build-packages.sh`, or the `linux-native` workflow (`.deb`, `.rpm`) |
 | KDE Plasma 6 (x64, ARM64) | Kirigami / Qt 6, logic in Rust through cxx-qt (`apps/plasma`) | same package as the GNOME interface |
 | Older Linux distributions | Tauri 2 + Svelte webview (`src-tauri`, `ui`) | `linux-webview` workflow (`.deb`, `.rpm`) |
 
-All of them use the same Rust engine (`crates/odm-core`) through one small interface (`crates/odm-ffi`): the macOS app links it as a static library and calls it through C, the Rust apps call it directly. What the Rust front ends have in common and no toolkit owns (the download list fed by engine events, filtering and sorting, the Add form's rules, settings merging, formatting) is in `crates/odm-ui`.
+All of them use the same Rust engine (`crates/odm-core`) through one small interface (`crates/odm-ffi`), which the apps call directly. What the front ends have in common and no toolkit owns (the download list fed by engine events, filtering and sorting, the Add form's rules, settings merging, formatting) is in `crates/odm-ui`.
 
-Apart from the Swift app everything is Rust. The Plasma app's windows are described in QML, because Kirigami has no Rust API; they only draw what their Rust view-models hand them.
+Everything is Rust. The Plasma app's windows are described in QML, because Kirigami has no Rust API; they only draw what their Rust view-models hand them.
 
 ## Build on macOS
 
@@ -24,7 +24,7 @@ cd open-download-manager
 scripts/build-macos.sh --install
 ```
 
-This builds **Open Download Manager.app** and installs it in /Applications. You need Xcode (or the Command Line Tools) and Rust. The app is signed with your Developer ID if one is in your keychain, and ad-hoc signed otherwise.
+This builds **Open Download Manager.app** and installs it in /Applications. You need the Xcode Command Line Tools and Rust. The app is signed with your Developer ID if one is in your keychain, and ad-hoc signed otherwise.
 
 | Option | Effect |
 |---|---|
@@ -133,7 +133,10 @@ cargo test -p odm-ffi --features test-hooks  # the engine's interface
 cargo test -p odm-ui -p odm-linux            # shared front-end logic, Linux services
 cargo clippy -p odm-core -p odm-ffi -p odm-ui -p odm-linux --all-targets -- -D warnings
 cargo clippy -p odm-gnome -p odm-plasma --all-targets -- -D warnings
+cargo clippy -p odm-macos --all-targets -- -D warnings    # on a Mac
 ```
+
+A debug build of the macOS app (`cargo run -p odm-macos`) reads a few variables for trying it without touching the installed copy: `ODM_DATA_DIR=<folder>` keeps its list and settings there, `ODM_PORT=<port>` moves the browser bridge off the port the extension uses, `ODM_OPEN=add,batch,web,grabber,scheduler,settings,progress` opens those windows at startup, and `ODM_SHOTS=<folder>` keeps the app in the background and saves a PNG of each of its windows there every two seconds.
 
 The Windows app can be type-checked from macOS or Linux without the engine, whose C dependencies don't cross-compile:
 
@@ -148,7 +151,7 @@ The webview build still needs its own tools: on Linux `libwebkit2gtk-4.1-dev lib
 
 - **`windows-native`**: builds the Windows app for x64 and ARM64, packs the installer, installs it silently, launches it, opens an `odm://` link through the running instance, and runs a real download through the browser bridge, checked byte for byte.
 - **`linux-native`**: builds and lints both Linux interfaces in Debian 13 and Fedora containers (x64 and ARM64), then installs each package in a clean container, starts it once as KDE and once as GNOME, opens an `odm://` link, and runs the same download check.
-- **`macos-native`**: type-checks and builds the macOS app and DMG, then runs the download check.
+- **`macos-native`**: lints and builds the macOS app and DMG, launches it, opens an `odm://` link, and runs the download check.
 - **`linux-webview`**: builds and tests the fallback webview packages.
 - **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The workflow builds everything and creates a draft release with all of the installers attached.
 
@@ -157,14 +160,15 @@ Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will wa
 ## Layout
 
 ```
-apps/macos/          macOS app (SwiftUI/AppKit), build.sh, Info.plist
+apps/macos/          macOS app (Rust, AppKit through objc2), build.sh, Info.plist; Sources/ holds the earlier
+                     SwiftUI interface (build.sh --swift) until the Rust one has replaced it
 apps/windows/        Windows app (Rust, WinUI 3 through windows-reactor), build.ps1, installer/
 apps/gnome/          GTK 4 + libadwaita app (Rust)
 apps/plasma/         Kirigami app: Rust backend, list model and view-models (src/), QML views (qml/)
 crates/odm-core/     engine: task.rs (segmented downloader), manager.rs (list, queues, scheduler, limits, events),
                      client.rs (HTTP, probe), store.rs (SQLite), grabber.rs, util.rs
 crates/odm-ffi/      the engine's interface: C functions (include/odm.h) and the same contract for Rust (api)
-crates/odm-ui/       front-end logic shared by the Rust apps: store, filtering and sorting, Add form, formatting
+crates/odm-ui/       front-end logic shared by the apps: store, filtering and sorting, Add form, formatting
 crates/odm-linux/    Linux desktop services (single instance, tray, notifications, keep-awake, power, autostart)
                      and the open-download-manager launcher
 packaging/linux/     desktop file, AppStream metadata, build-packages.sh (.deb / .rpm)

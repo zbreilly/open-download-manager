@@ -49,12 +49,7 @@ jobs:
       - name: Toolchain info
         run: |
           xcodebuild -version
-          swiftc --version
-
-      - name: Type-check Swift
-        run: |
           mkdir -p ci-out
-          apps/macos/build.sh --typecheck 2>&1 | tee ci-out/typecheck.log
 
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
         with:
@@ -64,8 +59,11 @@ jobs:
         with:
           shared-key: macos-native
 
-      - name: Engine tests
-        run: cargo test -p odm-core 2>&1 | tee ci-out/test.log
+      - name: Engine and shared front-end tests
+        run: cargo test -p odm-core -p odm-ui 2>&1 | tee ci-out/test.log
+
+      - name: Lint the app
+        run: cargo clippy -p odm-macos --all-targets -- -D warnings 2>&1 | tee ci-out/clippy.log
 
       - name: Build app
         env:

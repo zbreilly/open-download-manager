@@ -7,3 +7,5 @@ extension/dist/
 .DS_Store
 *.odmpart
 /.claude/
+# written by the QML language server; holds a local build path
+.qmlls.ini

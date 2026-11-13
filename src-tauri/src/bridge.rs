@@ -127,7 +127,8 @@ pub fn chrono_now() -> i64 {
 /// Unsealed: says only that the app is here and that pairing is needed.
 async fn ping(h: HeaderMap) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    let hello = json!({ "ok": true, "app": "Open Download Manager", "version": env!("CARGO_PKG_VERSION"), "pairing": "required" });
+    // no version or settings: nothing about this installation before pairing
+    let hello = json!({ "ok": true, "app": "Open Download Manager", "pairing": "required" });
     with_cors(Json(hello).into_response(), origin)
 }
 
@@ -158,7 +159,8 @@ struct AddBody {
     user_agent: Option<String>,
     total_bytes: Option<u64>,
     mime: Option<String>,
-    /// add & start without showing the dialog
+    /// add & start without showing the dialog; honoured in automated runs
+    /// only (see `Manager::automated`), otherwise the dialog is shown
     silent: bool,
 }
 
@@ -209,7 +211,7 @@ fn add(app: &AppHandle, body: Value) -> Result<(), String> {
         let _ = app.run_on_main_thread(move || {
             let _ = windows::open(&a2, "grabber", None, Some(params));
         });
-    } else if b.silent {
+    } else if b.silent && app.state::<AppState>().mgr.automated() {
         let (url, cookies) = links.into_iter().next().unwrap_or_default();
         let mgr = app.state::<AppState>().mgr.clone();
         let req = odm_core::AddRequest {

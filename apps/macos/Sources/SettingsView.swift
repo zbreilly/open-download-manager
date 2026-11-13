@@ -268,6 +268,8 @@ private struct BrowserPane: View {
             let key: String = try Engine.shared.call(new ? "regenerate_bridge_key" : "bridge_key")
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(key, forType: .string)
+            // asks clipboard managers not to keep it in their history
+            NSPasteboard.general.setString("", forType: NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType"))
         } catch {
             store.report(error.localizedDescription)
         }

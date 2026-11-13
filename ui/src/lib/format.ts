@@ -99,8 +99,10 @@ const EXT_TONES: [Tone, string[]][] = [
   ['amber', ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz', 'zst', 'tgz', 'cab']],
   ['blue', ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'epub', 'odt', 'csv', 'md', 'rtf', 'mobi']],
   ['teal', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tif', 'tiff', 'heic', 'avif', 'psd', 'ico']],
-  ['green', ['exe', 'msi', 'dmg', 'pkg', 'deb', 'rpm', 'apk', 'appimage', 'bat', 'sh', 'jar']],
-  ['orange', ['iso', 'img', 'bin', 'vhd', 'vmdk']],
+  // programs are not green: green also means "complete", and a file that
+  // runs code should not look like the safe kind
+  ['orange', ['exe', 'msi', 'dmg', 'pkg', 'deb', 'rpm', 'apk', 'appimage', 'bat', 'sh', 'jar']],
+  ['green', ['iso', 'img', 'bin', 'vhd', 'vmdk']],
 ];
 const EXT_TONE = new Map<string, Tone>(EXT_TONES.flatMap(([t, exts]) => exts.map((e) => [e, t] as [string, Tone])));
 /** Hue for a file type, so the list can be scanned by colour. */
@@ -115,9 +117,9 @@ export function iconTone(icon: string): Tone {
     case 'cat-music': return 'pink';
     case 'cat-documents': return 'blue';
     case 'cat-compressed': return 'amber';
-    case 'cat-programs': return 'green';
+    case 'cat-programs': return 'orange';
     case 'cat-images': return 'teal';
-    case 'file-disc': return 'orange';
+    case 'file-disc': return 'green';
     case 'cat-grabber': return 'teal';
     case 'cat-all': return 'blue';
     case 'cat-active': return 'green';

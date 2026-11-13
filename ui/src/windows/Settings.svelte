@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import { ask, open as openDialog } from '@tauri-apps/plugin-dialog';
-  import { writeText } from '@tauri-apps/plugin-clipboard-manager';
   import Icon from '../lib/Icon.svelte';
   import { ICONS, type IconName } from '../lib/icons';
   import Switch from '../components/Switch.svelte';
@@ -118,8 +117,8 @@
   }
   async function copyKey() {
     try {
-      await writeText(await api.bridgeKey());
-      toast('Pairing key copied — paste it into the extension');
+      await api.copyBridgeKey();
+      toast('Pairing key copied — paste it into the extension within a minute');
     } catch (e) {
       toast(errText(e), 'error');
     }
@@ -128,8 +127,9 @@
     try {
       const yes = await ask('Every browser paired with the current key stops sending downloads to the app until you paste the new key into its extension.', { title: 'Make a new pairing key?', kind: 'warning', okLabel: 'New key', cancelLabel: 'Cancel' });
       if (!yes) return;
-      await writeText(await api.regenerateBridgeKey());
-      toast('New pairing key copied — paste it into the extension');
+      await api.regenerateBridgeKey();
+      await api.copyBridgeKey();
+      toast('New pairing key copied — paste it into the extension within a minute');
     } catch (e) {
       toast(errText(e), 'error');
     }

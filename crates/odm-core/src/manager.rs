@@ -106,6 +106,8 @@ struct Inner {
     clients: RwLock<Clients>,
     /// key shared with the browser extension
     pairing: Arc<Pairing>,
+    /// the pairing key was supplied through the environment
+    automated: bool,
     handle: Mutex<Option<Handle>>,
     shutting_down: AtomicBool,
     background_started: AtomicBool,
@@ -132,17 +134,18 @@ const PAIRING_KEY: &str = "bridge.key";
 pub const PAIRING_KEY_ENV: &str = "ODM_BRIDGE_KEY";
 
 /// The stored pairing key; a new one is created (and stored) the first time.
-fn load_pairing_key(store: &Store) -> [u8; pairing::KEY_LEN] {
+/// The flag says the key came from the environment (an automated run).
+fn load_pairing_key(store: &Store) -> ([u8; pairing::KEY_LEN], bool) {
     if let Some(k) = std::env::var(PAIRING_KEY_ENV).ok().and_then(|t| pairing::parse_key(&t)) {
         tracing::info!("using the pairing key from {PAIRING_KEY_ENV}");
-        return k;
+        return (k, true);
     }
     if let Some(k) = store.get_secret(PAIRING_KEY).and_then(|t| pairing::parse_key(&t)) {
-        return k;
+        return (k, false);
     }
     let k = pairing::generate_key();
     store.set_secret(PAIRING_KEY, &pairing::key_text(&k));
-    k
+    (k, false)
 }
 
 /// Marks a runtime detached when its drive task ends (however it ends).
@@ -210,10 +213,12 @@ impl Manager {
         let clients = client::build_clients(&settings)?;
         let global = Limiter::new(if settings.global_limit_enabled { settings.global_limit_bps } else { 0 });
         let (tx, _) = broadcast::channel(4096);
-        let pairing = Arc::new(Pairing::new(load_pairing_key(&store)));
+        let (key, automated) = load_pairing_key(&store);
+        let pairing = Arc::new(Pairing::new(key));
         Ok(Self {
             inner: Arc::new(Inner {
                 pairing,
+                automated,
                 store,
                 state: Mutex::new(State {
                     entries,
@@ -509,6 +514,14 @@ impl Manager {
     /// The key the browser extension must be paired with (see [`pairing`](crate::pairing)).
     pub fn pairing(&self) -> Arc<Pairing> {
         self.inner.pairing.clone()
+    }
+
+    /// Is this an automated run (started with the pairing key in
+    /// `ODM_BRIDGE_KEY`)? Only then may a bridge request start a download
+    /// without showing the Add dialog: the browser extension never asks for
+    /// that, so in normal use a download always passes through the user.
+    pub fn automated(&self) -> bool {
+        self.inner.automated
     }
 
     /// The pairing key as text, to show in the settings.

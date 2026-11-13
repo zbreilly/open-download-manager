@@ -74,6 +74,8 @@ The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links a
 - Context menus: download a link, media, an image, the links in a selection, or every link on the page
 - Detects audio and video files a page loads and lists them in the popup, and shows a "Download" button over videos
 
+If a colour profile from the Theme studio ever makes the windows hard to use, choose **Use the default theme** from the tray menu, or start the app with `--reset-theme`. The profile stays in the Theme studio's list.
+
 ## Not supported yet
 
 - HLS/DASH streaming manifests (`.m3u8`, `.mpd`). Media detection only lists direct media files

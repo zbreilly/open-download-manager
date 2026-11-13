@@ -31,6 +31,7 @@ url = "2"
 uuid = { version = "1", features = ["v4"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+fontdb = "0.24.0"
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
@@ -39,6 +40,8 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 libc = "0.2"
 
 [target.'cfg(windows)'.dependencies]
+# copying the pairing key without it entering the clipboard history
+arboard = { version = "3", default-features = false }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Power", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading"] }
 
 [features]

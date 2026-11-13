@@ -23,6 +23,18 @@ const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(5);
 /// Arguments of the launch-at-login entry.
 pub(crate) const AUTOSTART_ARGS: &[&str] = &["--minimized"];
 
+/// Command-line flag that returns the app to its built-in look.
+const RESET_THEME_FLAG: &str = "--reset-theme";
+
+/// Stop using the saved colour profile (it stays in the Theme studio's
+/// list). A profile can change every colour, picture and font, so there has
+/// to be a way back that does not depend on the windows being usable: the
+/// tray menu, or starting the app with `--reset-theme`.
+pub(crate) fn reset_theme(app: &AppHandle) {
+    app.state::<AppState>().mgr.kv_set("ui.theme_active", "");
+    let _ = app.emit("theme_changed", ());
+}
+
 /// Stop the bridge, release keep-awake and shut the engine down, waiting
 /// (bounded) for downloads to flush. Runs once; a call made while another
 /// is in progress waits for it to finish.
@@ -303,6 +315,9 @@ pub fn run() {
     #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
     {
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            if argv.iter().any(|a| a == RESET_THEME_FLAG) {
+                reset_theme(app);
+            }
             windows::show_main(app);
             handle_args(app, argv.get(1..).unwrap_or_default());
         }));
@@ -363,6 +378,9 @@ pub fn run() {
             }
 
             let args: Vec<String> = std::env::args().skip(1).collect();
+            if args.iter().any(|a| a == RESET_THEME_FLAG) {
+                reset_theme(&handle);
+            }
             // without a tray icon a minimized start would leave no way back in
             let minimized = args.iter().any(|a| a == "--minimized") && app.state::<AppState>().has_tray();
             if !minimized {
@@ -429,12 +447,14 @@ pub fn run() {
             commands::take_params,
             commands::extension_status,
             commands::bridge_key,
+            commands::copy_bridge_key,
             commands::regenerate_bridge_key,
             commands::cancel_power_action,
             commands::get_power_countdown,
             commands::export_list,
             commands::read_url_list,
             commands::write_theme_file,
+            commands::list_fonts,
             commands::app_info,
             commands::kv_get,
             commands::kv_set,

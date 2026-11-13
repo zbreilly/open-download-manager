@@ -120,7 +120,8 @@ fn capture_info() -> Value {
 /// Unsealed: says only that the app is here and that pairing is needed.
 async fn ping(h: HeaderMap) -> Response {
     let Some(origin) = origin_ok(&h) else { return StatusCode::FORBIDDEN.into_response() };
-    let hello = json!({ "ok": true, "app": "Open Download Manager", "version": env!("CARGO_PKG_VERSION"), "pairing": "required" });
+    // no version or settings: nothing about this installation before pairing
+    let hello = json!({ "ok": true, "app": "Open Download Manager", "pairing": "required" });
     with_cors(Json(hello).into_response(), origin)
 }
 
@@ -151,7 +152,8 @@ struct AddBody {
     user_agent: Option<String>,
     total_bytes: Option<u64>,
     mime: Option<String>,
-    /// add & start without asking
+    /// add & start without asking; honoured in automated runs only (see
+    /// `Manager::automated`), otherwise the Add dialog is shown
     silent: bool,
 }
 
@@ -200,7 +202,7 @@ fn add(body: Value) -> Result<(), String> {
             })
             .collect();
         c.emit("show_links", &json!({ "links": links, "referrer": b.referrer, "userAgent": b.user_agent }));
-    } else if b.silent {
+    } else if b.silent && c.mgr.automated() {
         let (url, cookies) = links.into_iter().next().unwrap_or_default();
         let req = AddRequest {
             url,

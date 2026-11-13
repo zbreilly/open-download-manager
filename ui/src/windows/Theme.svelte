@@ -13,7 +13,7 @@
   import { toast } from '../components/Toast.svelte';
   import { api, errText } from '../lib/ipc';
   import {
-    ART_SLOTS, BUILTIN, BUTTON_SLOTS, COLOR_GROUPS, MAX_ASSET, applyProfile, assetUrl, defaultProfile, exportTheme, importTheme,
+    ART_SLOTS, BUILTIN, BUTTON_SLOTS, COLOR_GROUPS, MAX_ASSET, applyProfile, isFontName, assetIds, assetUrl, collectAssets, defaultProfile, exportTheme, importTheme, legible,
     newProfileId, previewEverywhere, putAsset, sanitizeProfile, saveThemes, themeState,
     type ArtSlot, type ColorKey, type ThemeProfile,
   } from '../lib/themes.svelte';
@@ -27,8 +27,19 @@
     { id: 'art', label: 'Panel art' },
     { id: 'buttons', label: 'Buttons' },
   ];
-  const UI_FONTS = ['IBM Plex Sans', 'Segoe UI', 'Inter', 'Roboto', 'Arial', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Georgia', 'Times New Roman', 'Ubuntu', 'Cantarell'];
-  const MONO_FONTS = ['JetBrains Mono', 'Cascadia Code', 'Consolas', 'Fira Code', 'Source Code Pro', 'Courier New', 'DejaVu Sans Mono'];
+  // Shown until (or unless) the list of installed fonts arrives.
+  const UI_FALLBACK = ['Segoe UI', 'Arial', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Georgia', 'Times New Roman'];
+  const MONO_FALLBACK = ['Cascadia Code', 'Consolas', 'Courier New'];
+  /** Every font family installed on this computer (null: not loaded). */
+  let installed = $state<{ name: string; mono: boolean }[] | null>(null);
+  /** Options for a font field: the bundled font, the installed ones, and whatever the profile names. */
+  function fontOptions(bundled: string, current: string, monoOnly: boolean) {
+    const names = installed
+      ? installed.filter((f) => isFontName(f.name) && (!monoOnly || f.mono)).map((f) => f.name)
+      : monoOnly ? MONO_FALLBACK : UI_FALLBACK;
+    const seen = new Set<string>();
+    return [bundled, ...names, current].filter((n) => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase()));
+  }
 
   const osBase = (): 'dark' | 'light' => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
   const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x));
@@ -44,12 +55,19 @@
   let ready = $state(false);
   let busy = $state(false);
   let assetTick = $state(0);
+  const uiFonts = $derived(fontOptions('IBM Plex Sans', draft.fonts.ui, false));
+  const monoFonts = $derived(fontOptions('JetBrains Mono', draft.fonts.mono, true));
+  /** Number font: fixed-width fonts only, unless the user asks for all. */
+  let allForNumbers = $state(false);
+  const numberFonts = $derived(allForNumbers ? fontOptions('JetBrains Mono', draft.fonts.mono, false) : monoFonts);
 
   const isDefault = $derived(draft.builtin === true && draft.id === 'default');
   const choice = $derived(isDefault ? '' : draft.id);
   const dirty = $derived(JSON.stringify(custom) !== savedJson || choice !== savedActive);
   const selLabel = $derived(COLOR_GROUPS.flatMap((g) => g.keys).find((k) => k.key === sel)?.label ?? '');
   const palette = $derived([...new Set(Object.values(draft.colors))].slice(0, 24));
+  /** Labels of the colours the app replaces because they could not be read. */
+  const unreadable = $derived(legible(draft.colors).fixed.map((k) => COLOR_GROUPS.flatMap((g) => g.keys).find((x) => x.key === k)?.label ?? k));
 
   function select(p: ThemeProfile) {
     draft = p.builtin ? clone(p) : (custom.find((c) => c.id === p.id) ?? clone(p));
@@ -204,6 +222,10 @@
     savedActive = themeState.activeId;
     selectId(savedActive);
     ready = true;
+    // nothing is being edited yet: files left by an import or a picture
+    // that was never saved can go
+    collectAssets(themeState.profiles.flatMap(assetIds)).catch(() => {});
+    api.listFonts().then((list) => (installed = list)).catch(() => (installed = []));
     const k = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !(e.target as HTMLElement)?.closest?.('input, select')) close();
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); save(); }
@@ -310,9 +332,10 @@
           {@render swatches('Background glow')}
         {:else if tab === 'fonts'}
           <div class="rowc card">
-            <div class="t"><div class="tt">Interface font</div><div class="d">Pick one or type the name of any font installed on this computer.</div></div>
-            <input class="input fnt" list="ui-fonts" bind:value={draft.fonts.ui} disabled={!!draft.fonts.uiAsset} aria-label="Interface font" spellcheck="false" />
-            <datalist id="ui-fonts">{#each UI_FONTS as f}<option value={f}></option>{/each}</datalist>
+            <div class="t"><div class="tt">Interface font</div><div class="d">{installed ? `${installed.length} fonts installed on this computer.` : 'Loading the fonts installed on this computer…'}</div></div>
+            <select class="select fnt" bind:value={draft.fonts.ui} disabled={!!draft.fonts.uiAsset} aria-label="Interface font">
+              {#each uiFonts as f (f)}<option value={f}>{f}</option>{/each}
+            </select>
           </div>
           <div class="rowc card">
             <div class="t"><div class="tt">Interface font file</div><div class="d">{draft.fonts.uiAsset ? 'An imported font file is in use; it travels with the profile when you export.' : 'Use a .ttf, .otf, .woff or .woff2 file instead of an installed font.'}</div></div>
@@ -320,9 +343,11 @@
             <button class="btn sm" onclick={() => setFont('uiAsset')}><Icon name="import" size={14} />Import font…</button>
           </div>
           <div class="rowc card">
-            <div class="t"><div class="tt">Number font</div><div class="d">Sizes, speeds, percentages, paths and links.</div></div>
-            <input class="input fnt" list="mono-fonts" bind:value={draft.fonts.mono} disabled={!!draft.fonts.monoAsset} aria-label="Number font" spellcheck="false" />
-            <datalist id="mono-fonts">{#each MONO_FONTS as f}<option value={f}></option>{/each}</datalist>
+            <div class="t"><div class="tt">Number font</div><div class="d">Sizes, speeds, percentages, paths and links. Fixed-width fonts keep columns of numbers lined up.</div>
+              <label class="check small allf"><input type="checkbox" bind:checked={allForNumbers} />Show all fonts</label></div>
+            <select class="select fnt" bind:value={draft.fonts.mono} disabled={!!draft.fonts.monoAsset} aria-label="Number font">
+              {#each numberFonts as f (f)}<option value={f}>{f}</option>{/each}
+            </select>
           </div>
           <div class="rowc card">
             <div class="t"><div class="tt">Number font file</div><div class="d">{draft.fonts.monoAsset ? 'An imported font file is in use.' : 'Optional font file for numbers.'}</div></div>
@@ -397,6 +422,9 @@
             <button class="pchip" style:background={c} title={c} aria-label="Use {c}" onclick={() => (draft.colors[sel] = c)}></button>
           {/each}
         </div>
+        {#if unreadable.length}
+          <div class="fixnote" role="status">{unreadable.join(', ')}: too close to a background colour to read, so the app shows {unreadable.length > 1 ? 'them' : 'it'} in black or white instead.</div>
+        {/if}
       </aside>
     </div>
 
@@ -454,7 +482,9 @@
   .d { font-size: var(--fs-sm); color: var(--text-muted); }
   .rowc input[type='range'] { width: 170px; }
   .num { width: 58px; text-align: right; font-size: var(--fs-sm); }
-  .fnt { width: 210px; }
+  .fnt { width: 240px; }
+  .allf { margin-top: 6px; gap: 6px; color: var(--text-muted); }
+  .allf input { width: 13px; height: 13px; }
   .sample { padding: 14px; display: flex; flex-direction: column; gap: 6px; }
   .big { font-size: var(--fs-xl); font-weight: 600; }
 
@@ -481,4 +511,5 @@
   .pal { display: flex; flex-wrap: wrap; gap: 5px; }
   .pchip { width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--text-muted); padding: 0; }
   .pchip:hover { transform: scale(1.15); }
+  .fixnote { margin-top: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--r-md); font-size: var(--fs-sm); color: var(--text); }
 </style>

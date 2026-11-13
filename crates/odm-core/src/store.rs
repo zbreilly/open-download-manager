@@ -42,6 +42,31 @@ fn stored(d: &Download) -> Download {
     d
 }
 
+/// On macOS and Linux secrets are stored as they are (see `secret`), so the
+/// database must at least be unreadable to other accounts: the files are
+/// made private to the user. SQLite gives its `-wal` and `-shm` files the
+/// same mode as the database when it creates them later.
+#[cfg(unix)]
+fn restrict_to_user(db: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    for suffix in ["", "-wal", "-shm"] {
+        let mut name = db.as_os_str().to_os_string();
+        name.push(suffix);
+        let file = std::path::PathBuf::from(name);
+        if !file.exists() {
+            continue;
+        }
+        if let Err(e) = std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o600)) {
+            tracing::warn!("could not make {} private to the user: {e}", file.display());
+        }
+    }
+}
+
+/// On Windows the profile folder is already private and secrets are
+/// encrypted (see `secret`).
+#[cfg(not(unix))]
+fn restrict_to_user(_db: &Path) {}
+
 const UPSERT_DOWNLOAD: &str = "INSERT INTO downloads (id, added, data) VALUES (?1, ?2, ?3)
      ON CONFLICT(id) DO UPDATE SET data = excluded.data";
 
@@ -52,6 +77,7 @@ impl Store {
         }
         let conn = Connection::open(path)?;
         let store = Self::init(conn)?;
+        restrict_to_user(path);
         store.protect_existing();
         Ok(store)
     }

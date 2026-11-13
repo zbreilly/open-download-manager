@@ -85,6 +85,7 @@ fn start_call_events_bridge_shutdown() {
     let hello: Value = serde_json::from_str(&body).unwrap();
     assert_eq!(hello["pairing"], "required");
     assert!(hello.get("capture").is_none(), "settings are not given out unsealed: {body}");
+    assert!(hello.get("version").is_none(), "the version is not given out unsealed: {body}");
     // web pages and forged hosts are refused before anything else
     assert_eq!(http(port, "GET", "/api/ping", &[("Origin", "https://evil.example")], "").0, 403);
     assert_eq!(http(port, "GET", "/api/ping", &[("Host", "evil.example")], "").0, 403);
@@ -130,6 +131,12 @@ fn start_call_events_bridge_shutdown() {
     let shown = wait_event(&rx, "show_add");
     assert_eq!(shown["url"], "https://h.example/f.zip");
     assert_eq!(shown["cookies"], "sid=1");
+    // outside an automated run a paired client cannot skip the dialog either
+    let asked = rpc(port, &key, "add", json!({ "url": "https://h.example/quiet.zip", "silent": true })).unwrap();
+    assert_eq!(asked["ok"], true);
+    assert_eq!(wait_event(&rx, "show_add")["url"], "https://h.example/quiet.zip");
+    let list: Vec<Value> = api::call_as("list_downloads", json!({})).unwrap();
+    assert!(list.is_empty(), "a silent request was started without the dialog");
     // several links go to the link list, each with its own cookies
     let items = json!([{ "url": "https://a.example/1.zip", "cookies": "a=1" }, { "url": "https://b.example/2.zip" }]);
     rpc(port, &key, "add", json!({ "items": items })).unwrap();

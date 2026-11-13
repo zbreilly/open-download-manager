@@ -162,6 +162,8 @@ export const api = {
   extensionStatus: () => invoke<{ connected: boolean; browsers: string[]; port: number; bridgeError?: string | null }>('extension_status'),
   /** The key the browser extension must be given to talk to the app. */
   bridgeKey: () => invoke<string>('bridge_key'),
+  /** Copy that key to the clipboard (kept out of the clipboard history, removed after a minute). */
+  copyBridgeKey: () => invoke<void>('copy_bridge_key'),
   /** Replace the key; paired extensions stop working until they get the new one. */
   regenerateBridgeKey: () => invoke<string>('regenerate_bridge_key'),
   cancelPowerAction: () => invoke<void>('cancel_power_action'),
@@ -174,6 +176,8 @@ export const api = {
   quit: () => invoke<void>('quit_app'),
   /** Send an event to every window. */
   broadcast: (event: string, payload: unknown) => invoke<void>('broadcast', { event, payload }),
+  /** Font families installed on this computer, sorted by name. */
+  listFonts: () => invoke<{ name: string; mono: boolean }[]>('list_fonts'),
   /** Write an exported colour profile; `path` must end in .odmtheme. */
   writeThemeFile: (path: string, contents: string) => invoke<void>('write_theme_file', { path, contents }),
   extensionDir: () => invoke<string | null>('extension_dir'),

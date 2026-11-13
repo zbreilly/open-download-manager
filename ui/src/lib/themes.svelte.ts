@@ -173,6 +173,36 @@ export function lum(hex: string): number {
 }
 /** Black-ish or white text, whichever reads better on `bg`. */
 export const readable = (bg: string) => (lum(bg) > 0.36 ? '#05070C' : '#FFFFFF');
+/** Contrast ratio of two colours, 1 (identical) to 21 (black on white). */
+export function contrast(a: string, b: string): number {
+  const x = lum(a), y = lum(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+// A profile must never make the app unreadable: text, secondary text and the
+// warning colours keep a minimum contrast against every surface they are
+// drawn on. A colour that falls below it is shown as black or white instead
+// (whichever reads better), so warnings and labels cannot be hidden by a
+// profile, whether it was imported or made by hand.
+const SURFACES = ['window', 'chrome', 'panel', 'panel2', 'field', 'popup'] as const;
+const MIN_CONTRAST: [ColorKey, number][] = [['text', 3], ['textMuted', 2], ['red', 2], ['amber', 2]];
+const BLACK_INK = '#05070C', WHITE_INK = '#FFFFFF';
+
+/**
+ * The colours as the app shows them, and which ones had to be replaced to
+ * stay readable.
+ */
+export function legible(c: ThemeColors): { colors: ThemeColors; fixed: ColorKey[] } {
+  const worst = (fg: string) => Math.min(...SURFACES.map((s) => contrast(fg, c[s])));
+  const colors = { ...c };
+  const fixed: ColorKey[] = [];
+  for (const [key, min] of MIN_CONTRAST) {
+    if (worst(c[key]) >= min) continue;
+    colors[key] = worst(BLACK_INK) >= worst(WHITE_INK) ? BLACK_INK : WHITE_INK;
+    fixed.push(key);
+  }
+  return { colors, fixed };
+}
 
 // ------------------------------------------------------------------ built-in profiles
 
@@ -242,7 +272,10 @@ export const isImageUrl = (s: unknown): s is string => isAssetUrl(s) && s.starts
 /** Largest imported file, as a data: URL (about 6 MB of file). */
 export const MAX_ASSET = 8_400_000;
 const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
-const FONT_RE = /^[\w .\-]{1,60}$/;
+const ICON_SLOTS = new Set<string>(BUTTON_SLOTS.map((b) => b.icon));
+// a font family name goes into CSS inside double quotes: anything that could end the string or the rule is out
+const FONT_RE = /^[^"\\;{}<>\u0000-\u001f]{1,80}$/;
+export const isFontName = (s: string) => FONT_RE.test(s.trim()) && s.trim().length > 0;
 const num = (x: unknown, lo: number, hi: number, d: number) => (typeof x === 'number' && isFinite(x) ? clamp(x, lo, hi) : d);
 const assetId = (x: unknown) => (typeof x === 'string' && ID_RE.test(x) ? x : undefined);
 
@@ -275,10 +308,12 @@ export function sanitizeProfile(raw: unknown): ThemeProfile | null {
     const id = assetId(a?.asset);
     if (id) p.art[s.id] = { asset: id, fit: ['cover', 'contain', 'stretch', 'tile'].includes(a.fit) ? a.fit : 'cover', tint: num(a.tint, 0, 0.95, 0.5) };
   }
+  // only the listed buttons can get another picture: a profile must not be
+  // able to redraw status icons or make one action look like another
   p.icons = {};
   for (const [name, v] of Object.entries(r.icons ?? {})) {
     const id = assetId((v as any)?.asset);
-    if (id && /^[a-z0-9-]{1,40}$/.test(name)) p.icons[name] = { asset: id, tint: !!(v as any).tint };
+    if (id && ICON_SLOTS.has(name)) p.icons[name] = { asset: id, tint: !!(v as any).tint };
   }
   p.skin = { button: assetId(r.skin?.button), primary: assetId(r.skin?.primary) };
   return p;
@@ -297,13 +332,40 @@ const assets = new Map<string, string>();
 const newId = (prefix: string) => prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 export const newProfileId = () => newId('p');
 
+// Every stored file is listed in an index, so files that no saved profile
+// uses (an import that was never saved, a picture that was replaced) can be
+// found and removed instead of staying in the database for good.
+const ASSET_INDEX = 'theme_assets';
+async function readIndex(): Promise<string[]> {
+  try {
+    const list = JSON.parse((await api.kvGet(ASSET_INDEX)) || '[]');
+    return Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string' && ID_RE.test(x)) : [];
+  } catch {
+    return [];
+  }
+}
+
 /** Store an imported file; returns its asset id. */
 export async function putAsset(dataUrl: string): Promise<string> {
   if (!isAssetUrl(dataUrl)) throw new Error('That file type is not supported, or the file is too large');
   const id = newId('a');
+  // listed before it is stored: a file can be listed and missing, never stored and unlisted
+  await api.kvSet(ASSET_INDEX, JSON.stringify([...(await readIndex()), id]));
   assets.set(id, dataUrl);
   await api.kvSet(`theme_asset.${id}`, dataUrl);
   return id;
+}
+
+/**
+ * Remove every stored file that is not in `keep`. Call only when nothing
+ * unsaved can refer to a file: right after saving, or before the Theme
+ * studio has any draft.
+ */
+export async function collectAssets(keep: Iterable<string>) {
+  const wanted = new Set(keep);
+  const listed = await readIndex();
+  await dropAssets(listed.filter((id) => !wanted.has(id)));
+  await api.kvSet(ASSET_INDEX, JSON.stringify([...wanted]));
 }
 export const assetUrl = (id: string | undefined) => (id ? assets.get(id) : undefined);
 
@@ -334,7 +396,7 @@ const STYLE_ID = 'odm-theme';
 let setProps: string[] = [];
 
 function tokens(p: ThemeProfile): Record<string, string> {
-  const c = p.colors, dark = p.base === 'dark';
+  const c = legible(p.colors).colors, dark = p.base === 'dark';
   const soft = dark ? 0.17 : 0.13;
   const t: Record<string, string> = {
     '--bg': c.window,
@@ -490,6 +552,8 @@ export async function saveThemes(profiles: ThemeProfile[], activeId: string) {
   await api.kvSet('theme_profiles', JSON.stringify(clean));
   await api.kvSet('theme_active', activeId);
   await dropAssets([...new Set(gone)]);
+  // everything the studio holds is saved now: whatever else is stored is unused
+  await collectAssets(keep);
   await api.broadcast('theme_changed', null);
 }
 

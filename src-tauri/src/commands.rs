@@ -490,6 +490,44 @@ pub async fn bridge_key(st: State<'_, AppState>) -> R<String> {
     Ok(st.mgr.bridge_key())
 }
 
+/// How long the pairing key may stay on the clipboard.
+const KEY_ON_CLIPBOARD: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Put a secret on the clipboard. On Windows it is marked so that it is
+/// kept out of the clipboard history (Win+V) and is not synced to other
+/// devices; elsewhere it is an ordinary copy.
+fn copy_secret(app: &AppHandle, text: &str) -> R<()> {
+    #[cfg(windows)]
+    {
+        use arboard::SetExtWindows;
+        let _ = app;
+        let mut clipboard = arboard::Clipboard::new().map_err(err)?;
+        clipboard.set().exclude_from_monitoring().text(text.to_string()).map_err(err)
+    }
+    #[cfg(not(windows))]
+    {
+        use tauri_plugin_clipboard_manager::ClipboardExt;
+        app.clipboard().write_text(text.to_string()).map_err(err)
+    }
+}
+
+/// Copy the pairing key for pasting into the extension. The key never
+/// passes through the settings window, and it is taken off the clipboard
+/// again after a minute unless something else was copied meanwhile.
+#[tauri::command]
+pub async fn copy_bridge_key(app: AppHandle, st: State<'_, AppState>) -> R<()> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+    let key = st.mgr.bridge_key();
+    copy_secret(&app, &key)?;
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(KEY_ON_CLIPBOARD).await;
+        if app.clipboard().read_text().ok().as_deref() == Some(key.as_str()) {
+            let _ = app.clipboard().clear();
+        }
+    });
+    Ok(())
+}
+
 /// Replace the pairing key; paired extensions must be given the new one.
 #[tauri::command]
 pub async fn regenerate_bridge_key(app: AppHandle, st: State<'_, AppState>) -> R<String> {
@@ -524,6 +562,43 @@ pub async fn export_list(st: State<'_, AppState>, path: String, only_unfinished:
         .collect();
     std::fs::write(absolute(&path)?, list.join("\n") + "\n").map_err(err)?;
     Ok(list.len())
+}
+
+/// One installed font family.
+#[derive(serde::Serialize)]
+pub struct FontFamily {
+    name: String,
+    /// every face of the family is fixed-width
+    mono: bool,
+}
+
+/// The font families installed on this computer, sorted by name, for the
+/// Theme studio's font fields. Scans the system font folders each time, so
+/// a font installed while the app runs shows up the next time it is asked.
+#[tauri::command]
+pub async fn list_fonts() -> R<Vec<FontFamily>> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let mut db = fontdb::Database::new();
+        db.load_system_fonts();
+        // keyed by lower-case name: sorted, and one entry per family
+        let mut families = std::collections::BTreeMap::<String, FontFamily>::new();
+        for face in db.faces() {
+            // the first family name is the English one
+            let Some((name, _)) = face.families.first() else { continue };
+            let name = name.trim();
+            // names starting with '.' are system-internal fonts
+            if name.is_empty() || name.starts_with('.') {
+                continue;
+            }
+            families
+                .entry(name.to_lowercase())
+                .and_modify(|f| f.mono &= face.monospaced)
+                .or_insert_with(|| FontFamily { name: name.to_string(), mono: face.monospaced });
+        }
+        families.into_values().collect()
+    })
+    .await
+    .map_err(err)
 }
 
 /// Largest colour profile the Theme studio may export (its images and

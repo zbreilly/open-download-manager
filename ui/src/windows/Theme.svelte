@@ -13,9 +13,9 @@
   import { toast } from '../components/Toast.svelte';
   import { api, errText } from '../lib/ipc';
   import {
-    ART_SLOTS, BUILTIN, BUTTON_SLOTS, COLOR_GROUPS, MAX_ASSET, applyProfile, isFontName, assetIds, assetUrl, collectAssets, defaultProfile, exportTheme, importTheme, legible,
+    ART_DEFAULTS, ART_SLOTS, BUILTIN, artBackground, BUTTON_SLOTS, COLOR_GROUPS, MAX_ASSET, applyProfile, isFontName, assetIds, assetUrl, collectAssets, defaultProfile, exportTheme, importTheme, legible,
     newProfileId, previewEverywhere, putAsset, sanitizeProfile, saveThemes, themeState,
-    type ArtSlot, type ColorKey, type ThemeProfile,
+    type ArtSlot, type ColorKey, type PanelArt, type ThemeProfile,
   } from '../lib/themes.svelte';
 
   const win = getCurrentWindow();
@@ -181,8 +181,73 @@
 
   const setArt = (slot: ArtSlot) => act(async () => {
     const id = await importAsset(IMAGES);
-    if (id) draft.art[slot] = { asset: id, fit: draft.art[slot]?.fit ?? 'cover', tint: draft.art[slot]?.tint ?? 0.55 };
+    // a replacement picture keeps the framing of the one before it
+    if (id) draft.art[slot] = { ...ART_DEFAULTS, ...draft.art[slot], asset: id };
   });
+  // ---------------- framing panel art ----------------
+  /** Shape of each panel, for the framing preview (px). */
+  const FRAME: Record<ArtSlot, [number, number]> = {
+    window: [208, 130], head: [240, 48], side: [84, 150], list: [220, 124], details: [230, 84], status: [240, 40], dialog: [176, 130],
+  };
+  /** Width / height of each imported picture, by asset id. */
+  let ratios = $state<Record<string, number>>({});
+  $effect(() => {
+    void assetTick;
+    for (const a of Object.values(draft.art)) {
+      const id = a?.asset, url = assetUrl(id);
+      if (!id || !url || untrack(() => ratios[id])) continue;
+      const img = new Image();
+      img.onload = () => (ratios[id] = img.naturalWidth && img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1);
+      img.src = url;
+    }
+  });
+  /** Size the picture is drawn at inside a w x h panel. */
+  function drawnSize(a: PanelArt, w: number, h: number): [number, number] {
+    const R = ratios[a.asset] || 1;
+    if (a.fit === 'stretch') return [w, h];
+    const iw = a.fit === 'cover' ? Math.max(w, h * R) : a.fit === 'contain' ? Math.min(w, h * R) : a.size > 0 ? (w * a.size) / 100 : w / 4;
+    return [iw, iw / R];
+  }
+  /** Drag the picture inside its preview: it follows the pointer. */
+  function dragArt(e: PointerEvent, slot: ArtSlot) {
+    const a = draft.art[slot];
+    if (!a || e.button !== 0 || a.fit === 'stretch') return;
+    e.preventDefault();
+    const box = e.currentTarget as HTMLElement;
+    box.setPointerCapture(e.pointerId);
+    const [w, h] = FRAME[slot];
+    const [iw, ih] = drawnSize(a, w, h);
+    const x0 = e.clientX, y0 = e.clientY, ax = a.x, ay = a.y;
+    // background-position p% leaves (panel - picture) * p of free space before the picture
+    const per = (free: number, d: number) => (Math.abs(free) < 0.5 ? 0 : (d / free) * 100);
+    const clampPos = (n: number) => Math.round(Math.min(200, Math.max(-100, n)) * 10) / 10;
+    const move = (ev: PointerEvent) => {
+      const cur = draft.art[slot];
+      if (!cur) return;
+      cur.x = clampPos(ax + per(w - iw, ev.clientX - x0));
+      cur.y = clampPos(ay + per(h - ih, ev.clientY - y0));
+    };
+    const up = () => { box.removeEventListener('pointermove', move); box.removeEventListener('pointerup', up); box.removeEventListener('pointercancel', up); };
+    box.addEventListener('pointermove', move);
+    box.addEventListener('pointerup', up);
+    box.addEventListener('pointercancel', up);
+  }
+  /** Arrow keys nudge the picture one step (Shift: five). */
+  function nudgeArt(e: KeyboardEvent, slot: ArtSlot) {
+    const a = draft.art[slot];
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+    if (!a || !d) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 5 : 1;
+    a.x = Math.min(200, Math.max(-100, a.x + d[0] * step));
+    a.y = Math.min(200, Math.max(-100, a.y + d[1] * step));
+  }
+  function setFit(a: PanelArt, fit: PanelArt['fit']) {
+    a.fit = fit;
+    if (fit === 'custom' && !(a.size > 0)) a.size = 100;
+    if (fit === 'tile' && !(a.size > 0)) a.size = 25;
+  }
+
   const setIcon = (name: string) => act(async () => {
     const id = await importAsset(IMAGES);
     if (id) draft.icons[name] = { asset: id, tint: draft.icons[name]?.tint ?? false };
@@ -363,23 +428,42 @@
           <p class="muted small lead">Put a .png or .svg behind any panel. “Colour wash” lays the panel’s own colour over the picture so text stays readable.</p>
           {#each ART_SLOTS as slot (slot.id)}
             {@const a = draft.art[slot.id]}
-            <div class="artrow card">
-              <div class="thumb" style:background-image={a && assetTick >= 0 && assetUrl(a.asset) ? `url("${assetUrl(a.asset)}")` : 'none'}>{#if !a}<Icon name="file-image" size={20} />{/if}</div>
-              <div class="t">
-                <div class="tt">{slot.label}</div>
-                {#if a}
-                  <div class="artctl">
-                    <select class="select" bind:value={a.fit} aria-label="How the picture fits {slot.label}">
-                      <option value="cover">Fill</option><option value="contain">Fit</option><option value="stretch">Stretch</option><option value="tile">Tile</option>
-                    </select>
-                    <label class="wash">Colour wash<input type="range" min="0" max="0.95" step="0.01" bind:value={a.tint} /><span class="mono small">{Math.round(a.tint * 100)}%</span></label>
-                  </div>
-                {:else}
-                  <div class="d">No picture</div>
-                {/if}
+            {@const url = a && assetTick >= 0 ? assetUrl(a.asset) : undefined}
+            <div class="artrow card" class:has={!!a}>
+              <div class="arthead">
+                <div class="t"><div class="tt">{slot.label}</div>{#if !a}<div class="d">No picture</div>{/if}</div>
+                {#if a}<button class="btn sm c-red" onclick={() => delete draft.art[slot.id]}>Remove</button>{/if}
+                <button class="btn sm" onclick={() => setArt(slot.id)}><Icon name="import" size={14} />{a ? 'Replace…' : 'Choose picture…'}</button>
               </div>
-              {#if a}<button class="btn sm c-red" onclick={() => delete draft.art[slot.id]}>Remove</button>{/if}
-              <button class="btn sm" onclick={() => setArt(slot.id)}><Icon name="import" size={14} />{a ? 'Replace…' : 'Choose picture…'}</button>
+              {#if a}
+                <div class="artbody">
+                  <div class="framecol">
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+                    <div class="frame" class:fixed={a.fit === 'stretch'} role="application" tabindex="0"
+                      aria-label="Framing of the picture in {slot.label}: drag to move it, or use the arrow keys"
+                      style:width="{FRAME[slot.id][0]}px" style:height="{FRAME[slot.id][1]}px"
+                      style:background={url ? artBackground(draft, slot.id, url) : 'none'}
+                      onpointerdown={(e) => dragArt(e, slot.id)} onkeydown={(e) => nudgeArt(e, slot.id)}></div>
+                    <div class="muted small">{a.fit === 'stretch' ? 'Stretched to fill' : 'Drag the picture to frame it'}</div>
+                  </div>
+                  <div class="artctl">
+                    <label><span>Fit</span>
+                      <select class="select" value={a.fit} onchange={(e) => setFit(a, e.currentTarget.value as PanelArt['fit'])} aria-label="How the picture fits {slot.label}">
+                        <option value="cover">Fill</option><option value="contain">Fit inside</option><option value="custom">Custom size</option><option value="tile">Tile</option><option value="stretch">Stretch</option>
+                      </select>
+                    </label>
+                    {#if a.fit === 'custom' || a.fit === 'tile'}
+                      <label><span>Size</span><input type="range" min="5" max="400" step="1" bind:value={a.size} /><span class="mono small v">{Math.round(a.size)}%</span></label>
+                    {/if}
+                    {#if a.fit !== 'stretch'}
+                      <label><span>Across</span><input type="range" min="-100" max="200" step="1" bind:value={a.x} /><span class="mono small v">{Math.round(a.x)}%</span></label>
+                      <label><span>Down</span><input type="range" min="-100" max="200" step="1" bind:value={a.y} /><span class="mono small v">{Math.round(a.y)}%</span></label>
+                    {/if}
+                    <label><span>Colour wash</span><input type="range" min="0" max="0.95" step="0.01" bind:value={a.tint} /><span class="mono small v">{Math.round(a.tint * 100)}%</span></label>
+                    {#if a.fit !== 'stretch'}<button class="btn link small" onclick={() => { a.x = 50; a.y = 50; }}>Centre</button>{/if}
+                  </div>
+                </div>
+              {/if}
             </div>
           {/each}
         {:else if tab === 'buttons'}
@@ -488,12 +572,19 @@
   .sample { padding: 14px; display: flex; flex-direction: column; gap: 6px; }
   .big { font-size: var(--fs-xl); font-weight: 600; }
 
-  .artrow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; }
-  .thumb { width: 72px; height: 48px; flex: none; border-radius: var(--r-md); border: 1px solid var(--border); background: var(--surface-sunken) center / cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--text-muted); }
-  .artctl { display: flex; align-items: center; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
-  .artctl .select { height: 30px; width: 100px; }
-  .wash { display: flex; align-items: center; gap: 8px; font-size: var(--fs-sm); color: var(--text-muted); }
-  .wash input { width: 110px; }
+  .artrow { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .artrow.has { border-color: var(--accent); }
+  .arthead { display: flex; align-items: center; gap: 10px; }
+  .artbody { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  .framecol { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; width: 244px; flex: none; }
+  .frame { border-radius: var(--r-md); border: 1px solid var(--text-muted); cursor: grab; touch-action: none; overflow: hidden; }
+  .frame:active { cursor: grabbing; }
+  .frame.fixed { cursor: default; }
+  .artctl { flex: 1; min-width: 230px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .artctl label { display: grid; grid-template-columns: 84px minmax(0, 1fr) 44px; align-items: center; gap: 8px; width: 100%; font-size: var(--fs-sm); color: var(--text-muted); }
+  .artctl .select { height: 30px; grid-column: span 2; }
+  .artctl input[type='range'] { width: 100%; }
+  .artctl .v { text-align: right; color: var(--text); }
 
   .btngrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 8px; }
   .bcell { padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }

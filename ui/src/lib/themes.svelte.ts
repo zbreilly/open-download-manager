@@ -74,8 +74,19 @@ export const ART_SLOTS = [
   { id: 'dialog', label: 'Dialog windows' },
 ] as const;
 export type ArtSlot = (typeof ART_SLOTS)[number]['id'];
-export type ArtFit = 'cover' | 'contain' | 'stretch' | 'tile';
-export interface PanelArt { asset: string; fit: ArtFit; tint: number }
+export type ArtFit = 'cover' | 'contain' | 'stretch' | 'tile' | 'custom';
+export interface PanelArt {
+  asset: string;
+  fit: ArtFit;
+  /** 0..0.95: how much of the panel's own colour lies over the picture. */
+  tint: number;
+  /** Where the picture sits in the panel, as CSS background-position percentages (50, 50 = centred). */
+  x: number;
+  y: number;
+  /** Picture width as a percentage of the panel's width; used by 'custom' and 'tile'. */
+  size: number;
+}
+export const ART_DEFAULTS = { fit: 'cover' as ArtFit, tint: 0.55, x: 50, y: 50, size: 100 };
 
 /** Buttons whose icon can be replaced. `icon` is the built-in icon name. */
 export const BUTTON_SLOTS = [
@@ -306,7 +317,15 @@ export function sanitizeProfile(raw: unknown): ThemeProfile | null {
   for (const s of ART_SLOTS) {
     const a = r.art?.[s.id];
     const id = assetId(a?.asset);
-    if (id) p.art[s.id] = { asset: id, fit: ['cover', 'contain', 'stretch', 'tile'].includes(a.fit) ? a.fit : 'cover', tint: num(a.tint, 0, 0.95, 0.5) };
+    if (id) {
+      const fit: ArtFit = ['cover', 'contain', 'stretch', 'tile', 'custom'].includes(a.fit) ? a.fit : 'cover';
+      p.art[s.id] = {
+        asset: id, fit, tint: num(a.tint, 0, 0.95, 0.5),
+        x: num(a.x, -100, 200, 50), y: num(a.y, -100, 200, 50),
+        // a tile with no size keeps the picture's own size (0)
+        size: num(a.size, fit === 'tile' ? 0 : 5, 400, fit === 'tile' ? 0 : 100),
+      };
+    }
   }
   // only the listed buttons can get another picture: a profile must not be
   // able to redraw status icons or make one action look like another
@@ -445,9 +464,14 @@ const ART_CSS: Record<ArtSlot, { sel: string; color: (c: ThemeColors) => string 
   status: { sel: '.art-status', color: (c) => c.chrome },
   dialog: { sel: '.dialog, .art-dialog', color: (c) => c.panel },
 };
-const FIT: Record<ArtFit, string> = {
-  cover: 'center / cover no-repeat', contain: 'center / contain no-repeat', stretch: 'center / 100% 100% no-repeat', tile: 'top left / auto repeat',
-};
+/** The CSS `background` for a piece of panel art: the panel colour washed over the picture, framed as the profile says. */
+export function artBackground(p: ThemeProfile, slot: ArtSlot, url: string): string {
+  const a = p.art[slot]!;
+  const wash = rgba(ART_CSS[slot].color(p.colors), a.tint);
+  const r = (n: number) => Math.round(n * 10) / 10;
+  const size = a.fit === 'cover' ? 'cover' : a.fit === 'contain' ? 'contain' : a.fit === 'stretch' ? '100% 100%' : a.size > 0 ? `${r(a.size)}% auto` : 'auto';
+  return `linear-gradient(${wash},${wash}),url("${url}") ${r(a.x)}% ${r(a.y)}% / ${size} ${a.fit === 'tile' ? 'repeat' : 'no-repeat'}`;
+}
 
 function styleSheet(p: ThemeProfile): string {
   const out: string[] = [];
@@ -460,9 +484,7 @@ function styleSheet(p: ThemeProfile): string {
   for (const s of ART_SLOTS) {
     const a = p.art[s.id], u = assetUrl(a?.asset);
     if (!a || !isImageUrl(u)) continue;
-    const { sel, color } = ART_CSS[s.id];
-    const wash = rgba(color(p.colors), a.tint);
-    out.push(`${sel}{background:linear-gradient(${wash},${wash}),url("${u}") ${FIT[a.fit]} !important}`);
+    out.push(`${ART_CSS[s.id].sel}{background:${artBackground(p, s.id, u)} !important}`);
   }
   const skin = (sel: string, id?: string) => {
     const u = assetUrl(id);

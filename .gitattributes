@@ -1,0 +1,6 @@
+# Vite copies ui/index.html into ui/dist, which is committed and compared
+# with a fresh Linux build in CI ("ui/dist is stale"). Checked out with
+# Windows line endings, the page comes out of the build with mixed line
+# endings and never matches. Keep both files LF on every platform.
+ui/index.html text eol=lf
+ui/dist/index.html text eol=lf

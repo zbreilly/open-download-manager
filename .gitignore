@@ -4,6 +4,10 @@ node_modules/
 ui/node_modules/
 src-tauri/gen/
 extension/dist/
+# signs the .crx; the extension's ID comes from it
+extension/*.pem
+# what Mozilla signed, one .xpi per version (extension/sign-firefox.sh)
+extension/signed/
 .DS_Store
 *.odmpart
 /.claude/

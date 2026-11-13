@@ -26,6 +26,21 @@ All of them use the same Rust engine (`crates/odm-core`). The native-toolkit app
 
 Only one of the two can be installed at a time. They share the app's name, data folder and browser-bridge port, so the download list and settings carry over, and installing one replaces the other: the Linux packages have the same package name (`open-download-manager`), and the native Windows installer removes an installed copy of the app first. In a release, the native-toolkit files have `-native` in their names.
 
+## Download
+
+Installers for every platform are on the [Releases](https://github.com/zbreilly/open-download-manager/releases) page.
+
+| Platform | The app | Native-toolkit app (`-native` in the file name) |
+|---|---|---|
+| Windows 10/11 | setup `.exe` or `.msi` (x64) | setup `.exe` (x64, ARM64) |
+| macOS | universal `.dmg` (macOS 11+) | universal `.dmg` (macOS 13+) |
+| Debian / Ubuntu | `.deb` (amd64, arm64) | `.deb` (amd64, arm64; Debian 13 / Ubuntu 25.04 or later) |
+| Fedora | `.rpm` (x86_64, aarch64) | `.rpm` (x86_64, aarch64) |
+
+The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
+
+After installing, add the [browser extension](#install-the-browser-extension) and pair it with the app.
+
 ## Build the app
 
 On macOS:
@@ -124,30 +139,36 @@ The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links a
 - Retries with backoff per connection. Clear errors for 403/404/410 and expired links
 - **Refresh link**: point an expired download at a new URL and keep the progress already made
 - Global speed limit (combined) and per-download limits, both adjustable while downloading
+- A limit on how many downloads run at once (4 by default); each queue has its own
 - FTP and FTPS: `ftp://`, `ftpes://` (explicit TLS) and `ftps://` (implicit TLS), passive mode, resume and split downloads through `REST`, size through `SIZE`. A user name and password can be in the link or in the Add dialog's Authentication fields; either way they are stored like the app's other passwords, not in the link. The proxy setting doesn't apply to FTP
 - HLS and DASH streams (`.m3u8`, `.mpd`): the Add dialog lists the qualities and audio tracks a stream offers, with estimated sizes. The segments download over several connections and are joined into one file: MPEG-TS or MP4 for HLS, MP4 or WebM for DASH. A separate MP4 audio track is muxed into the video; any other separate audio track is saved beside the video, and the download says so. HLS AES-128 encryption is supported. Paused and interrupted stream downloads continue from the segments already fetched. DRM-protected streams (Widevine, PlayReady, FairPlay) and live streams can't be downloaded; the Add dialog says so
 - Proxy settings: system, none, HTTP or SOCKS5, with authentication
 - Basic auth, cookies, referrer, custom user agent and custom headers
 - Checksum verification (SHA-256, SHA-1, MD5)
 - Uses the system trust store for TLS (rustls with the platform verifier)
-- A redirect from https to plain http fails unless you allow it in Settings → Advanced
-- Stored cookies, passwords, custom header values and the proxy password are encrypted on Windows (DPAPI); on macOS and Linux the database is readable only by your account. A finished download forgets its cookies, password and custom headers
+- A redirect from https to plain http fails unless you allow it in Settings → Advanced. The same rule covers a stream: playlists, segments and decryption keys that an https manifest lists at http addresses are refused
+- Stored cookies, passwords, custom header values, the proxy password and the extension's pairing key are encrypted: with DPAPI on Windows, and on macOS and Linux with a key held by the login Keychain or the Secret Service (GNOME Keyring, KWallet). If the keystore doesn't answer (a declined prompt, a locked keyring), what was encrypted earlier is left untouched until it does; where there is no keystore, the database is readable only by your account. A finished download forgets its cookies, password and custom headers
 
 **App**
-- Main window with a library, categories and queues, a sortable list with multi-select, context menus and keyboard shortcuts, a details panel with the segment map and a 60-second speed graph, and a status bar
-- Add dialog: probes the link (size, resumability, protocol), fills the name in from `Content-Disposition`, picks the category automatically, offers recent folders, a connections selector, checksum, and auth/cookies/headers. Asks to overwrite, rename or resume when the file already exists
+- Main window with a library (all, active, unfinished and finished downloads), categories and queues, a search field that matches names, links and folders, a sortable list with multi-select, context menus and keyboard shortcuts, a details panel with the segment map and a 60-second speed graph, and a status bar
+- Categories (Video, Music, Documents, Compressed, Programs, General) that sort downloads by file type, each into its own folder; their file types and folders can be changed
+- Add dialog: probes the link (size, resumability, protocol), fills the name in from `Content-Disposition`, picks the category automatically, offers recent folders, a connections selector, checksum, and auth/cookies/headers. For an HLS or DASH stream it offers the qualities and audio tracks. Asks to overwrite, rename or resume when the file already exists
+- Redownload a file from the start, and delete finished downloads from the list in one step
 - Batch downloads: several links, or patterns such as `img[001-120].jpg` and `[a-z]`
 - Per-download progress window with a live segment map, a per-connection table, a speed graph, a speed limit for that download and a "when finished" action
 - Queues and scheduler: start and stop times, weekdays, files at a time, retrying failed downloads, a reorderable queue, and sleep, shut down or quit when the queue finishes (after a 60-second countdown you can cancel)
 - Site grabber: lists the files linked from a page, optionally following links one or two levels deep, filtered by type
 - Clipboard monitor, drag links onto the window, import and export link lists, and the `odm://add?url=…` deep link
-- Menu-bar / system-tray icon showing activity state, notifications, launch at login, dark and light themes, and a compact list density
+- Menu-bar / system-tray icon showing activity state, with a menu to add a link, start the main queue, pause everything, set the speed limit and open the grabber, scheduler and settings
+- Notifications for finished and failed downloads and finished queues, launch at login (started in the tray), dark and light themes, a compact list density, and toolbar buttons that show their labels always, on hover or never
 
 **Browser extension**
 - Takes over matching downloads (by file type and optional minimum size), passing along cookies, referrer and user agent so links that need a login still work
 - Hold Option/Alt (configurable) while clicking to let the browser handle a download, or pause capture for 10 minutes from the toolbar popup
 - Context menus: download a link, media, an image, the links in a selection, or every link on the page
 - Detects audio and video files and HLS/DASH streams a page loads and lists them in the popup (a stream under the page's title), and shows a "Download" button over videos; for a streamed video it hands the stream to the app, which offers its qualities
+- The toolbar popup also takes a link to send to the app, and shows whether the app is connected
+- Paired with the app by a key: everything between them is encrypted, and nothing without the key can start a download (see [Install the browser extension](#install-the-browser-extension))
 
 **Theme studio**
 
@@ -161,12 +182,13 @@ The Theme studio (More menu, or Settings → Appearance) builds color profiles t
 - Buttons: your own pictures for 16 toolbar and menu buttons, and background skins for ordinary and primary buttons
 - Presets to start from: all black, all white, high contrast dark and light, and black or white with neon outlines
 - Profiles export to a single `.odmtheme` file that carries its pictures and fonts, and import from one. An imported profile is checked field by field before it is used, and can't replace status icons or make one action look like another
+- Every picture a profile uses, picked or imported, is decoded and saved again as a plain PNG, so only its pixels are stored and shared (no metadata or hidden data, and an SVG is kept only as the picture it draws)
 - Text and status colors that can't be read against one of the profile's backgrounds are shown in black or white instead, and the studio tells you
 - A title bar drawn by the app, so the profile reaches the window frame too (Settings → Appearance; macOS keeps its own title bar)
 
 If a profile ever makes the windows hard to use, choose **Use the default theme** from the tray menu, or start the app with `--reset-theme`. The profile stays in the Theme studio's list.
 
-The native-toolkit apps have everything under Engine, App and Browser extension except the list density; they don't have the Theme studio or the custom title bar. The Plasma app follows the desktop's color scheme.
+The native-toolkit apps have everything under Engine, App and Browser extension except the list density and the toolbar button styles; they don't have the Theme studio or the custom title bar. The Plasma app follows the desktop's color scheme.
 
 ## Not supported yet
 
@@ -225,7 +247,7 @@ cargo check -p odm-windows --target x86_64-pc-windows-msvc --no-default-features
 - **`macos-native`**: lints and builds the native macOS app and DMG, launches it, opens an `odm://` link, and runs the download check.
 - **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The `desktop` workflow builds the app for every platform and the native-toolkit apps, and creates a draft release with all of the installers attached.
 
-Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release (`sha256sum -c SHA256SUMS.txt`, or `Get-FileHash` on Windows). Once the repository is public, each release file also carries a build provenance attestation: `gh attestation verify <file> --repo <owner>/<repo>` confirms it was built by this repository's workflow.
+Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release (`sha256sum -c SHA256SUMS.txt`, or `Get-FileHash` on Windows). Each release file also carries a build provenance attestation: `gh attestation verify <file> --repo zbreilly/open-download-manager` confirms it was built by this repository's workflow.
 
 ## Layout
 
@@ -237,7 +259,9 @@ apps/gnome/          GTK 4 + libadwaita app (Rust)
 apps/plasma/         Kirigami app: Rust backend, list model and view-models (src/), QML views (qml/)
 crates/odm-core/     engine: task.rs (segmented downloader), manager.rs (list, queues, scheduler, limits, events),
                      client.rs (HTTP, probe), ftp.rs (FTP/FTPS), stream.rs (HLS/DASH downloads; hls.rs and
-                     dash.rs parse manifests, mp4.rs muxes audio into video), store.rs (SQLite), grabber.rs, util.rs
+                     dash.rs parse manifests, mp4.rs muxes audio into video), store.rs (SQLite), secret.rs (stored
+                     secrets, system keystore), pairing.rs (extension pairing), limiter.rs (speed limits),
+                     grabber.rs, util.rs
 crates/odm-ffi/      the engine's interface: C functions (include/odm.h) and the same contract for Rust (api)
 crates/odm-ui/       front-end logic shared by the native-toolkit apps: store, filtering and sorting, Add form, formatting
 crates/odm-linux/    Linux desktop services (single instance, tray, notifications, keep-awake, power, autostart)

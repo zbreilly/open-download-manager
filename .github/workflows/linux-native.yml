@@ -59,7 +59,7 @@ jobs:
             dnf install -y gcc gcc-c++ pkgconf-pkg-config curl git zip file which rpm-build \
               gtk4-devel libadwaita-devel qt6-qtbase-devel qt6-qtdeclarative-devel
           fi
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
@@ -118,7 +118,7 @@ jobs:
           command -v open-download-manager | tee -a ci-out/install.log
       # only the e2e scripts are needed (the container job has no source),
       # and the extension's sealing code they send requests with
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           sparse-checkout: |

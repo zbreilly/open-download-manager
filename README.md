@@ -247,7 +247,7 @@ cargo check -p odm-windows --target x86_64-pc-windows-msvc --no-default-features
 - **`macos-native`**: lints and builds the native macOS app and DMG, launches it, opens an `odm://` link, and runs the download check.
 - **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The `desktop` workflow builds the app for every platform and the native-toolkit apps, and creates a draft release with all of the installers attached.
 
-Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release (`sha256sum -c SHA256SUMS.txt`, or `Get-FileHash` on Windows). Each release file also carries a build provenance attestation: `gh attestation verify <file> --repo zbreilly/open-download-manager` confirms it was built by this repository's workflow.
+Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release: `sha256sum -c --ignore-missing SHA256SUMS.txt` in the folder with the download (`shasum -a 256 -c --ignore-missing SHA256SUMS.txt` on macOS), or `Get-FileHash` on Windows. The 0.2.0 list names six files with spaces where the downloads have dots (`Open Download Manager_…` for `Open.Download.Manager_…`), so for those compare the hash by eye. Each release file also carries a build provenance attestation: `gh attestation verify <file> --repo zbreilly/open-download-manager` confirms it was built by this repository's workflow.
 
 ## Layout
 

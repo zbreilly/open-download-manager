@@ -348,7 +348,18 @@ jobs:
           # cannot be mistaken for, or overwrite, the app's own files
           find out -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.deb' -o -name '*.rpm' -o -name '*.dmg' \) | while read -r f; do
             name="$(basename "$f")"
+            # GitHub puts a dot where an uploaded file's name has a space
+            # ("Open Download Manager_…" downloads as "Open.Download.Manager_…").
+            # Do that here, before hashing, so SHA256SUMS.txt and the
+            # attestations name each file the way it downloads and
+            # "sha256sum -c" finds it.
+            name="${name// /.}"
             case "$f" in out/*Native*/*) name="${name%.*}-native.${name##*.}" ;; esac
+            # any other character GitHub might rewrite stops the release,
+            # rather than publishing a list that doesn't match the downloads
+            case "$name" in
+              *[!A-Za-z0-9._-]*|.*|*.) echo "GitHub would rename the release file $name"; exit 1 ;;
+            esac
             [ ! -e "release/$name" ] || { echo "two release files are named $name"; exit 1; }
             cp "$f" "release/$name"
           done

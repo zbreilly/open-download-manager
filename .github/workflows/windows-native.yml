@@ -75,7 +75,8 @@ jobs:
           foreach ($f in $files) {
             $v = $f.VersionInfo
             "$($f.Name): ProductName='$($v.ProductName)' ProductVersion='$($v.ProductVersion)' FileVersion='$($v.FileVersion)'" | Tee-Object -Append ci-out/version-info.log
-            if ($v.ProductName -ne 'Open Download Manager') { Write-Error "$($f.Name) has no product name"; exit 1 }
+            # Inno Setup pads the setup program's texts with spaces
+            if ("$($v.ProductName)".Trim() -ne 'Open Download Manager') { Write-Error "$($f.Name) has no product name"; exit 1 }
             if (-not "$($v.ProductVersion)".Trim().StartsWith($version)) { Write-Error "$($f.Name): product version '$($v.ProductVersion)' is not $version"; exit 1 }
           }
       - name: Install silently, launch, download

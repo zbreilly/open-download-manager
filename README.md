@@ -184,27 +184,17 @@ The tray icon is a StatusNotifierItem: built into Plasma; on GNOME it needs the 
 `bash extension/build.sh` builds the extensions into `extension/dist/`, and the installers and packages ship a copy. In the app, **Settings → Browser integration → Show extension folder** opens it (**Settings → Browser** in the native-toolkit apps).
 
 - **Chrome / Edge / Brave / Opera / Vivaldi**: open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and pick `extension/dist/chromium`.
-- **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. A permanent install needs the add-on to be signed through addons.mozilla.org.
+- **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. Firefox removes a temporary add-on when it closes.
 
 The build also packs each extension into one file in `extension/dist/`:
 
-- `odm-chromium.crx`: a signed package. With *Developer mode* on, drag it onto `chrome://extensions`. Chrome on Windows and macOS turns off extensions that don't come from the Chrome Web Store, so use *Load unpacked* there.
+- `odm-chromium.crx`: a packed extension. With *Developer mode* on, drag it onto `chrome://extensions`. Chrome on Windows and macOS turns off extensions that don't come from the Chrome Web Store, so use *Load unpacked* there.
 - `odm-chromium.zip`: the same files unsigned, the form the Chrome Web Store and Edge Add-ons take as an upload.
-- `odm-firefox.xpi`: unsigned until Mozilla has signed this version (below). Unsigned, Firefox Developer Edition, Nightly and ESR install it from `about:addons` → *Install Add-on From File* once `xpinstall.signatures.required` is off in `about:config`. Signed, every Firefox installs it the same way, or by opening the file.
+- `odm-firefox.xpi`: an unsigned package. Firefox Developer Edition, Nightly and ESR install it from `about:addons` → *Install Add-on From File* once `xpinstall.signatures.required` is off in `about:config`. Release Firefox only installs add-ons that Mozilla has signed.
 
-The `.crx` is signed with `extension/key.pem` (or the file `ODM_CRX_KEY` names), which the first build creates and git ignores. The extension's ID comes from that key, so keep it: a `.crx` signed with another key installs as a separate extension instead of updating the old one. CI builds make no `.crx` unless they are given the key.
+The Firefox manifest declares what the extension passes to the app (`data_collection_permissions`: the cookies that go with a download, as authentication information); Firefox 140 and later show that when the extension is installed.
 
-To have Mozilla sign the Firefox extension, create API credentials in your addons.mozilla.org account (`https://addons.mozilla.org/developers/addon/api/key/`) and run:
-
-```bash
-export WEB_EXT_API_KEY=<JWT issuer>
-export WEB_EXT_API_SECRET=<JWT secret>
-bash extension/sign-firefox.sh
-```
-
-It builds the extension, submits it with Mozilla's `web-ext` on the unlisted channel (signed for you to hand out, with no public listing) and keeps the signed copy as `extension/signed/odm-firefox-<version>.xpi`. Later builds put that copy in `extension/dist/odm-firefox.xpi`. Mozilla signs each version number once, so raise the version before signing a changed extension. The Firefox manifest declares what the extension passes to the app (`data_collection_permissions`: the cookies that go with a download, as authentication information); Firefox 140 and later show that when the extension is installed.
-
-Then pair the extension with the app, once per browser: in the app open **Settings → Browser integration** (**Settings → Browser** in the native-toolkit apps) and press **Copy key**; click the extension's toolbar button, open **Connection**, paste the key under **Pairing key** and save.
+After installing it, pair the extension with the app, once per browser: in the app open **Settings → Browser integration** (**Settings → Browser** in the native-toolkit apps) and press **Copy key**; click the extension's toolbar button, open **Connection**, paste the key under **Pairing key** and save.
 
 The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links and the cookies that go with them) is encrypted with the pairing key, and the app's answers are too. Another program that listens on that port learns nothing and is not believed, and nothing that lacks the key — a web page, another extension, a local script — can make the app start a download. **New key** in the same settings page unpairs every browser.
 

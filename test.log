@@ -1,0 +1,570 @@
+[1m[33mwarning[0m[1m: unused field `authors` in `workspace.package`[0m
+ [1m[94m--> [0mCargo.toml:9:1
+  [1m[94m|[0m
+[1m[94m9[0m [1m[94m|[0m authors = ["Zach"]
+  [1m[94m|[0m [1m[33m^^^^^^^[0m
+  [1m[94m|[0m
+  [1m[94m= [0m[1mnote[0m: `cargo::unused_workspace_package_fields` is set to `warn` by default
+[1m[96mhelp[0m: consider removing the field `workspace.package.authors`
+[1m[33mwarning[0m: workspace (manifest) generated 1 warning
+[1m[92m    Updating[0m crates.io index
+[1m[92m    Updating[0m git repository `https://github.com/microsoft/windows-rs`
+[1m[92m Downloading[0m crates ...
+[1m[92m  Downloaded[0m block-buffer v0.12.1
+[1m[92m  Downloaded[0m dirs-sys v0.5.0
+[1m[92m  Downloaded[0m fnv v1.0.7
+[1m[92m  Downloaded[0m equivalent v1.0.2
+[1m[92m  Downloaded[0m getopts v0.2.24
+[1m[92m  Downloaded[0m aes v0.9.4
+[1m[92m  Downloaded[0m atomic-waker v1.1.2
+[1m[92m  Downloaded[0m autocfg v1.5.1
+[1m[92m  Downloaded[0m base64 v0.22.1
+[1m[92m  Downloaded[0m base64 v0.23.1
+[1m[92m  Downloaded[0m bitflags v2.13.2
+[1m[92m  Downloaded[0m bytes v1.12.1
+[1m[92m  Downloaded[0m cc v1.6.0
+[1m[92m  Downloaded[0m cfg-if v1.0.5
+[1m[92m  Downloaded[0m chrono v0.4.45
+[1m[92m  Downloaded[0m const-oid v0.10.2
+[1m[92m  Downloaded[0m core-foundation v0.9.4
+[1m[92m  Downloaded[0m core-foundation v0.10.1
+[1m[92m  Downloaded[0m core-foundation-sys v0.8.7
+[1m[92m  Downloaded[0m cpubits v0.1.1
+[1m[92m  Downloaded[0m crypto-common v0.2.2
+[1m[92m  Downloaded[0m cssparser v0.37.0
+[1m[92m  Downloaded[0m cssparser-macros v0.7.1
+[1m[92m  Downloaded[0m dirs v7.0.0
+[1m[92m  Downloaded[0m displaydoc v0.2.7
+[1m[92m  Downloaded[0m dtoa-short v0.3.5
+[1m[92m  Downloaded[0m phf_macros v0.13.1
+[1m[92m  Downloaded[0m cipher v0.5.2
+[1m[92m  Downloaded[0m cpufeatures v0.3.1
+[1m[92m  Downloaded[0m derive_more v2.1.1
+[1m[92m  Downloaded[0m derive_more-impl v2.1.1
+[1m[92m  Downloaded[0m digest v0.11.3
+[1m[92m  Downloaded[0m dtoa v1.0.11
+[1m[92m  Downloaded[0m encoding_rs v0.8.42
+[1m[92m  Downloaded[0m foldhash v0.2.0
+[1m[92m  Downloaded[0m fs4 v1.1.0
+[1m[92m  Downloaded[0m futures-channel v0.3.34
+[1m[92m  Downloaded[0m futures-core v0.3.34
+[1m[92m  Downloaded[0m futures-io v0.3.34
+[1m[92m  Downloaded[0m futures-sink v0.3.34
+[1m[92m  Downloaded[0m h2 v0.4.20
+[1m[92m  Downloaded[0m http-body-util v0.1.5
+[1m[92m  Downloaded[0m icu_properties v2.3.0
+[1m[92m  Downloaded[0m itoa v1.0.18
+[1m[92m  Downloaded[0m litemap v0.8.3
+[1m[92m  Downloaded[0m once_cell v1.21.4
+[1m[92m  Downloaded[0m option-ext v0.2.0
+[1m[92m  Downloaded[0m phf_generator v0.13.1
+[1m[92m  Downloaded[0m pin-project-lite v0.2.17
+[1m[92m  Downloaded[0m pkg-config v0.3.34
+[1m[92m  Downloaded[0m tendril v0.5.1
+[1m[92m  Downloaded[0m tokio-rustls v0.26.6
+[1m[92m  Downloaded[0m tower-http v0.6.11
+[1m[92m  Downloaded[0m reqwest v0.13.5
+[1m[92m  Downloaded[0m ego-tree v0.11.0
+[1m[92m  Downloaded[0m errno v0.3.14
+[1m[92m  Downloaded[0m fallible-streaming-iterator v0.1.9
+[1m[92m  Downloaded[0m form_urlencoded v1.2.2
+[1m[92m  Downloaded[0m futures-task v0.3.34
+[1m[92m  Downloaded[0m getrandom v0.4.3
+[1m[92m  Downloaded[0m httparse v1.10.1
+[1m[92m  Downloaded[0m hybrid-array v0.4.15
+[1m[92m  Downloaded[0m hyper v1.12.0
+[1m[92m  Downloaded[0m icu_normalizer_data v2.3.0
+[1m[92m  Downloaded[0m lock_api v0.4.14
+[1m[92m  Downloaded[0m log v0.4.34
+[1m[92m  Downloaded[0m markup5ever v0.39.0
+[1m[92m  Downloaded[0m multiversion_no_op v1.0.0
+[1m[92m  Downloaded[0m parking_lot_core v0.9.12
+[1m[92m  Downloaded[0m phf_codegen v0.13.1
+[1m[92m  Downloaded[0m phf_shared v0.13.1
+[1m[92m  Downloaded[0m precomputed-hash v0.1.1
+[1m[92m  Downloaded[0m serde v1.0.229
+[1m[92m  Downloaded[0m serde_json v1.0.151
+[1m[92m  Downloaded[0m servo_arc v0.4.3
+[1m[92m  Downloaded[0m simdutf8 v0.1.5
+[1m[92m  Downloaded[0m stable_deref_trait v1.2.1
+[1m[92m  Downloaded[0m futures-macro v0.3.34
+[1m[92m  Downloaded[0m hashlink v0.12.2
+[1m[92m  Downloaded[0m http-body v1.1.0
+[1m[92m  Downloaded[0m hyper-rustls v0.27.10
+[1m[92m  Downloaded[0m icu_collections v2.3.0
+[1m[92m  Downloaded[0m idna_adapter v1.2.2
+[1m[92m  Downloaded[0m indexmap v2.14.2
+[1m[92m  Downloaded[0m inout v0.2.6
+[1m[92m  Downloaded[0m mime v0.3.17
+[1m[92m  Downloaded[0m percent-encoding v2.3.2
+[1m[92m  Downloaded[0m phf v0.13.1
+[1m[92m  Downloaded[0m potential_utf v0.1.6
+[1m[92m  Downloaded[0m security-framework-sys v2.17.0
+[1m[92m  Downloaded[0m semver v1.0.28
+[1m[92m  Downloaded[0m serde_derive v1.0.229
+[1m[92m  Downloaded[0m sha1 v0.11.0
+[1m[92m  Downloaded[0m sha2 v0.11.0
+[1m[92m  Downloaded[0m signal-hook-registry v1.4.8
+[1m[92m  Downloaded[0m string_cache v0.9.0
+[1m[92m  Downloaded[0m tracing-core v0.1.36
+[1m[92m  Downloaded[0m utf8_iter v1.0.4
+[1m[92m  Downloaded[0m uuid v1.27.0
+[1m[92m  Downloaded[0m fastrand v2.5.0
+[1m[92m  Downloaded[0m find-msvc-tools v0.1.14
+[1m[92m  Downloaded[0m getrandom v0.2.17
+[1m[92m  Downloaded[0m new_debug_unreachable v1.0.6
+[1m[92m  Downloaded[0m num-traits v0.2.19
+[1m[92m  Downloaded[0m selectors v0.38.0
+[1m[92m  Downloaded[0m serde_core v1.0.229
+[1m[92m  Downloaded[0m shlex v2.0.1
+[1m[92m  Downloaded[0m siphasher v1.0.4
+[1m[92m  Downloaded[0m slab v0.4.12
+[1m[92m  Downloaded[0m smallvec v1.16.2
+[1m[92m  Downloaded[0m socket2 v0.6.5
+[1m[92m  Downloaded[0m thiserror-impl v2.0.21
+[1m[92m  Downloaded[0m tinystr v0.8.4
+[1m[92m  Downloaded[0m tower-service v0.3.3
+[1m[92m  Downloaded[0m try-lock v0.2.5
+[1m[92m  Downloaded[0m web_atoms v0.2.6
+[1m[92m  Downloaded[0m zmij v1.0.23
+[1m[92m  Downloaded[0m proc-macro2 v1.0.107
+[1m[92m  Downloaded[0m rustc_version v0.4.1
+[1m[92m  Downloaded[0m hashbrown v0.17.1
+[1m[92m  Downloaded[0m iana-time-zone v0.1.65
+[1m[92m  Downloaded[0m icu_provider v2.3.1
+[1m[92m  Downloaded[0m ipnet v2.12.2
+[1m[92m  Downloaded[0m md-5 v0.11.0
+[1m[92m  Downloaded[0m parking_lot v0.12.5
+[1m[92m  Downloaded[0m rustls-webpki v0.103.15
+[1m[92m  Downloaded[0m subtle v2.6.1
+[1m[92m  Downloaded[0m tower-layer v0.3.3
+[1m[92m  Downloaded[0m untrusted v0.9.0
+[1m[92m  Downloaded[0m want v0.3.2
+[1m[92m  Downloaded[0m zerofrom v0.1.8
+[1m[92m  Downloaded[0m zeroize v1.9.1
+[1m[92m  Downloaded[0m security-framework v3.7.0
+[1m[92m  Downloaded[0m fallible-iterator v0.3.0
+[1m[92m  Downloaded[0m hyper-util v0.1.21
+[1m[92m  Downloaded[0m memchr v2.8.3
+[1m[92m  Downloaded[0m string_cache_codegen v0.6.1
+[1m[92m  Downloaded[0m sync_wrapper v1.0.2
+[1m[92m  Downloaded[0m system-configuration v0.7.0
+[1m[92m  Downloaded[0m tempfile v3.27.0
+[1m[92m  Downloaded[0m writeable v0.6.4
+[1m[92m  Downloaded[0m yoke-derive v0.8.4
+[1m[92m  Downloaded[0m roxmltree v0.20.0
+[1m[92m  Downloaded[0m rustls-pki-types v1.15.1
+[1m[92m  Downloaded[0m scraper v0.27.0
+[1m[92m  Downloaded[0m http v1.5.0
+[1m[92m  Downloaded[0m icu_locale_core v2.3.0
+[1m[92m  Downloaded[0m mio v1.2.4
+[1m[92m  Downloaded[0m system-configuration-sys v0.6.0
+[1m[92m  Downloaded[0m tokio-util v0.7.19
+[1m[92m  Downloaded[0m quote v1.0.47
+[1m[92m  Downloaded[0m rustls-platform-verifier v0.7.1
+[1m[92m  Downloaded[0m rustversion v1.0.23
+[1m[92m  Downloaded[0m html5ever v0.39.0
+[1m[92m  Downloaded[0m synstructure v0.14.0
+[1m[92m  Downloaded[0m tokio-macros v2.7.2
+[1m[92m  Downloaded[0m tracing-attributes v0.1.31
+[1m[92m  Downloaded[0m yoke v0.8.3
+[1m[92m  Downloaded[0m zerofrom-derive v0.1.8
+[1m[92m  Downloaded[0m zerovec-derive v0.11.6
+[1m[92m  Downloaded[0m rustc-hash v2.1.3
+[1m[92m  Downloaded[0m idna v1.1.0
+[1m[92m  Downloaded[0m thiserror v2.0.21
+[1m[92m  Downloaded[0m unicode-width v0.2.2
+[1m[92m  Downloaded[0m url v2.5.8
+[1m[92m  Downloaded[0m icu_properties_data v2.3.0
+[1m[92m  Downloaded[0m unicode-ident v1.0.26
+[1m[92m  Downloaded[0m scopeguard v1.2.0
+[1m[92m  Downloaded[0m typenum v1.20.1
+[1m[92m  Downloaded[0m zerotrie v0.2.5
+[1m[92m  Downloaded[0m futures-util v0.3.34
+[1m[92m  Downloaded[0m zerovec v0.11.8
+[1m[92m  Downloaded[0m tower v0.5.3
+[1m[92m  Downloaded[0m rusqlite v0.40.2
+[1m[92m  Downloaded[0m syn v3.0.6
+[1m[92m  Downloaded[0m rustls v0.23.45
+[1m[92m  Downloaded[0m syn v2.0.119
+[1m[92m  Downloaded[0m vcpkg v0.2.15
+[1m[92m  Downloaded[0m icu_normalizer v2.3.0
+[1m[92m  Downloaded[0m tracing v0.1.44
+[1m[92m  Downloaded[0m rustix v1.1.5
+[1m[92m  Downloaded[0m libc v0.2.190
+[1m[92m  Downloaded[0m tokio v1.53.2
+[1m[92m  Downloaded[0m ring v0.17.14
+[1m[92m  Downloaded[0m libsqlite3-sys v0.38.2
+[1m[92m   Compiling[0m proc-macro2 v1.0.107
+[1m[92m   Compiling[0m unicode-ident v1.0.26
+[1m[92m   Compiling[0m quote v1.0.47
+[1m[92m   Compiling[0m libc v0.2.190
+[1m[92m   Compiling[0m cfg-if v1.0.5
+[1m[92m   Compiling[0m smallvec v1.16.2
+[1m[92m   Compiling[0m stable_deref_trait v1.2.1
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m syn v3.0.6
+[1m[92m   Compiling[0m syn v2.0.119
+[1m[92m   Compiling[0m siphasher v1.0.4
+[1m[92m   Compiling[0m phf_shared v0.13.1
+[1m[92m   Compiling[0m lock_api v0.4.14
+[1m[92m   Compiling[0m itoa v1.0.18
+[1m[92m   Compiling[0m parking_lot v0.12.5
+[1m[92m   Compiling[0m find-msvc-tools v0.1.14
+[1m[92m   Compiling[0m shlex v2.0.1
+[1m[92m   Compiling[0m core-foundation-sys v0.8.7
+[1m[92m   Compiling[0m fastrand v2.5.0
+[1m[92m   Compiling[0m phf_generator v0.13.1
+[1m[92m   Compiling[0m cc v1.6.0
+[1m[92m   Compiling[0m synstructure v0.14.0
+[1m[92m   Compiling[0m errno v0.3.14
+[1m[92m   Compiling[0m zerovec-derive v0.11.6
+[1m[92m   Compiling[0m displaydoc v0.2.7
+[1m[92m   Compiling[0m zerofrom-derive v0.1.8
+[1m[92m   Compiling[0m yoke-derive v0.8.4
+[1m[92m   Compiling[0m bytes v1.12.1
+[1m[92m   Compiling[0m zerofrom v0.1.8
+[1m[92m   Compiling[0m bitflags v2.13.2
+[1m[92m   Compiling[0m yoke v0.8.3
+[1m[92m   Compiling[0m pin-project-lite v0.2.17
+[1m[92m   Compiling[0m litemap v0.8.3
+[1m[92m   Compiling[0m zerovec v0.11.8
+[1m[92m   Compiling[0m writeable v0.6.4
+[1m[92m   Compiling[0m futures-core v0.3.34
+[1m[92m   Compiling[0m zerotrie v0.2.5
+[1m[92m   Compiling[0m icu_properties_data v2.3.0
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[92m   Compiling[0m icu_normalizer_data v2.3.0
+[1m[92m   Compiling[0m tinystr v0.8.4
+[1m[92m   Compiling[0m potential_utf v0.1.6
+[1m[92m   Compiling[0m utf8_iter v1.0.4
+[1m[92m   Compiling[0m icu_locale_core v2.3.0
+[1m[92m   Compiling[0m icu_collections v2.3.0
+[1m[92m   Compiling[0m signal-hook-registry v1.4.8
+[1m[92m   Compiling[0m tokio-macros v2.7.2
+[1m[92m   Compiling[0m socket2 v0.6.5
+[1m[92m   Compiling[0m icu_provider v2.3.1
+[1m[92m   Compiling[0m mio v1.2.4
+[1m[92m   Compiling[0m typenum v1.20.1
+[1m[92m   Compiling[0m futures-macro v0.3.34
+[1m[92m   Compiling[0m tokio v1.53.2
+[1m[92m   Compiling[0m hybrid-array v0.4.15
+[1m[92m   Compiling[0m ring v0.17.14
+[1m[92m   Compiling[0m phf_codegen v0.13.1
+[1m[92m   Compiling[0m log v0.4.34
+[1m[92m   Compiling[0m percent-encoding v2.3.2
+[1m[92m   Compiling[0m futures-task v0.3.34
+[1m[92m   Compiling[0m foldhash v0.2.0
+[1m[92m   Compiling[0m slab v0.4.12
+[1m[92m   Compiling[0m hashbrown v0.17.1
+[1m[92m   Compiling[0m futures-util v0.3.34
+[1m[92m   Compiling[0m icu_normalizer v2.3.0
+[1m[92m   Compiling[0m icu_properties v2.3.0
+[1m[92m   Compiling[0m http v1.5.0
+[1m[92m   Compiling[0m serde_core v1.0.229
+[1m[92m   Compiling[0m idna_adapter v1.2.2
+[1m[92m   Compiling[0m phf_macros v0.13.1
+[1m[92m   Compiling[0m getrandom v0.2.17
+[1m[92m   Compiling[0m autocfg v1.5.1
+[1m[92m   Compiling[0m new_debug_unreachable v1.0.6
+[1m[92m   Compiling[0m zeroize v1.9.1
+[1m[92m   Compiling[0m untrusted v0.9.0
+[1m[92m   Compiling[0m rustls-pki-types v1.15.1
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[92m   Compiling[0m phf v0.13.1
+[1m[92m   Compiling[0m idna v1.1.0
+[1m[92m   Compiling[0m http-body v1.1.0
+[1m[92m   Compiling[0m form_urlencoded v1.2.2
+[1m[92m   Compiling[0m crypto-common v0.2.2
+[1m[92m   Compiling[0m tracing-core v0.1.36
+[1m[92m   Compiling[0m tracing-attributes v0.1.31
+[1m[92m   Compiling[0m string_cache_codegen v0.6.1
+[1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m rustversion v1.0.23
+[1m[92m   Compiling[0m system-configuration-sys v0.6.0
+[1m[92m   Compiling[0m futures-sink v0.3.34
+[1m[92m   Compiling[0m zmij v1.0.23
+[1m[92m   Compiling[0m precomputed-hash v0.1.1
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m   Compiling[0m rustls v0.23.45
+[1m[92m   Compiling[0m equivalent v1.0.2
+[1m[92m   Compiling[0m tracing v0.1.44
+[1m[92m   Compiling[0m indexmap v2.14.2
+[1m[92m   Compiling[0m tokio-util v0.7.19
+[1m[92m   Compiling[0m web_atoms v0.2.6
+[1m[92m   Compiling[0m url v2.5.8
+[1m[92m   Compiling[0m rustls-webpki v0.103.15
+[1m[92m   Compiling[0m serde_derive v1.0.229
+[1m[92m   Compiling[0m subtle v2.6.1
+[1m[92m   Compiling[0m atomic-waker v1.1.2
+[1m[92m   Compiling[0m fnv v1.0.7
+[1m[92m   Compiling[0m tower-service v0.3.3
+[1m[92m   Compiling[0m serde_json v1.0.151
+[1m[92m   Compiling[0m try-lock v0.2.5
+[1m[92m   Compiling[0m want v0.3.2
+[1m[92m   Compiling[0m h2 v0.4.20
+[1m[92m   Compiling[0m string_cache v0.9.0
+[1m[92m   Compiling[0m block-buffer v0.12.1
+[1m[92m   Compiling[0m futures-channel v0.3.34
+[1m[92m   Compiling[0m iana-time-zone v0.1.65
+[1m[92m   Compiling[0m core-foundation v0.9.4
+[1m[92m   Compiling[0m pkg-config v0.3.34
+[1m[92m   Compiling[0m vcpkg v0.2.15
+[1m[92m   Compiling[0m memchr v2.8.3
+[1m[92m   Compiling[0m rustix v1.1.5
+[1m[92m   Compiling[0m const-oid v0.10.2
+[1m[92m   Compiling[0m getrandom v0.4.3
+[1m[92m   Compiling[0m dtoa v1.0.11
+[1m[92m   Compiling[0m dtoa-short v0.3.5
+[1m[92m   Compiling[0m digest v0.11.3
+[1m[92m   Compiling[0m libsqlite3-sys v0.38.2
+[1m[92m   Compiling[0m system-configuration v0.7.0
+[1m[92m   Compiling[0m hyper v1.12.0
+[1m[92m   Compiling[0m chrono v0.4.45
+[1m[92m   Compiling[0m encoding_rs v0.8.42
+[1m[92m   Compiling[0m tendril v0.5.1
+[1m[92m   Compiling[0m selectors v0.38.0
+[1m[92m   Compiling[0m sync_wrapper v1.0.2
+[1m[92m   Compiling[0m cssparser-macros v0.7.1
+[1m[92m   Compiling[0m derive_more-impl v2.1.1
+[1m[92m   Compiling[0m security-framework-sys v2.17.0
+[1m[92m   Compiling[0m core-foundation v0.10.1
+[1m[92m   Compiling[0m cpufeatures v0.3.1
+[1m[92m   Compiling[0m tower-layer v0.3.3
+[1m[92m   Compiling[0m ipnet v2.12.2
+[1m[92m   Compiling[0m base64 v0.23.1
+[1m[92m   Compiling[0m derive_more v2.1.1
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m hyper-util v0.1.21
+[1m[92m   Compiling[0m security-framework v3.7.0
+[1m[92m   Compiling[0m cssparser v0.37.0
+[1m[92m   Compiling[0m markup5ever v0.39.0
+[1m[92m   Compiling[0m tokio-rustls v0.26.6
+[1m[92m   Compiling[0m inout v0.2.6
+[1m[92m   Compiling[0m servo_arc v0.4.3
+[1m[92m   Compiling[0m option-ext v0.2.0
+[1m[92m   Compiling[0m thiserror v2.0.21
+[1m[92m   Compiling[0m multiversion_no_op v1.0.0
+[1m[92m   Compiling[0m simdutf8 v0.1.5
+[1m[92m   Compiling[0m unicode-width v0.2.2
+[1m[92m   Compiling[0m rustc-hash v2.1.3
+[1m[92m   Compiling[0m getopts v0.2.24
+[1m[92m   Compiling[0m dirs-sys v0.5.0
+[1m[92m   Compiling[0m cipher v0.5.2
+[1m[92m   Compiling[0m hyper-rustls v0.27.10
+[1m[92m   Compiling[0m html5ever v0.39.0
+[1m[92m   Compiling[0m rustls-platform-verifier v0.7.1
+[1m[92m   Compiling[0m tower-http v0.6.11
+[1m[92m   Compiling[0m http-body-util v0.1.5
+[1m[92m   Compiling[0m hashlink v0.12.2
+[1m[92m   Compiling[0m thiserror-impl v2.0.21
+[1m[92m   Compiling[0m fallible-iterator v0.3.0
+[1m[92m   Compiling[0m fallible-streaming-iterator v0.1.9
+[1m[92m   Compiling[0m mime v0.3.17
+[1m[92m   Compiling[0m cpubits v0.1.1
+[1m[92m   Compiling[0m ego-tree v0.11.0
+[1m[92m   Compiling[0m aes v0.9.4
+[1m[92m   Compiling[0m scraper v0.27.0
+[1m[92m   Compiling[0m reqwest v0.13.5
+[1m[92m   Compiling[0m rusqlite v0.40.2
+[1m[92m   Compiling[0m dirs v7.0.0
+[1m[92m   Compiling[0m fs4 v1.1.0
+[1m[92m   Compiling[0m uuid v1.27.0
+[1m[92m   Compiling[0m sha2 v0.11.0
+[1m[92m   Compiling[0m sha1 v0.11.0
+[1m[92m   Compiling[0m md-5 v0.11.0
+[1m[92m   Compiling[0m base64 v0.22.1
+[1m[92m   Compiling[0m roxmltree v0.20.0
+[1m[92m   Compiling[0m tempfile v3.27.0
+[1m[92m   Compiling[0m odm-core v0.2.0 (/Users/runner/work/open-download-manager/open-download-manager/crates/odm-core)
+[1m[92m   Compiling[0m odm-ui v0.2.0 (/Users/runner/work/open-download-manager/open-download-manager/crates/odm-ui)
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 7m 07s
+[1m[92m     Running[0m unittests src/lib.rs (target/debug/build/odm-core/12db411c263f5140/out/odm_core-12db411c263f5140)
+
+running 42 tests
+test client::tests::content_range ... ok
+test client::tests::downgrade_rule ... ok
+test client::tests::credential_scope ... ok
+test dash::tests::durations ... ok
+test client::tests::header_split ... ok
+test client::tests::referer_policy ... ok
+test dash::tests::templates ... ok
+test ftp::tests::passive_replies ... ok
+test hls::tests::attribute_lists ... ok
+test hls::tests::drm_keys ... ok
+test ftp::tests::endpoints ... ok
+test limiter::tests::debt_is_paid_in_full ... ok
+test limiter::tests::cancellation_ends_a_wait ... ok
+test mp4::tests::merges_two_tracks ... ok
+test pairing::tests::interoperates_with_the_extension ... ok
+test pairing::tests::key_text_round_trip ... ok
+test pairing::tests::new_key_unpairs ... ok
+test pairing::tests::refuses_other_keys_replays_and_old_requests ... ok
+test pairing::tests::request_and_response ... ok
+test secret::tests::damaged_is_dropped ... ok
+test secret::tests::empty_and_plain ... ok
+test secret::tests::keystore_answers ... ok
+test secret::tests::round_trip ... ok
+test secret::tests::sealing_with_a_key ... ok
+test store::tests::plain_values_are_not_taken_over ... ok
+test store::tests::secrets_dropped_on_purpose_stay_dropped ... ok
+test store::tests::unread_secrets_are_written_back_as_they_were ... ok
+test store::tests::what_was_set_in_this_run_wins ... ok
+test stream::tests::aes_cbc ... ok
+test stream::tests::detection ... ok
+test stream::tests::https_manifests_list_https_only ... ok
+test stream::tests::unit_layout ... ok
+test util::tests::batch ... ok
+test util::tests::disposition ... ok
+test util::tests::disposition_variants ... ok
+test util::tests::exts ... ok
+test util::tests::redaction ... ok
+test util::tests::sanitize ... ok
+test util::tests::url_names ... ok
+test util::tests::web_marks ... ok
+test limiter::tests::lifting_the_limit_ends_waits ... ok
+test limiter::tests::many_callers_share_the_rate ... ok
+
+test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.76s
+
+[1m[92m     Running[0m tests/engine.rs (target/debug/build/odm-core/b6d99ae4f7516692/out/engine-b6d99ae4f7516692)
+
+running 17 tests
+test checksum_verification ... ok
+test content_disposition_name_and_category ... ok
+test category_subfolders_and_assignment ... ok
+test flaky_connections_retry ... ok
+test file_changed_on_server_restarts ... ok
+test grabber_lists_files ... ok
+test delete_removes_part_files ... ok
+test not_found_fails ... ok
+test multi_segment_with_dynamic_split ... ok
+test queue_runs_in_order_and_finishes ... ok
+test global_speed_limit ... ok
+test scheduler_starts_queue ... ok
+test server_without_ranges ... ok
+test pause_and_resume ... ok
+test single_small_file ... ok
+test resume_after_restart ... ok
+test simultaneous_limit ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.49s
+
+[1m[92m     Running[0m tests/ftp.rs (target/debug/build/odm-core/0ab8f6ced3b997ea/out/ftp-0ab8f6ced3b997ea)
+
+running 8 tests
+test anonymous_and_no_resume_servers ... ok
+test probe_reports_size_and_resume ... ok
+test refreshed_link_keeps_its_password_out_of_the_url ... ok
+test pause_and_resume_continue_from_the_offset ... ok
+test resumes_after_dropped_connections ... ok
+test wrong_password_fails_clearly ... ok
+test split_download_with_credentials_from_the_url ... ok
+test connection_limits_reduce_connections ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.21s
+
+[1m[92m     Running[0m tests/keystore.rs (target/debug/build/odm-core/82eaed9c79d013c9/out/keystore-82eaed9c79d013c9)
+
+running 1 test
+test sealed_with_the_keystore_key ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.34s
+
+[1m[92m     Running[0m tests/regressions.rs (target/debug/build/odm-core/1edb74d4201be572/out/regressions-1edb74d4201be572)
+
+running 26 tests
+test checksum_failure_downloads_again_in_full ... ok
+test credentials_not_sent_across_hosts ... ok
+test busy_server_reduces_connections ... ok
+test dead_direct_link_falls_back_to_original_url ... ok
+test delete_gives_back_an_adopted_file ... ok
+test changed_file_restarts_with_new_size ... ok
+test empty_file_completes ... ok
+test errors_do_not_contain_url_secrets ... ok
+test delete_during_rate_limit_wait_removes_part ... ok
+test grabber_checks_content_type ... ok
+test global_limit_holds_with_many_connections ... ok
+test missing_part_file_starts_over ... ok
+test probed_name_keeps_own_reservation ... ok
+test redownload_of_finished_file_keeps_the_copy ... ok
+test non_resumable_drops_give_up ... ok
+test remembered_folder_emits_settings_changed ... ok
+test rename_uses_the_same_reservation ... ok
+test deleted_downloads_stay_deleted ... ok
+test resumed_single_segment_is_split ... ok
+test same_name_downloads_get_distinct_files ... ok
+test save_queue_never_drops_members ... ok
+test server_names_are_reserved_too ... ok
+test redownload_while_running_produces_correct_file ... ok
+test target_exists_ignores_names_held_by_unfinished_downloads ... ok
+test stale_etag_on_partial_response_restarts ... ok
+test shutdown_wait_stops_everything_and_persists ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.60s
+
+[1m[92m     Running[0m tests/security.rs (target/debug/build/odm-core/0ff54c2f1de11d88/out/security-0ff54c2f1de11d88)
+
+running 5 tests
+test credentials_are_dropped_when_a_download_completes ... ok
+test refresh_link_keeps_credentials_on_the_same_site_only ... ok
+test other_hosts_only_see_the_referrer_origin ... ok
+test secrets_are_protected_in_the_database ... ok
+test secrets_left_by_an_older_version_are_protected_on_open ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+[1m[92m     Running[0m tests/streams.rs (target/debug/build/odm-core/d46b0663bbc8b271/out/streams-d46b0663bbc8b271)
+
+running 11 tests
+test dash_drm_and_live ... ok
+test dash_numbered_template ... ok
+test dash_timeline_list_and_base ... ok
+test hls_fmp4_drm_and_live ... ok
+test hls_master_playlist ... ok
+test hls_media_playlist_with_keys_ranges_and_discontinuity ... ok
+test hls_quality_choice_aes128_and_byte_ranges ... ok
+test audio_that_cannot_be_muxed_is_saved_beside_the_video ... ok
+test dash_separate_audio_is_muxed_into_one_mp4 ... ok
+test protected_and_live_streams_are_refused ... ok
+test stream_pause_and_resume_keep_finished_segments ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.56s
+
+[1m[92m     Running[0m unittests src/lib.rs (target/debug/build/odm-ui/e5a63a040da1a84b/out/odm_ui-e5a63a040da1a84b)
+
+running 18 tests
+test add::tests::page_titles_get_the_stream_file_type ... ok
+test add::tests::batches ... ok
+test add::tests::probe_fills_untouched_fields ... ok
+test add::tests::streams_offer_qualities ... ok
+test add::tests::protected_streams_cannot_be_added ... ok
+test add::tests::user_edits_survive_a_probe ... ok
+test add::tests::web_links_only_carry_the_url ... ok
+test fmt::tests::limits ... ok
+test fmt::tests::sizes_and_times ... ok
+test incoming::tests::parses ... ok
+test fmt::tests::names ... ok
+test settings::tests::clipboard_rules ... ok
+test settings::tests::extensions_move_between_categories ... ok
+test settings::tests::merges_three_ways ... ok
+test store::tests::events_keep_the_list ... ok
+test store::tests::reorders_against_live_membership ... ok
+test store::tests::speed_history_is_kept ... ok
+test store::tests::filters_sorts_and_counts ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+[1m[92m   Doc-tests[0m odm_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+[1m[92m   Doc-tests[0m odm_ui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

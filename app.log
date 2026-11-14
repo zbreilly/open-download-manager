@@ -1,0 +1,503 @@
+Timestamp               Ty Process[PID:TID]
+2026-11-14 19:23:29.804 A  OpenDownloadManager[23513:129a3] (libsystem_info.dylib) Retrieve User by ID
+2026-11-14 19:23:29.805 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fdc000] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.daemon
+2026-11-14 19:23:29.805 Df OpenDownloadManager[23513:129b4] [com.apple.xpc:connection] [0x600003fdc0f0] activating connection: mach=true listener=false peer=false name=com.apple.cfprefsd.agent
+2026-11-14 19:23:29.812 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd43c0] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.launchservicesd
+2026-11-14 19:23:29.816 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fdc1e0] activating connection: mach=true listener=false peer=false name=com.apple.pasteboard.1
+2026-11-14 19:23:29.819 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd44b0] activating connection: mach=true listener=false peer=false name=com.apple.distributed_notifications@Uv3
+2026-11-14 19:23:29.843 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-14 19:23:29.844 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd45a0] activating connection: mach=true listener=false peer=false name=com.apple.analyticsd
+2026-11-14 19:23:29.854 A  OpenDownloadManager[23513:129a3] (TCC) TCCAccessRequest() IPC
+2026-11-14 19:23:29.855 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd0000] activating connection: mach=true listener=false peer=false name=com.apple.tccd.system
+2026-11-14 19:23:29.882 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd0000] invalidated after the last release of the connection object
+2026-11-14 19:23:29.883 Df OpenDownloadManager[23513:129a3] [com.apple.SkyLight:default] server port 0x00003303, session port 0x00003303
+2026-11-14 19:23:29.898 Df OpenDownloadManager[23513:129a3] [com.apple.SkyLight:default] New connection 0x3c103 main
+2026-11-14 19:23:29.904 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] CHECKIN: pid=23513
+2026-11-14 19:23:29.910 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] CHECKEDIN: pid=23513 asn=0x0-0x31031 foreground=1
+2026-11-14 19:23:29.925 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x158005980] activating connection: mach=true listener=false peer=false name=com.apple.lsd.modifydb
+2026-11-14 19:23:29.926 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156608b70] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-14 19:23:29.926 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156608b70] Channel could not return listener port.
+2026-11-14 19:23:29.928 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] FRONTLOGGING: version 1
+2026-11-14 19:23:29.928 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] Registered, pid=23513 ASN=0x0,0x31031
+2026-11-14 19:23:29.928 Df OpenDownloadManager[23513:129c7] [com.apple.xpc:connection] [0x156705340] activating connection: mach=false listener=false peer=true name=com.apple.xpc.anonymous.0x156608b70.peer[122].0x156705340
+2026-11-14 19:23:29.929 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156608b70] Channel could not return listener port.
+2026-11-14 19:23:29.930 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] BringForward: pid=23513 asn=0x0-0x31031 bringForward=1 foreground=1 uiElement=0 launchedByLS=1 modifiersCount=1 allDisabled=1
+2026-11-14 19:23:29.930 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] BringFrontModifier: pid=23513 asn=0x0-0x31031 Modifier 0 hideAfter=0 hideOthers=0 dontMakeFrontmost=0 mouseDown=0/0 seed=0/0
+2026-11-14 19:23:29.930 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] BringForward: pid=23513 asn=0x0-0x31031
+2026-11-14 19:23:29.930 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] SetFrontProcess: asn=0x0-0x31031 options=0
+2026-11-14 19:23:29.973 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-14 19:23:29.988 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) No persisted cache on this platform.
+2026-11-14 19:23:29.991 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) Could not get size of EAN data (IOConnectCallScalarMethod kAppleNVMeEANGetSize returned 0xE00002E2)
+2026-11-14 19:23:29.991 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) Failed to copy 'aptk' from EAN
+2026-11-14 19:23:29.991 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) Failed to copy APTicket properties. Falling back to default policy.
+2026-11-14 19:23:29.991 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) Creating default MGSysConfigPolicy
+2026-11-14 19:23:29.991 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) CFDictionaryRef copySyscfgDictionary(void) enumeration of <private> failed.
+2026-11-14 19:23:29.991 Df OpenDownloadManager[23513:129a3] (libMobileGestalt.dylib) Failed to find key <private>
+2026-11-14 19:23:29.997 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Appearance] Current system appearance, (HLTB: 1), (SLS: 0)
+2026-11-14 19:23:30.004 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Appearance] Post-registration system appearance: (HLTB: 1)
+2026-11-14 19:23:30.014 Df OpenDownloadManager[23513:129b5] [com.apple.xpc:connection] [0x1566086f0] activating connection: mach=true listener=false peer=false name=com.apple.lsd.mapdb
+2026-11-14 19:23:30.036 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156608b70] Channel could not return listener port.
+2026-11-14 19:23:30.040 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156608b70] Channel could not return listener port.
+2026-11-14 19:23:30.074 Df OpenDownloadManager[23513:129a3] [com.apple.dt.xctest:Default] Registering for test daemon availability notify post.
+2026-11-14 19:23:30.074 Df OpenDownloadManager[23513:129a3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-14 19:23:30.075 Df OpenDownloadManager[23513:129a3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-14 19:23:30.075 Df OpenDownloadManager[23513:129a3] [com.apple.dt.xctest:Default] notify_get_state check indicated test daemon not ready.
+2026-11-14 19:23:30.442 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-14 19:23:30.446 Df OpenDownloadManager[23513:129a3] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.gms.availability.notification
+2026-11-14 19:23:30.447 Df OpenDownloadManager[23513:129a3] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.os-eligibility-domain.change.greymatter
+2026-11-14 19:23:30.447 Df OpenDownloadManager[23513:129a3] [com.apple.GenerativeModels:availability] registering darwin observer for name: com.apple.language.changed
+2026-11-14 19:23:30.447 Df OpenDownloadManager[23513:129a3] [com.apple.WritingTools:Default] isAvailable value changed: featureEnabled = true, isMDMAllowed = true, gmAvailable (current) = false
+2026-11-14 19:23:30.497 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: (null)
+-effectiveAppearance: <NSCompositeAppearance: 0x6000032dc5a0
+ (
+    "<NSAquaAppearance: 0x6000032dc510>",
+    "<NSSystemAppearance: 0x6000032d0c60>"
+)>
+2026-11-14 19:23:30.518 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-14 19:23:30.518 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-14 19:23:30.549 A  OpenDownloadManager[23513:129b4] (libsystem_info.dylib) Membership API: translate identifier
+2026-11-14 19:23:30.571 Df OpenDownloadManager[23513:129b4] [com.apple.xpc:connection] [0x600003fd4000] activating connection: mach=true listener=false peer=false name=com.apple.dock.fullscreen
+2026-11-14 19:23:30.584 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003cd8900] activating connection: mach=true listener=false peer=false name=com.apple.fonts
+2026-11-14 19:23:30.616 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x158009410] activating connection: mach=true listener=false peer=false name=com.apple.appkit.restoration_storage
+2026-11-14 19:23:30.618 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd0690] activating connection: mach=true listener=false peer=false name=com.apple.coreservices.appleevents
+2026-11-14 19:23:30.618 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156608b70] Channel could not return listener port.
+2026-11-14 19:23:30.619 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] SignalReady: pid=23513 asn=0x0-0x31031
+2026-11-14 19:23:30.619 Df OpenDownloadManager[23513:129a3] [com.apple.processmanager:front-35286506] SIGNAL: pid=23513 asn=0x0x-0x31031
+2026-11-14 19:23:30.621 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-14 19:23:30.621 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From System CFPrefsD
+2026-11-14 19:23:30.683 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:AutomaticTermination] void _NSDisableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-14 19:23:30.685 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:StateRestoration] -[NSApplication _reopenWindowsAsNecessaryIncludingRestorableState:withFullFidelity:completionHandler:] shouldRestoreState=1 hasPersistentStateToRestore=0 shouldStillRestoreStateAfterPrompting=0
+2026-11-14 19:23:30.686 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd0870] activating connection: mach=true listener=false peer=false name=com.apple.window_proxies
+2026-11-14 19:23:30.686 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd0870] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-14 19:23:30.688 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) Restoring windows
+2026-11-14 19:23:30.750 Df OpenDownloadManager[23513:129a3] [com.apple.libxpc.SMAppService:all] Service <private> status: 3
+2026-11-14 19:23:30.750 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Appearance] Invalidate NSApp effectiveAppearance
+2026-11-14 19:23:30.761 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Appearance] NSApp cache appearance:
+-NSRequiresAquaSystemAppearance: 0
+-appearance: <NSCompositeAppearance: 0x6000032d4120
+ (
+    "<NSDarkAquaAppearance: 0x6000032d4090>",
+    "<NSSystemAppearance: 0x6000032d0c60>"
+)>
+-effectiveAppearance: <NSCompositeAppearance: 0x6000032d4120
+ (
+    "<NSDarkAquaAppearance: 0x6000032d4090>",
+    "<NSSystemAppearance: 0x6000032d0c60>"
+)>
+2026-11-14 19:23:30.791 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-14 19:23:30.794 Df OpenDownloadManager[23513:129a3] [com.apple.UserNotifications:Connections] [app.opendm.desktop] Creating a user notification center
+2026-11-14 19:23:30.794 Df OpenDownloadManager[23513:129a3] [com.apple.UserNotifications:Connections] [app.opendm.desktop] Requesting authorization with options 6
+2026-11-14 19:23:30.797 Df OpenDownloadManager[23513:129ca] [com.apple.xpc:connection] [0x1566147c0] activating connection: mach=true listener=false peer=false name=com.apple.usernotifications.listener
+2026-11-14 19:23:30.842 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156744a00] activating connection: mach=true listener=false peer=false name=com.apple.windowmanager.server
+2026-11-14 19:23:31.537 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window front conditionally: 1e related: 0
+2026-11-14 19:23:31.537 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:AutomaticTermination] void _NSEnableAutomaticTerminationAndLog(NSString *) No windows open yet
+2026-11-14 19:23:31.555 Df OpenDownloadManager[23513:129ca] [com.apple.UIIntelligenceSupport:xpc] establishing connection to agent
+2026-11-14 19:23:31.556 Df OpenDownloadManager[23513:129ca] [com.apple.xpc:session] [0x600002344320] Session created.
+2026-11-14 19:23:31.556 Df OpenDownloadManager[23513:129ca] [com.apple.xpc:session] [0x600002344320] Session created from connection [0x600003fd80f0]
+2026-11-14 19:23:31.556 Df OpenDownloadManager[23513:129ca] [com.apple.xpc:connection] [0x600003fd80f0] activating connection: mach=true listener=false peer=false name=com.apple.uiintelligencesupport.agent
+2026-11-14 19:23:31.556 Df OpenDownloadManager[23513:129ca] [com.apple.xpc:session] [0x600002344320] Session activated
+2026-11-14 19:23:31.712 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order all windows front 1096681934000
+2026-11-14 19:23:31.715 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fdd680] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-14 19:23:31.733 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x156740280] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-14 19:23:31.737 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x15674ef50] activating connection: mach=false listener=true peer=false name=(anonymous)
+2026-11-14 19:23:31.737 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x15674ef50] Channel could not return listener port.
+2026-11-14 19:23:31.738 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fdd680] invalidated after the last release of the connection object
+2026-11-14 19:23:31.739 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-14 19:23:31.921 Df OpenDownloadManager[23513:129b5] [com.apple.coreanimation:Metal] Precompiled pipelines disabled on unsupported hardware.
+2026-11-14 19:23:31.923 E  OpenDownloadManager[23513:129b5] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-14 19:23:31.923 E  OpenDownloadManager[23513:129b5] (libCoreFSCache.dylib) Errors found! Invalidating cache...
+2026-11-14 19:23:31.923 Df OpenDownloadManager[23513:129b5] [com.apple.xpc:connection] [0x600003fda1c0] activating connection: mach=false listener=false peer=false name=com.apple.MTLCompilerService
+2026-11-14 19:23:31.924 A  OpenDownloadManager[23513:129b5] (Metal) compiling shader
+2026-11-14 19:23:31.995 Df OpenDownloadManager[23513:129b4] [com.apple.CoreAnalytics:client] Received configuration update from daemon (initial)
+2026-11-14 19:23:32.012 A  OpenDownloadManager[23513:129b5] (Metal) compiling shader
+2026-11-14 19:23:32.015 E  OpenDownloadManager[23513:129b5] (libCoreFSCache.dylib) fopen failed for data file: errno = 2 (No such file or directory)
+2026-11-14 19:23:32.015 E  OpenDownloadManager[23513:129b5] (libCoreFSCache.dylib) Errors found! Invalidating cache...
+2026-11-14 19:23:32.015 A  OpenDownloadManager[23513:129b5] (Metal) compiling shader
+2026-11-14 19:23:32.031 A  OpenDownloadManager[23513:129b5] (Metal) compiling shader
+2026-11-14 19:23:32.036 A  OpenDownloadManager[23513:129ca] (Metal) compiling shader
+2026-11-14 19:23:32.036 Df OpenDownloadManager[23513:129b5] [com.apple.xpc:connection] [0x600003fdd770] activating connection: mach=false listener=false peer=false name=com.apple.MTLCompilerService
+2026-11-14 19:23:32.036 A  OpenDownloadManager[23513:129b5] (Metal) compiling shader
+2026-11-14 19:23:32.105 A  OpenDownloadManager[23513:129b5] (Metal) compiling shader
+2026-11-14 19:23:32.118 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fd7570] activating connection: mach=false listener=false peer=false name=com.apple.hiservices-xpcservice
+2026-11-14 19:23:32.172 A  OpenDownloadManager[23513:129ca] (Metal) compiling shader
+2026-11-14 19:23:32.175 A  OpenDownloadManager[23513:129ca] (Metal) compiling shader
+2026-11-14 19:23:32.217 A  OpenDownloadManager[23513:129ca] (Metal) compiling shader
+2026-11-14 19:23:35.561 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:AutomaticTermination] void _updateToReflectAutomaticTerminationState(void) Setting _kLSApplicationWouldBeTerminatedByTALKey=0
+2026-11-14 19:23:38.754 Df OpenDownloadManager[23513:129ca] [com.apple.launchservices:db] NotifyToken::RegisterDispatch(user.uid.501.com.apple.LaunchServices.database) fired for session key <private>
+2026-11-14 19:23:38.921 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x12713c380] activating connection: mach=true listener=false peer=false name=com.apple.iconservices
+2026-11-14 19:23:38.923 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x127143160] activating connection: mach=true listener=false peer=false name=com.apple.iconservices.store
+2026-11-14 19:23:39.017 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x1566a0d70] activating connection: mach=true listener=false peer=false name=com.apple.inputanalyticsd
+2026-11-14 19:23:39.048 Df OpenDownloadManager[23513:129a3] [com.apple.inputmethodkitClient:Client] +[IMKClient subclass]: chose IMKClient_Modern
+2026-11-14 19:23:39.051 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:39.051 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fda850] activating connection: mach=true listener=false peer=false name=com.apple.pbs.fetch_services
+2026-11-14 19:23:39.052 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fda850] invalidated after the last release of the connection object
+2026-11-14 19:23:39.052 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Loading Preferences From User CFPrefsD
+2026-11-14 19:23:39.114 A  OpenDownloadManager[23513:129a3] (CoreFoundation) Updating Key-Value Observers Of Preferences
+2026-11-14 19:23:39.115 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:39.135 Df OpenDownloadManager[23513:12d19] [com.apple.xpc:connection] [0x600003fde0d0] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService
+2026-11-14 19:23:39.149 Df OpenDownloadManager[23513:12d1d] [com.apple.xpc:connection] [0x600003fde0d0] invalidated after the last release of the connection object
+2026-11-14 19:23:39.149 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:39.151 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window front conditionally: 20 related: 0
+2026-11-14 19:23:39.177 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:39.302 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x158088ad0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-14 19:23:39.302 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x600003fde850] activating connection: mach=false listener=false peer=false name=com.apple.ViewBridgeAuxiliary
+2026-11-14 19:23:39.304 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x15808fcf0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-14 19:23:39.306 Df OpenDownloadManager[23513:129b4] [com.apple.xpc:connection] [0x600003fde850] invalidated after the last release of the connection object
+2026-11-14 19:23:39.314 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] window <TUINSWindow: 0x1580884e0> windowNumber=21 finishing close
+2026-11-14 19:23:39.314 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window: 21 op: 0 relative: 0 related: 0
+2026-11-14 19:23:39.323 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window front conditionally: 20 related: 0
+2026-11-14 19:23:39.353 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController
+2026-11-14 19:23:39.362 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController hideTextInputMenuHUD:] {
+}
+2026-11-14 19:23:40.400 Df OpenDownloadManager[23513:12a15] [com.apple.launchservices:db] NotifyToken::RegisterDispatch(user.uid.501.com.apple.LaunchServices.database) fired for session key <private>
+2026-11-14 19:23:41.463 Df OpenDownloadManager[23513:12a15] [com.apple.launchservices:default] LSExceptions shared instance invalidated for timeout.
+2026-11-14 19:23:44.635 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:44.636 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:44.636 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:44.639 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:44.640 Df OpenDownloadManager[23513:129ca] [com.apple.xpc:connection] [0x600003fdaee0] activating connection: mach=false listener=false peer=false name=com.apple.TextInputUI.xpc.CursorUIViewService
+2026-11-14 19:23:44.641 Df OpenDownloadManager[23513:12a15] [com.apple.xpc:connection] [0x600003fdaee0] invalidated after the last release of the connection object
+2026-11-14 19:23:44.647 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x127120e70] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-14 19:23:44.647 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x1566b5ad0] activating connection: mach=false listener=false peer=false name=(anonymous)
+2026-11-14 19:23:44.667 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController activate:]_block_invoke: Create CursorUIViewService: TUINSRemoteViewController
+2026-11-14 19:23:44.667 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x15808fcf0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-14 19:23:44.667 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x158088ad0] invalidated because the current process cancelled the connection by calling xpc_connection_cancel()
+2026-11-14 19:23:44.667 E  OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] ViewBridge to RemoteViewService Terminated: Error Domain=com.apple.ViewBridge Code=18 UserInfo={com.apple.ViewBridge.error.hint=this process disconnected remote view controller -- benign unless unexpected, com.apple.ViewBridge.error.description=NSViewBridgeErrorCanceled}
+2026-11-14 19:23:44.819 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController hideTextInputMenuHUD:] {
+}
+2026-11-14 19:23:46.999 A  OpenDownloadManager[23513:129a3] (AppKit) performKeyEquivalent:
+2026-11-14 19:23:46.999 A  OpenDownloadManager[23513:129a3] (AppKit) performClick:
+2026-11-14 19:23:46.999 A  OpenDownloadManager[23513:129a3] (AppKit) sendActionFrom:
+2026-11-14 19:23:47.000 A  OpenDownloadManager[23513:129a3] (AppKit) sendAction:
+2026-11-14 19:23:47.000 A  OpenDownloadManager[23513:129a3] (AppKit) performClick:
+2026-11-14 19:23:47.000 A  OpenDownloadManager[23513:129a3] (AppKit) sendActionFrom:
+2026-11-14 19:23:47.000 A  OpenDownloadManager[23513:129a3] (AppKit) sendAction:
+2026-11-14 19:23:47.000 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] window <NSWindow: 0x15665d670> windowNumber=20 finishing close
+2026-11-14 19:23:47.022 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window: 1e op: 1 relative: 20 related: 0
+2026-11-14 19:23:47.022 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window: 20 op: 0 relative: 0 related: 0
+2026-11-14 19:23:50.189 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x1567b4f20] activating connection: mach=true listener=false peer=false name=mul-xpc (Apple)_OpenStep
+2026-11-14 19:23:50.190 Df OpenDownloadManager[23513:129a3] [com.apple.xpc:connection] [0x15669a8b0] activating connection: mach=true listener=false peer=false name=com.apple.naturallanguaged
+2026-11-14 19:23:50.996 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:50.996 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:50.998 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSLayoutConstraint:0x6000023e8eb0 H:|-(2)-[NSProgressIndicator:0x1580794c0]   (active, names: progress:0x158078ae0, '|':progress:0x158078ae0 )>",
+    "<NSLayoutConstraint:0x6000023e91d0 NSProgressIndicator:0x1580794c0.trailing == progress.trailing - 46   (active, names: progress:0x158078ae0 )>",
+    "<NSLayoutConstraint:0x6000023e9040 NSTextField:0x158078d40.trailing == progress.trailing - 2   (active, names: progress:0x158078ae0 )>",
+    "<NSLayoutConstraint:0x6000023e90e0 H:|-(2)-[NSTextField:0x158078d40]   (active, names: progress:0x158078ae0, '|':progress:0x158078ae0 )>",
+    "<NSLayoutConstraint:0x6000023e9090 NSTextField:0x158078d40.width == 40   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023e9090 NSTextField:0x158078d40.width == 40   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:52.690 Df OpenDownloadManager[23513:129a3] [com.apple.UserNotifications:Connections] [app.opendm.desktop] Adding notification request 79A8-18DF to destinations: Default, contentDate: (null)
+2026-11-14 19:23:52.700 Df OpenDownloadManager[23513:129ca] [com.apple.UserNotifications:Connections] [app.opendm.desktop] Added notification request: [ hasError: 0 hasCompletionHandler: 1 ]
+2026-11-14 19:23:54.501 Df OpenDownloadManager[23513:129a3] [com.apple.appleevents:main]         OSErr AERemoveEventHandler(AEEventClass, AEEventID, AEEventHandlerUPP, Boolean)(spec,phac handler=0x1842bf4f8 isSys=YES) err=0/noErr
+2026-11-14 19:23:54.501 Df OpenDownloadManager[23513:129a3] [com.apple.appleevents:main]         OSErr AERemoveEventHandler(AEEventClass, AEEventID, AEEventHandlerUPP, Boolean)(misc,actv handler=0x189f3d89c isSys=YES) err=0/noErr
+2026-11-14 19:23:54.503 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order all windows front 1121229098041
+2026-11-14 19:23:54.608 Df OpenDownloadManager[23513:129a3] [com.apple.iohid:oversized] Released connection: 13AC6D58-E12F-4997-9711-8D001459BA6F
+{
+    UUID = "13AC6D58-E12F-4997-9711-8D001459BA6F";
+    caller = "HIToolbox: _TISCopyAttachedKeyboardLanguages + 112";
+    dispatchQueue = 0;
+    eventCount = 0;
+    eventMask = 0;
+    port = 72211;
+    resetCount = 0;
+    runloop = 0;
+    services =     (
+        4294968042
+    );
+    virtualServices =     (
+    );
+}
+2026-11-14 19:23:54.608 A  OpenDownloadManager[23513:129a3] (AppKit) performKeyEquivalent:
+2026-11-14 19:23:54.609 A  OpenDownloadManager[23513:129a3] (AppKit) sendAction:
+2026-11-14 19:23:54.652 Df OpenDownloadManager[23513:129a3] [com.apple.TextInputUI:CursorUI] -[TUINSCursorUIController scheduleUpdateCursorLocation]
+2026-11-14 19:23:54.689 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.689 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.689 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023ab1b0 H:|-(20)-[NSStackView:0x156660c10]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023ab160 NSStackView:0x156660c10.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x60000234c5a0 'NSStackView.Edge.Trailing' H:[NSPopUpButton:0x156682460]-(>=0)-|(LTR)   (active, names: '|':NSStackView:0x156660c10 )>",
+    "<NSLayoutConstraint:0x60000234c140 'NSStackView.Edge.Leading' H:|-(>=0)-[NSTextField:0x1566608f0](LTR)   (active, names: '|':NSStackView:0x156660c10 )>",
+    "<NSLayoutConstraint:0x60000234c370 'NSStackView.Stack.Min' H:[NSTextField:0x1566608f0]-(>=10)-[NSPopUpButton:0x156682460](LTR)   (active)>",
+    "<NSLayoutConstraint:0x6000023aa620 NSTextField:0x1566608f0.width == 130   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa620 NSTextField:0x1566608f0.width == 130   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.690 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.690 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.690 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023ab1b0 H:|-(20)-[NSStackView:0x156660c10]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023ab160 NSStackView:0x156660c10.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x60000234c5a0 'NSStackView.Edge.Trailing' H:[NSPopUpButton:0x156682460]-(>=0)-|(LTR)   (active, names: '|':NSStackView:0x156660c10 )>",
+    "<NSLayoutConstraint:0x60000234c140 'NSStackView.Edge.Leading' H:|-(>=0)-[NSTextField:0x1566608f0](LTR)   (active, names: '|':NSStackView:0x156660c10 )>",
+    "<NSLayoutConstraint:0x60000234c370 'NSStackView.Stack.Min' H:[NSTextField:0x1566608f0]-(>=10)-[NSPopUpButton:0x156682460](LTR)   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x60000234c370 'NSStackView.Stack.Min' H:[NSTextField:0x1566608f0]-(>=10)-[NSPopUpButton:0x156682460](LTR)   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.690 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.690 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.691 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023a9f40 H:|-(20)-[NSButton:0x156682960]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa9e0 NSButton:0x156682960.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa9e0 NSButton:0x156682960.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.691 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.691 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.691 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa990 H:|-(20)-[NSButton:0x156682be0]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa0d0 NSButton:0x156682be0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa0d0 NSButton:0x156682be0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.692 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.692 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.692 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa1c0 H:|-(20)-[NSTextField:0x156682e60]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa120 NSTextField:0x156682e60.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa120 NSTextField:0x156682e60.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.693 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.693 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.693 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa440 H:|-(20)-[NSButton:0x156683180]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa3f0 NSButton:0x156683180.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa3f0 NSButton:0x156683180.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.693 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.693 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.693 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa3a0 H:|-(20)-[NSButton:0x156683400]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa170 NSButton:0x156683400.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa170 NSButton:0x156683400.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.693 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.693 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.694 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa260 H:|-(20)-[NSButton:0x156683680]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa210 NSButton:0x156683680.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa210 NSButton:0x156683680.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.694 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.694 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.694 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa350 H:|-(20)-[NSBox:0x156660100]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023ab2a0 NSBox:0x156660100.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023ab2a0 NSBox:0x156660100.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.694 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.694 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.694 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023ab200 H:|-(20)-[NSTextField:0x1566605d0]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023ab070 NSTextField:0x1566605d0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023ab070 NSTextField:0x1566605d0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.694 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.694 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.695 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023ab1b0 H:|-(20)-[NSStackView:0x156660c10]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023ab160 NSStackView:0x156660c10.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023ab160 NSStackView:0x156660c10.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.695 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.695 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.695 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aa2b0 H:|-(20)-[NSButton:0x1566610f0]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023aa300 NSButton:0x1566610f0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023aa300 NSButton:0x1566610f0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.695 F  OpenDownloadManager[23513:129a3] [com.apple.runtime-issues:AppKit] Conflicting constraints detected: <private>.
+
+Will attempt to recover by breaking <private>.
+2026-11-14 19:23:54.695 A  OpenDownloadManager[23513:129a3] (libsystem_trace.dylib) Activity for state dumps
+2026-11-14 19:23:54.695 E  OpenDownloadManager[23513:129a3] [com.apple.AppKit:Layout] Unable to simultaneously satisfy constraints:
+(
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df40 h=-&- v=-&- NSClipView:0x15668a470.minX == 0   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234df90 h=-&- v=-&- H:[NSClipView:0x15668a470]-(0)-|   (active, names: '|':NSScrollView:0x15714e000 )>",
+    "<NSAutoresizingMaskLayoutConstraint:0x60000234e210 h=--& v=--& NSScrollView:0x15714e000.width == 20   (active)>",
+    "<NSLayoutConstraint:0x6000023a92c0 H:|-(0)-[ODMFlippedView:0x15666f2a0]   (active, names: '|':NSClipView:0x15668a470 )>",
+    "<NSLayoutConstraint:0x6000023a9a40 ODMFlippedView:0x15666f2a0.trailing == NSClipView:0x15668a470.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023aaad0 H:|-(0)-[NSStackView:0x15669ac60]   (active, names: '|':ODMFlippedView:0x15666f2a0 )>",
+    "<NSLayoutConstraint:0x6000023aa8a0 NSStackView:0x15669ac60.trailing == ODMFlippedView:0x15666f2a0.trailing   (active)>",
+    "<NSLayoutConstraint:0x6000023a9e50 H:|-(20)-[NSButton:0x1566826e0]   (active, names: '|':NSStackView:0x15669ac60 )>",
+    "<NSLayoutConstraint:0x6000023a9e00 NSButton:0x1566826e0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>"
+)
+
+Will attempt to recover by breaking constraint 
+<NSLayoutConstraint:0x6000023a9e00 NSButton:0x1566826e0.trailing == NSStackView:0x15669ac60.trailing - 20   (active)>
+
+Set the NSUserDefault NSConstraintBasedLayoutVisualizeMutuallyExclusiveConstraints to YES to have -[NSWindow visualizeConstraints:] automatically called when this happens.  And/or, set a symbolic breakpoint on LAYOUT_CONSTRAINTS_NOT_SATISFIABLE to catch this in the debugger.
+2026-11-14 19:23:54.703 Df OpenDownloadManager[23513:129a3] [com.apple.AppKit:Window] order window front conditionally: 25 related: 0

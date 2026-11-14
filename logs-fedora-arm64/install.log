@@ -1,0 +1,1541 @@
+Updating and loading repositories:
+ Fedora 45 openh264 (From Cisco) - aarc 100% |   5.8 KiB/s |   5.3 KiB |  00m01s
+ Fedora 45 - aarch64 - Updates          100% |   4.6 MiB/s |   4.6 MiB |  00m01s
+ Fedora 45 - aarch64                    100% |  17.6 MiB/s |  35.6 MiB |  00m02s
+Repositories loaded.
+Package "curl-8.21.0-8.fc45.aarch64" is already installed.
+
+Package                                  Arch    Version                           Repository                 Size
+Installing:
+ ImageMagick                             aarch64 1:7.1.2.35-1.fc45                 updates               140.1 KiB
+ dbus-x11                                aarch64 1:1.16.2-6.fc45                   fedora                 71.8 KiB
+ git                                     aarch64 0:2.56.1-1.fc45                   updates                57.7 KiB
+ nodejs                                  aarch64 1:22.23.1-4.fc45                  fedora                142.1 KiB
+ open-download-manager                   aarch64 0:0.2.0-1                         @commandline           19.7 MiB
+ openssl                                 aarch64 1:4.0.3-1.fc45                    fedora                  1.9 MiB
+ procps-ng                               aarch64 0:4.0.6-2.fc45                    fedora                  1.8 MiB
+ python3                                 aarch64 0:3.15.2-1.fc45                   updates                84.7 KiB
+ xorg-x11-server-Xvfb                    aarch64 0:21.1.26-1.fc45                  updates                 1.8 MiB
+Installing dependencies:
+ ImageMagick-libs                        aarch64 1:7.1.2.35-1.fc45                 updates                14.2 MiB
+ LibRaw                                  aarch64 0:0.22.3-1.fc45                   updates                 2.5 MiB
+ ModemManager-glib                       aarch64 0:1.24.2-5.fc45                   fedora                  1.6 MiB
+ abattis-cantarell-vf-fonts              noarch  0:0.301-18.fc45                   fedora                192.7 KiB
+ abseil-cpp                              aarch64 0:20260526.0-3.fc45               fedora                  6.7 MiB
+ adobe-mappings-cmap                     noarch  0:20231115-6.fc45                 fedora                 15.2 MiB
+ adobe-mappings-cmap-deprecated          noarch  0:20231115-6.fc45                 fedora                582.1 KiB
+ adobe-mappings-pdf                      noarch  0:20190401-13.fc45                fedora                  4.4 MiB
+ adwaita-cursor-theme                    noarch  0:51.0-1.fc45                     fedora                 11.4 MiB
+ adwaita-icon-theme                      noarch  0:51.0-1.fc45                     fedora                888.7 KiB
+ adwaita-icon-theme-legacy               noarch  0:46.2-12.fc45                    fedora                  2.1 MiB
+ alsa-lib                                aarch64 0:1.2.16.1-2.fc45                 fedora                  1.5 MiB
+ aribb24                                 aarch64 0:1.0.3^20160216git5e9be27-6.fc45 fedora                139.1 KiB
+ at-spi2-atk                             aarch64 0:2.62.1-1.fc45                   updates               359.7 KiB
+ at-spi2-core                            aarch64 0:2.62.1-1.fc45                   updates                 1.7 MiB
+ atk                                     aarch64 0:2.62.1-1.fc45                   updates               296.8 KiB
+ avahi-glib                              aarch64 0:0.9~rc2-9.fc45                  fedora                 67.5 KiB
+ avahi-libs                              aarch64 0:0.9~rc2-9.fc45                  fedora                230.1 KiB
+ bluez-libs                              aarch64 0:5.88-1.fc45                     updates               278.4 KiB
+ bubblewrap                              aarch64 0:0.13.1-1.fc45                   updates               183.8 KiB
+ cairo                                   aarch64 0:1.18.6-1.fc45                   fedora                  1.8 MiB
+ cairo-gobject                           aarch64 0:1.18.6-1.fc45                   fedora                 67.1 KiB
+ cdparanoia-libs                         aarch64 0:10.2-51.fc45                    fedora                137.3 KiB
+ codec2                                  aarch64 0:1.2.0-10.fc45                   fedora                  1.4 MiB
+ colord-libs                             aarch64 0:1.4.8-5.fc45                    fedora                969.9 KiB
+ cryptsetup-libs                         aarch64 0:2.8.8-1.fc45                    fedora                  2.9 MiB
+ cups-filesystem                         noarch  1:2.4.19-4.fc45                   fedora                  0.0   B
+ cups-libs                               aarch64 1:2.4.19-4.fc45                   fedora                730.9 KiB
+ dbus                                    aarch64 1:1.16.2-6.fc45                   fedora                  0.0   B
+ dbus-broker                             aarch64 0:37-9.fc45                       fedora                421.9 KiB
+ dbus-common                             noarch  1:1.16.2-6.fc45                   fedora                 11.2 KiB
+ dbus-daemon                             aarch64 1:1.16.2-6.fc45                   fedora                661.5 KiB
+ dbus-libs                               aarch64 1:1.16.2-6.fc45                   fedora                397.6 KiB
+ dbus-tools                              aarch64 1:1.16.2-6.fc45                   fedora                279.0 KiB
+ default-fonts-core-sans                 noarch  0:4.3-3.fc45                      fedora                 11.9 KiB
+ desktop-file-utils                      aarch64 0:0.28-8.fc45                     fedora                318.3 KiB
+ device-mapper                           aarch64 0:1.02.217-2.fc45                 fedora                444.0 KiB
+ device-mapper-libs                      aarch64 0:1.02.217-2.fc45                 fedora                510.7 KiB
+ duktape                                 aarch64 0:2.7.0-12.fc45                   fedora                671.7 KiB
+ emacs-filesystem                        aarch64 1:30.2-3.fc45                     fedora                  0.0   B
+ enchant2                                aarch64 0:2.8.21-1.fc45                   fedora                354.2 KiB
+ exempi                                  aarch64 0:2.6.4-10.fc45                   fedora                  1.3 MiB
+ exiv2-libs                              aarch64 0:0.28.9-1.fc45                   fedora                  2.9 MiB
+ expat                                   aarch64 0:2.9.0-1.fc45                    updates               389.5 KiB
+ faad2-libs                              aarch64 1:2.11.4-1.fc45                   updates               542.8 KiB
+ fdk-aac-free                            aarch64 0:2.0.3-3.fc45                    fedora                591.8 KiB
+ fftw-libs-double                        aarch64 0:3.3.10-18.fc45                  fedora                  1.8 MiB
+ fftw-libs-single                        aarch64 0:3.3.10-18.fc45                  fedora                  1.9 MiB
+ flac-libs                               aarch64 0:1.5.0-9.fc45                    fedora                555.1 KiB
+ flite                                   aarch64 0:2.2-14.fc45                     fedora                 21.5 MiB
+ fontconfig                              aarch64 0:2.18.3-2.fc45                   fedora                  1.6 MiB
+ fonts-filesystem                        noarch  1:5.0.0-4.fc45                    fedora                  0.0   B
+ freetype                                aarch64 0:2.14.3-3.fc45                   updates               878.6 KiB
+ fribidi                                 aarch64 0:1.0.18-1.fc45                   updates               455.4 KiB
+ fuse-common                             aarch64 0:3.18.3-1.fc45                   fedora                 38.0   B
+ fuse3                                   aarch64 0:3.18.3-1.fc45                   fedora                215.3 KiB
+ fuse3-libs                              aarch64 0:3.18.3-1.fc45                   fedora                353.8 KiB
+ gdk-pixbuf2                             aarch64 0:2.44.8-3.fc45                   fedora                  2.7 MiB
+ geoclue2                                aarch64 0:2.8.2-2.fc45                    fedora                488.9 KiB
+ giflib                                  aarch64 0:6.1.3-3.fc45                    fedora                138.2 KiB
+ git-core                                aarch64 0:2.56.1-1.fc45                   updates                27.0 MiB
+ git-core-doc                            noarch  0:2.56.1-1.fc45                   updates                19.1 MiB
+ glib-networking                         aarch64 0:2.90.1-1.fc45                   updates               960.9 KiB
+ glycin-libs                             aarch64 0:2.2.6-1.fc45                    updates                 4.4 MiB
+ glycin-loaders                          aarch64 0:2.2.6-1.fc45                    updates                13.5 MiB
+ gobject-introspection                   aarch64 0:1.86.0-11.fc45                  fedora                445.4 KiB
+ google-droid-sans-fonts                 noarch  0:20200215-25.fc45                fedora                  6.3 MiB
+ google-noto-fonts-common                noarch  0:20260601-3.fc45                 fedora                 17.7 KiB
+ google-noto-sans-vf-fonts               noarch  0:20260601-3.fc45                 fedora                  1.4 MiB
+ gpgme                                   aarch64 0:2.0.1-6.fc45                    fedora                761.5 KiB
+ gpgmepp                                 aarch64 1:2.0.0-2.fc45                    fedora                630.9 KiB
+ graphene                                aarch64 0:1.10.8-6.fc45                   fedora                178.5 KiB
+ graphite2                               aarch64 0:1.3.14-22.fc45                  fedora                239.4 KiB
+ graphviz-libs                           aarch64 0:15.1.1-2.fc45                   updates                 1.3 MiB
+ groff-base                              aarch64 0:1.24.1-2.fc45                   fedora                  4.5 MiB
+ gsettings-desktop-schemas               aarch64 0:51.0-1.fc45                     fedora                  6.7 MiB
+ gsm                                     aarch64 0:1.0.24-3.fc45                   fedora                 77.6 KiB
+ gssdp                                   aarch64 0:1.6.6-3.fc45                    fedora                191.2 KiB
+ gstreamer1                              aarch64 0:1.28.9-1.fc45                   updates                 5.9 MiB
+ gstreamer1-plugins-bad-free-libs        aarch64 0:1.28.9-1.fc45                   updates                 4.4 MiB
+ gstreamer1-plugins-base                 aarch64 0:1.28.9-1.fc45                   updates                 8.5 MiB
+ gtk-update-icon-cache                   aarch64 0:3.24.52-6.fc45                  fedora                 94.0 KiB
+ gtk3                                    aarch64 0:3.24.52-6.fc45                  fedora                 23.1 MiB
+ gupnp                                   aarch64 0:1.6.10-4.fc45                   fedora                320.1 KiB
+ gupnp-igd                               aarch64 0:1.6.0-15.fc45                   fedora                 98.7 KiB
+ harfbuzz                                aarch64 0:15.0.0-2.fc45                   updates                 3.2 MiB
+ harfbuzz-icu                            aarch64 0:15.0.0-2.fc45                   updates                67.4 KiB
+ hicolor-icon-theme                      noarch  0:0.18-6.fc45                     fedora                 72.4 KiB
+ hidapi                                  aarch64 0:0.15.0-4.fc45                   fedora                182.2 KiB
+ highway                                 aarch64 0:1.3.0-3.fc45                    fedora                  1.5 MiB
+ hunspell                                aarch64 0:1.7.6-1.fc45                    updates                 1.4 MiB
+ hunspell-en-AU                          noarch  0:0.20260225-3.fc45               fedora                502.1 KiB
+ hunspell-en-CA                          noarch  0:0.20260225-3.fc45               fedora                499.6 KiB
+ hunspell-en-GB                          noarch  0:0.20260225-3.fc45               fedora                543.2 KiB
+ hunspell-en-US                          noarch  0:0.20260225-3.fc45               fedora                506.7 KiB
+ hunspell-filesystem                     aarch64 0:1.7.6-1.fc45                    updates                 0.0   B
+ hwdata                                  noarch  0:0.413-1.fc45                    updates                10.2 MiB
+ hyphen                                  aarch64 0:2.8.10-1.fc45                   updates                93.0 KiB
+ ilbc                                    aarch64 0:3.0.4-21.fc45                   fedora                 79.4 KiB
+ imath                                   aarch64 0:3.1.12-9.fc45                   fedora                387.7 KiB
+ inih                                    aarch64 0:62-3.fc45                       fedora                 78.3 KiB
+ inih-cpp                                aarch64 0:62-3.fc45                       fedora                 67.8 KiB
+ iso-codes                               noarch  0:4.20.1-4.fc45                   fedora                 22.3 MiB
+ javascriptcoregtk4.1                    aarch64 0:2.54.2-1.fc45                   updates                32.5 MiB
+ jbig2dec-libs                           aarch64 0:0.20-9.fc45                     fedora                172.9 KiB
+ jbigkit-libs                            aarch64 0:2.1-34.fc45                     fedora                181.3 KiB
+ json-glib                               aarch64 0:1.10.8-11.fc45                  fedora                616.3 KiB
+ kbd-legacy                              noarch  0:2.10.0-3.fc45                   fedora                562.1 KiB
+ kbd-misc                                noarch  0:2.10.0-3.fc45                   fedora                  2.4 MiB
+ kmod                                    aarch64 0:34.2-6.fc45                     fedora                271.0 KiB
+ kmod-libs                               aarch64 0:34.2-6.fc45                     fedora                159.0 KiB
+ lame-libs                               aarch64 0:4.0-1.fc45                      fedora                930.4 KiB
+ lcms2                                   aarch64 0:2.16-8.fc45                     fedora                484.7 KiB
+ less                                    aarch64 0:710-2.fc45                      updates               548.7 KiB
+ libICE                                  aarch64 0:1.1.2-5.fc45                    fedora                222.3 KiB
+ libSM                                   aarch64 0:1.2.5-5.fc45                    fedora                129.0 KiB
+ libX11                                  aarch64 0:1.8.13-3.fc45                   fedora                  1.3 MiB
+ libX11-common                           noarch  0:1.8.13-3.fc45                   fedora                  1.1 MiB
+ libX11-xcb                              aarch64 0:1.8.13-3.fc45                   fedora                 66.9 KiB
+ libXau                                  aarch64 0:1.0.12-5.fc45                   fedora                120.9 KiB
+ libXcomposite                           aarch64 0:0.4.6-8.fc45                    fedora                 96.4 KiB
+ libXcursor                              aarch64 0:1.2.3-5.fc45                    fedora                 69.4 KiB
+ libXdamage                              aarch64 0:1.1.6-8.fc45                    fedora                 95.6 KiB
+ libXdmcp                                aarch64 0:1.1.5-6.fc45                    fedora                122.1 KiB
+ libXext                                 aarch64 0:1.3.6-6.fc45                    fedora                145.8 KiB
+ libXfixes                               aarch64 0:6.0.1-8.fc45                    fedora                 70.2 KiB
+ libXfont2                               aarch64 0:2.0.9-1.fc45                    fedora                373.8 KiB
+ libXft                                  aarch64 0:2.3.8-11.fc45                   fedora                192.3 KiB
+ libXi                                   aarch64 0:1.8.4-1.fc45                    updates               136.5 KiB
+ libXinerama                             aarch64 0:1.1.5-11.fc45                   fedora                 70.9 KiB
+ libXmu                                  aarch64 0:1.2.1-6.fc45                    fedora                263.2 KiB
+ libXrandr                               aarch64 0:1.5.4-8.fc45                    fedora                 71.6 KiB
+ libXrender                              aarch64 0:0.9.12-5.fc45                   fedora                 69.9 KiB
+ libXt                                   aarch64 0:1.3.1-5.fc45                    fedora                477.4 KiB
+ libXtst                                 aarch64 0:1.2.5-5.fc45                    fedora                 73.4 KiB
+ libXv                                   aarch64 0:1.0.13-5.fc45                   fedora                 69.9 KiB
+ libXxf86vm                              aarch64 0:1.1.6-5.fc45                    fedora                 69.2 KiB
+ libaom                                  aarch64 0:3.15.3-1.fc45                   updates                 4.1 MiB
+ libaribcaption                          aarch64 0:1.1.1-5.fc45                    fedora                271.6 KiB
+ libasyncns                              aarch64 0:0.8-35.fc45                     fedora                 99.3 KiB
+ libavcodec-free                         aarch64 0:9.0.2-3.fc45                    updates                 9.5 MiB
+ libavif                                 aarch64 0:1.3.0-7.fc45                    fedora                281.9 KiB
+ libavutil-free                          aarch64 0:9.0.2-3.fc45                    updates               870.7 KiB
+ libayatana-appindicator-gtk3            aarch64 0:0.6.0-1.fc45                    fedora                147.0 KiB
+ libayatana-ido-gtk3                     aarch64 0:0.10.4-8.fc45                   fedora                302.7 KiB
+ libayatana-indicator-gtk3               aarch64 0:0.9.5-1.fc45                    fedora                170.5 KiB
+ libcamera                               aarch64 0:0.7.2-5.fc45                    updates                 2.4 MiB
+ libcanberra                             aarch64 0:0.30-52.fc45                    fedora                332.9 KiB
+ libcloudproviders                       aarch64 0:0.4.1-1.fc45                    fedora                156.0 KiB
+ libcue                                  aarch64 0:2.3.0-15.fc45                   fedora                109.7 KiB
+ libdatrie                               aarch64 0:0.2.14-3.fc45                   fedora                 93.8 KiB
+ libdav1d                                aarch64 0:1.5.4-1.fc45                    fedora                920.8 KiB
+ libdbusmenu                             aarch64 0:16.04.0-32.fc45                 fedora                552.2 KiB
+ libdbusmenu-gtk3                        aarch64 0:16.04.0-32.fc45                 fedora                136.5 KiB
+ libdeflate                              aarch64 0:1.26-1.fc45                     fedora                163.9 KiB
+ libdisplay-info                         aarch64 0:0.3.0-2.fc45                    fedora                266.5 KiB
+ libdrm                                  aarch64 0:2.4.134-2.fc45                  fedora                765.3 KiB
+ libdvdnav                               aarch64 0:7.0.0-2.fc45                    fedora                160.8 KiB
+ libdvdread                              aarch64 0:7.1.1-1.fc45                    fedora                228.2 KiB
+ libebur128                              aarch64 0:1.2.6-16.fc45                   fedora                 71.3 KiB
+ libedit                                 aarch64 0:3.1-60.20260512cvs.fc45         fedora                280.3 KiB
+ libepoxy                                aarch64 0:1.5.10-13.fc45                  fedora                  1.2 MiB
+ libevdev                                aarch64 0:1.13.7-1.fc45                   fedora                134.0 KiB
+ libfdisk                                aarch64 0:2.42.4-1.fc45                   fedora                418.8 KiB
+ libfontenc                              aarch64 0:1.1.8-6.fc45                    fedora                106.6 KiB
+ libgexiv2                               aarch64 0:0.16.2-1.fc45                   fedora                250.9 KiB
+ libgit2_1.9                             aarch64 0:1.9.7-3.fc45                    fedora                  1.3 MiB
+ libglvnd                                aarch64 1:1.7.0-10.fc45                   fedora                  1.3 MiB
+ libglvnd-egl                            aarch64 1:1.7.0-10.fc45                   fedora                 68.8 KiB
+ libglvnd-gles                           aarch64 1:1.7.0-10.fc45                   fedora                394.1 KiB
+ libglvnd-glx                            aarch64 1:1.7.0-10.fc45                   fedora                  1.0 MiB
+ libgs                                   aarch64 0:10.07.1-3.fc45                  updates                24.0 MiB
+ libgsf                                  aarch64 0:1.14.60-1.fc45                  updates                 1.0 MiB
+ libgudev                                aarch64 0:238-10.fc45                     fedora                103.7 KiB
+ libgusb                                 aarch64 0:0.4.9-6.fc45                    fedora                182.0 KiB
+ libgxps                                 aarch64 0:0.3.2-13.fc45                   fedora                239.8 KiB
+ libheif                                 aarch64 0:1.23.7-1.fc45                   updates                 2.7 MiB
+ libicu                                  aarch64 0:78.3-9.fc45                     updates                37.8 MiB
+ libijs                                  aarch64 0:0.35-27.fc45                    fedora                101.5 KiB
+ libimobiledevice                        aarch64 0:1.4.0-7.fc45                    fedora                360.6 KiB
+ libimobiledevice-glue                   aarch64 0:1.3.2-2.fc45                    fedora                167.2 KiB
+ libjpeg-turbo                           aarch64 0:3.1.4.1-2.fc45                  fedora                681.3 KiB
+ libjxl                                  aarch64 1:0.11.2-2.fc45                   fedora                  2.6 MiB
+ liblastlog2                             aarch64 0:2.42.4-1.fc45                   fedora                137.8 KiB
+ liblc3                                  aarch64 0:1.1.3-9.fc45                    fedora                206.8 KiB
+ libldac                                 aarch64 0:2.0.2.6-1.fc45                  fedora                146.1 KiB
+ liblerc                                 aarch64 0:4.3.0-1.fc45                    updates               547.7 KiB
+ liblqr-1                                aarch64 0:0.4.2-30.fc45                   fedora                109.1 KiB
+ libmanette                              aarch64 0:0.2.13-9.fc45                   fedora                427.1 KiB
+ libmediainfo                            aarch64 0:26.05-2.fc45                    fedora                  9.6 MiB
+ libnice                                 aarch64 0:0.1.23-3.fc45                   fedora                614.0 KiB
+ libnotify                               aarch64 0:0.8.9-1.fc45                    updates               187.8 KiB
+ libogg                                  aarch64 2:1.3.6-4.fc45                    fedora                 77.6 KiB
+ libopenjph                              aarch64 0:0.31.0-1.fc45                   fedora                325.9 KiB
+ libosinfo                               aarch64 0:1.12.0-12.fc45                  fedora                  1.4 MiB
+ libpaper                                aarch64 1:2.1.1-11.fc45                   fedora                 96.7 KiB
+ libpciaccess                            aarch64 0:0.16-18.fc45                    fedora                 72.4 KiB
+ libpkgconf                              aarch64 0:2.5.1-2.fc45                    fedora                134.0 KiB
+ libplist                                aarch64 0:2.7.0-4.fc45                    fedora                368.8 KiB
+ libpng                                  aarch64 2:1.6.59-1.fc45                   updates               269.8 KiB
+ libproxy                                aarch64 0:0.5.12-3.fc45                   fedora                166.1 KiB
+ libraqm                                 aarch64 0:0.10.1-5.fc45                   fedora                 68.5 KiB
+ librsvg2                                aarch64 0:2.63.2-2.fc45                   fedora                  4.6 MiB
+ libsbc                                  aarch64 0:2.2-1.fc45                      updates                85.2 KiB
+ libseccomp                              aarch64 0:2.6.1-3.fc45                    fedora                246.3 KiB
+ libsecret                               aarch64 0:0.21.8.2-2.fc45                 fedora                569.7 KiB
+ libshout                                aarch64 0:2.4.6-12.fc45                   fedora                230.8 KiB
+ libsndfile                              aarch64 0:1.2.2-12.fc45                   fedora                562.0 KiB
+ libsoup3                                aarch64 0:3.8.1-1.fc45                    updates                 1.3 MiB
+ libsrtp                                 aarch64 0:2.8.0-3.fc45                    fedora                169.7 KiB
+ libssh2                                 aarch64 0:1.11.1-10.fc45                  fedora                350.5 KiB
+ libstemmer                              aarch64 0:3.1.1-2.fc45                    fedora                789.5 KiB
+ libswresample-free                      aarch64 0:9.0.2-3.fc45                    updates               154.4 KiB
+ libtdb                                  aarch64 0:1.4.15-4.fc45                   fedora                140.5 KiB
+ libthai                                 aarch64 0:0.1.30-3.fc45                   fedora                824.9 KiB
+ libtheora                               aarch64 1:1.1.1-42.fc45                   fedora                468.5 KiB
+ libtiff                                 aarch64 0:4.7.2-3.fc45                    updates               659.4 KiB
+ libtinysparql                           aarch64 0:3.12.0-2.fc45                   fedora                  1.1 MiB
+ libultrahdr                             aarch64 0:1.4.0^20251202git8cbc983-2.fc45 fedora                347.7 KiB
+ libunwind                               aarch64 0:1.8.3-4.fc45                    fedora                351.5 KiB
+ libusbmuxd                              aarch64 0:2.1.1-2.fc45                    fedora                103.2 KiB
+ libuv                                   aarch64 1:1.52.1-2.fc45                   fedora                616.4 KiB
+ libv4l                                  aarch64 0:1.32.0-4.fc45                   fedora                669.1 KiB
+ libva                                   aarch64 0:2.24.1-2.fc45                   fedora                558.2 KiB
+ libvdpau                                aarch64 0:1.5-12.fc45                     fedora                 68.7 KiB
+ libvisual                               aarch64 1:0.4.2-4.fc44                    fedora                488.5 KiB
+ libvorbis                               aarch64 1:1.3.7-21.fc45                   fedora                845.3 KiB
+ libvpx                                  aarch64 0:1.17.0-1.fc45                   fedora                  2.7 MiB
+ libwayland-client                       aarch64 0:1.26.0-3.fc45                   fedora                 70.1 KiB
+ libwayland-cursor                       aarch64 0:1.26.0-3.fc45                   fedora                 81.2 KiB
+ libwayland-egl                          aarch64 0:1.26.0-3.fc45                   fedora                 68.3 KiB
+ libwayland-server                       aarch64 0:1.26.0-3.fc45                   fedora                134.6 KiB
+ libwebp                                 aarch64 0:1.6.0-4.fc45                    fedora                817.0 KiB
+ libwmf-lite                             aarch64 0:0.2.17-1.fc45                   updates               168.5 KiB
+ libxcb                                  aarch64 0:1.17.0-8.fc45                   fedora                  2.1 MiB
+ libxkbcommon                            aarch64 0:1.13.1-4.fc45                   fedora                471.6 KiB
+ libxkbfile                              aarch64 0:1.1.3-6.fc45                    fedora                241.8 KiB
+ libxshmfence                            aarch64 0:1.3.2-9.fc45                    fedora                 68.4 KiB
+ libxslt                                 aarch64 0:1.1.43-10.fc45                  fedora                548.0 KiB
+ libyuv                                  aarch64 0:0-0.63.20260213git6067afd.fc45  fedora                590.9 KiB
+ libzen                                  aarch64 0:0.4.41-11.fc45                  fedora                339.7 KiB
+ libzip                                  aarch64 0:1.12.1-1.fc45                   updates               199.8 KiB
+ llhttp                                  aarch64 0:9.4.2-2.fc45                    fedora                153.2 KiB
+ llvm-filesystem                         aarch64 0:23.1.5-2.fc45                   updates                 0.0   B
+ llvm-libs                               aarch64 0:23.1.5-2.fc45                   updates               140.0 MiB
+ lm_sensors-libs                         aarch64 0:3.6.0-25.fc45                   fedora                 93.7 KiB
+ lpcnetfreedv                            aarch64 0:0.5-11.fc45                     fedora                 14.9 MiB
+ lttng-ust                               aarch64 0:2.15.1-4.fc45                   fedora                  1.7 MiB
+ lzo                                     aarch64 0:2.10-17.fc45                    fedora                162.9 KiB
+ mesa-dri-drivers                        aarch64 0:26.2.6-1.fc45                   updates                39.4 MiB
+ mesa-filesystem                         aarch64 0:26.2.6-1.fc45                   updates                 3.6 KiB
+ mesa-libEGL                             aarch64 0:26.2.6-1.fc45                   updates               394.4 KiB
+ mesa-libGL                              aarch64 0:26.2.6-1.fc45                   updates               398.0 KiB
+ mesa-libgbm                             aarch64 0:26.2.6-1.fc45                   updates                67.7 KiB
+ mpdecimal                               aarch64 0:4.0.1-4.fc45                    fedora                281.1 KiB
+ mpg123-libs                             aarch64 0:1.33.6-3.fc45                   fedora                758.6 KiB
+ ncurses                                 aarch64 0:6.6-3.fc45                      fedora                895.8 KiB
+ nodejs-npm                              aarch64 2:10.9.8-1.22.23.1.4.fc45         fedora                 12.7 KiB
+ nodejs22                                aarch64 1:22.23.1-4.fc45                  fedora                344.5 KiB
+ nodejs22-libs                           aarch64 1:22.23.1-4.fc45                  fedora                 73.5 MiB
+ nspr                                    aarch64 0:4.39.0-10.fc45                  updates               419.4 KiB
+ nss                                     aarch64 0:3.133.0-1.fc45                  updates                 2.0 MiB
+ nss-softokn                             aarch64 0:3.133.0-1.fc45                  updates                 2.3 MiB
+ nss-softokn-freebl                      aarch64 0:3.133.0-1.fc45                  updates                 1.0 MiB
+ nss-sysinit                             aarch64 0:3.133.0-1.fc45                  updates                70.0 KiB
+ nss-util                                aarch64 0:3.133.0-1.fc45                  updates               216.8 KiB
+ numactl-libs                            aarch64 0:2.0.19-5.fc45                   fedora                 69.0 KiB
+ oniguruma                               aarch64 0:6.9.10-5.fc45                   fedora                766.7 KiB
+ openal-soft                             aarch64 0:1.24.2-10.fc45                  fedora                  1.5 MiB
+ openapv-libs                            aarch64 0:0.3.0.0-1.fc45                  fedora                149.1 KiB
+ opencore-amr                            aarch64 0:0.1.6-11.fc45                   fedora                421.0 KiB
+ openexr-libs                            aarch64 0:3.4.13-2.fc45                   fedora                  3.2 MiB
+ openh264                                aarch64 0:2.6.0-3.fc45                    fedora-cisco-openh264   1.0 MiB
+ openjpeg                                aarch64 0:2.5.4-5.fc45                    updates               412.3 KiB
+ openssh                                 aarch64 0:10.5p1-1.fc45                   fedora                  1.6 MiB
+ openssh-clients                         aarch64 0:10.5p1-1.fc45                   fedora                  2.6 MiB
+ openssl3-libs                           aarch64 1:3.5.9-1.fc45                    updates                 7.5 MiB
+ opus                                    aarch64 0:1.6-3.fc45                      fedora                455.8 KiB
+ orc                                     aarch64 0:0.4.41-4.fc45                   fedora                874.3 KiB
+ osinfo-db                               noarch  0:20251212-2.fc45                 fedora                  4.2 MiB
+ osinfo-db-tools                         aarch64 0:1.12.0-10.fc45                  fedora                366.4 KiB
+ pango                                   aarch64 0:1.58.2-1.fc45                   fedora                  1.2 MiB
+ perl-AutoLoader                         noarch  0:5.74-527.fc45                   fedora                 20.6 KiB
+ perl-B                                  aarch64 0:1.92-527.fc45                   fedora                557.5 KiB
+ perl-Carp                               noarch  0:1.54-527.fc45                   fedora                 46.6 KiB
+ perl-Class-Struct                       noarch  0:0.68-527.fc45                   fedora                 25.4 KiB
+ perl-Data-Dumper                        aarch64 0:2.192-528.fc45                  fedora                135.5 KiB
+ perl-Digest                             noarch  0:1.20-527.fc45                   fedora                 35.2 KiB
+ perl-Digest-MD5                         aarch64 0:2.59-527.fc45                   fedora                103.6 KiB
+ perl-DynaLoader                         aarch64 0:1.57-527.fc45                   fedora                 32.1 KiB
+ perl-Encode                             aarch64 4:3.24-527.fc45                   fedora                  4.8 MiB
+ perl-Errno                              aarch64 0:1.39-527.fc45                   fedora                  8.4 KiB
+ perl-Error                              noarch  1:0.17030-4.fc45                  fedora                 76.8 KiB
+ perl-Exporter                           noarch  0:5.79-527.fc45                   fedora                 54.2 KiB
+ perl-Fcntl                              aarch64 0:1.20-527.fc45                   fedora                 92.7 KiB
+ perl-File-Basename                      noarch  0:2.86-527.fc45                   fedora                 14.0 KiB
+ perl-File-Path                          noarch  0:2.18-527.fc45                   fedora                 63.4 KiB
+ perl-File-Temp                          noarch  1:0.231.200-527.fc45              fedora                163.7 KiB
+ perl-File-stat                          noarch  0:1.15-527.fc45                   fedora                 13.7 KiB
+ perl-FileHandle                         noarch  0:2.05-527.fc45                   fedora                  9.4 KiB
+ perl-Getopt-Long                        noarch  1:2.58-527.fc45                   fedora                144.5 KiB
+ perl-Getopt-Std                         noarch  0:1.15-527.fc45                   fedora                 12.5 KiB
+ perl-Git                                noarch  0:2.56.1-1.fc45                   updates                64.4 KiB
+ perl-HTTP-Tiny                          noarch  0:0.096-528.fc45                  fedora                162.4 KiB
+ perl-IO                                 aarch64 0:1.56-527.fc45                   fedora                191.3 KiB
+ perl-IO-Socket-IP                       noarch  0:0.44-527.fc45                   fedora                100.5 KiB
+ perl-IO-Socket-SSL                      noarch  0:2.099-2.fc45                    fedora                726.9 KiB
+ perl-IPC-Open3                          noarch  0:1.24-527.fc45                   fedora                 27.7 KiB
+ perl-MIME-Base32                        noarch  0:1.303-26.fc45                   fedora                 30.7 KiB
+ perl-MIME-Base64                        aarch64 0:3.16-527.fc45                   fedora                 93.9 KiB
+ perl-Net-SSLeay                         aarch64 0:1.96-5.fc45                     fedora                  1.4 MiB
+ perl-POSIX                              aarch64 0:2.26-527.fc45                   fedora                261.4 KiB
+ perl-PathTools                          aarch64 0:3.95-527.fc45                   fedora                224.0 KiB
+ perl-Pod-Escapes                        noarch  1:1.07-527.fc45                   fedora                 24.9 KiB
+ perl-Pod-Perldoc                        noarch  0:3.28.01-527.fc45                fedora                163.8 KiB
+ perl-Pod-Simple                         noarch  1:3.48-527.fc45                   fedora                565.2 KiB
+ perl-Pod-Usage                          noarch  4:2.05-527.fc45                   fedora                 86.3 KiB
+ perl-Scalar-List-Utils                  aarch64 5:1.70-527.fc45                   fedora                152.9 KiB
+ perl-SelectSaver                        noarch  0:1.03-527.fc45                   fedora                  2.1 KiB
+ perl-Socket                             aarch64 4:2.043-1.fc45                    fedora                145.8 KiB
+ perl-Storable                           aarch64 1:3.41-527.fc45                   fedora                242.9 KiB
+ perl-Symbol                             noarch  0:1.09-527.fc45                   fedora                  6.8 KiB
+ perl-Term-ANSIColor                     noarch  0:5.01-527.fc45                   fedora                 97.5 KiB
+ perl-Term-Cap                           noarch  0:1.18-527.fc45                   fedora                 29.3 KiB
+ perl-TermReadKey                        aarch64 0:2.38-29.fc45                    fedora                107.9 KiB
+ perl-Text-ParseWords                    noarch  0:3.31-527.fc45                   fedora                 13.6 KiB
+ perl-Text-Tabs+Wrap                     noarch  0:2024.001-527.fc45               fedora                 22.6 KiB
+ perl-Time-HiRes                         aarch64 4:1.9780-527.fc45                 fedora                151.7 KiB
+ perl-Time-Local                         noarch  2:1.350-527.fc45                  fedora                 69.0 KiB
+ perl-URI                                noarch  0:5.40-1.fc45                     updates               278.2 KiB
+ perl-Unicode-Normalize                  aarch64 0:1.32-527.fc45                   fedora                524.5 KiB
+ perl-base                               noarch  0:2.27-527.fc45                   fedora                 12.6 KiB
+ perl-constant                           noarch  0:1.33-528.fc45                   fedora                 26.3 KiB
+ perl-if                                 noarch  0:0.61.000-527.fc45               fedora                  5.8 KiB
+ perl-interpreter                        aarch64 4:5.44.0-527.fc45                 fedora                175.8 KiB
+ perl-lib                                aarch64 0:0.65-527.fc45                   fedora                  8.5 KiB
+ perl-libnet                             noarch  0:3.16-1.fc45                     updates               292.5 KiB
+ perl-libs                               aarch64 4:5.44.0-527.fc45                 fedora                 12.0 MiB
+ perl-locale                             noarch  0:1.13-527.fc45                   fedora                  6.1 KiB
+ perl-mro                                aarch64 0:1.30-527.fc45                   fedora                 81.5 KiB
+ perl-overload                           noarch  0:1.40-527.fc45                   fedora                 71.6 KiB
+ perl-overloading                        noarch  0:0.03-527.fc45                   fedora                  4.8 KiB
+ perl-parent                             noarch  1:0.244-527.fc45                  fedora                 10.3 KiB
+ perl-podlators                          noarch  1:6.1.1-1.fc45                    fedora                327.2 KiB
+ perl-vars                               noarch  0:1.05-527.fc45                   fedora                  3.9 KiB
+ pipewire-jack-audio-connection-kit-libs aarch64 0:1.6.11-1.fc45                   updates               600.7 KiB
+ pipewire-libs                           aarch64 0:1.6.11-1.fc45                   updates                11.3 MiB
+ pixman                                  aarch64 0:0.46.2-4.fc45                   fedora                654.4 KiB
+ pkgconf                                 aarch64 0:2.5.1-2.fc45                    fedora                116.8 KiB
+ pkgconf-m4                              noarch  0:2.5.1-2.fc45                    fedora                 14.3 KiB
+ pkgconf-pkg-config                      aarch64 0:2.5.1-2.fc45                    fedora                990.0   B
+ polkit                                  aarch64 0:127-5.fc45                      fedora                722.3 KiB
+ polkit-libs                             aarch64 0:127-5.fc45                      fedora                288.6 KiB
+ poppler                                 aarch64 0:26.08.0-2.fc45                  updates                 3.7 MiB
+ poppler-data                            noarch  0:0.4.11-12.fc45                  fedora                 12.3 MiB
+ poppler-glib                            aarch64 0:26.08.0-2.fc45                  updates               673.9 KiB
+ pulseaudio-libs                         aarch64 0:17.0-11.fc45                    fedora                  3.4 MiB
+ python-pip-wheel                        noarch  0:26.1.2-5.fc45                   fedora                  1.2 MiB
+ python3-libs                            aarch64 0:3.15.2-1.fc45                   updates                49.9 MiB
+ rav1e-libs                              aarch64 0:0.8.1-4.fc45                    fedora                  2.1 MiB
+ rtkit                                   aarch64 0:0.14-2.fc45                     fedora                202.4 KiB
+ shared-mime-info                        aarch64 0:2.5.1-3.fc45                    fedora                  6.6 MiB
+ snappy                                  aarch64 0:1.2.2-6.fc45                    fedora                 83.6 KiB
+ sound-theme-freedesktop                 noarch  0:0.8-34.fc45                     fedora                460.4 KiB
+ soundtouch                              aarch64 0:2.4.0-4.fc45                    fedora                272.7 KiB
+ soxr                                    aarch64 0:0.1.3-22.fc45                   fedora                206.7 KiB
+ spandsp                                 aarch64 0:0.0.6-23.fc45                   fedora                896.4 KiB
+ speex                                   aarch64 0:1.2.0-22.fc45                   fedora                136.4 KiB
+ spirv-tools-libs                        aarch64 0:2026.2-3.fc45                   fedora                  5.8 MiB
+ svt-av1-libs                            aarch64 0:3.1.2-3.fc45                    fedora                  3.4 MiB
+ systemd                                 aarch64 0:262.1-1.fc45                    updates                17.1 MiB
+ systemd-shared                          aarch64 0:262.1-1.fc45                    updates                 6.0 MiB
+ systemd-udev                            aarch64 0:262.1-1.fc45                    updates                16.1 MiB
+ taglib                                  aarch64 0:2.3-4.fc45                      fedora                  1.6 MiB
+ tinyxml2                                aarch64 0:11.0.0-6.fc45                   fedora                144.5 KiB
+ totem-pl-parser                         aarch64 0:3.26.7-4.fc45                   fedora                415.5 KiB
+ twolame-libs                            aarch64 0:0.4.0-10.fc45                   fedora                157.4 KiB
+ uchardet                                aarch64 0:0.0.8-11.fc45                   fedora                343.4 KiB
+ upower-libs                             aarch64 0:1.91.5-1.fc45                   fedora                226.7 KiB
+ urw-base35-bookman-fonts                noarch  0:20200910-29.fc45                fedora                  1.4 MiB
+ urw-base35-c059-fonts                   noarch  0:20200910-29.fc45                fedora                  1.4 MiB
+ urw-base35-d050000l-fonts               noarch  0:20200910-29.fc45                fedora                 84.3 KiB
+ urw-base35-fonts                        noarch  0:20200910-29.fc45                fedora                  5.3 KiB
+ urw-base35-fonts-common                 noarch  0:20200910-29.fc45                fedora                 37.4 KiB
+ urw-base35-gothic-fonts                 noarch  0:20200910-29.fc45                fedora                  1.2 MiB
+ urw-base35-nimbus-mono-ps-fonts         noarch  0:20200910-29.fc45                fedora                  1.0 MiB
+ urw-base35-nimbus-roman-fonts           noarch  0:20200910-29.fc45                fedora                  1.4 MiB
+ urw-base35-nimbus-sans-fonts            noarch  0:20200910-29.fc45                fedora                  2.4 MiB
+ urw-base35-p052-fonts                   noarch  0:20200910-29.fc45                fedora                  1.5 MiB
+ urw-base35-standard-symbols-ps-fonts    noarch  0:20200910-29.fc45                fedora                 64.9 KiB
+ urw-base35-z003-fonts                   noarch  0:20200910-29.fc45                fedora                390.8 KiB
+ util-linux                              aarch64 0:2.42.4-1.fc45                   fedora                  6.9 MiB
+ vo-amrwbenc                             aarch64 0:0.1.3-25.fc45                   fedora                177.8 KiB
+ vulkan-loader                           aarch64 0:1.4.350.0-2.fc45                fedora                613.8 KiB
+ wavpack                                 aarch64 0:5.9.0-3.fc45                    fedora                698.4 KiB
+ webkit2gtk4.1                           aarch64 0:2.54.2-1.fc45                   updates                96.8 MiB
+ webrtc-audio-processing                 aarch64 0:2.1-11.fc45                     fedora                980.3 KiB
+ wireplumber                             aarch64 0:0.5.19-1.fc45                   updates               654.2 KiB
+ wireplumber-libs                        aarch64 0:0.5.19-1.fc45                   updates                 2.1 MiB
+ xdg-dbus-proxy                          aarch64 0:0.1.9-1.fc45                    fedora                 99.5 KiB
+ xdg-desktop-portal                      aarch64 0:1.22.1-2.fc45                   fedora                  2.1 MiB
+ xevd-libs                               aarch64 0:0.7.0-2.fc45                    fedora                267.7 KiB
+ xeve-libs                               aarch64 0:0.7.0-2.fc45                    fedora                780.7 KiB
+ xkbcomp                                 aarch64 0:1.5.0-3.fc45                    fedora                208.9 KiB
+ xkeyboard-config                        noarch  0:2.48-4.fc45                     fedora                  6.4 MiB
+ xml-common                              noarch  0:0.6.3-70.fc45                   fedora                 78.4 KiB
+ xorg-x11-server-common                  aarch64 0:21.1.26-1.fc45                  updates               127.3 KiB
+ xorg-x11-xauth                          aarch64 1:1.1.5-6.fc45                    fedora                 76.1 KiB
+ xprop                                   aarch64 0:1.2.8-6.fc45                    fedora                 78.6 KiB
+ xvidcore                                aarch64 0:1.3.7-20.fc45                   fedora                680.3 KiB
+ zvbi                                    aarch64 0:0.2.46-1.fc45                   updates                 1.3 MiB
+Installing weak dependencies:
+ 7zip                                    aarch64 0:26.04-1.fc45                    updates                 3.2 MiB
+ adwaita-mono-fonts                      noarch  0:51.0-1.fc45                     fedora                  5.6 MiB
+ adwaita-sans-fonts                      noarch  0:51.0-1.fc45                     fedora                  1.7 MiB
+ bat                                     aarch64 0:0.26.1-4.fc45                   fedora                  4.9 MiB
+ dconf                                   aarch64 0:51.0-1.fc45                     fedora                371.4 KiB
+ diffutils                               aarch64 0:3.12-6.fc45                     fedora                  1.6 MiB
+ exiv2                                   aarch64 0:0.28.9-1.fc45                   fedora                 12.2 MiB
+ gstreamer1-plugins-bad-free             aarch64 0:1.28.9-1.fc45                   updates                12.7 MiB
+ gstreamer1-plugins-good                 aarch64 0:1.28.9-1.fc45                   updates                 9.1 MiB
+ hunspell-en                             noarch  0:0.20260225-3.fc45               fedora                  7.1 KiB
+ icu-tzdata                              noarch  0:2026f-1.fc45                    updates                 1.2 MiB
+ kbd                                     aarch64 0:2.10.0-3.fc45                   fedora                  2.5 MiB
+ less-color                              aarch64 0:710-2.fc45                      updates                 2.4 KiB
+ libbpf                                  aarch64 2:1.7.0-2.fc45                    fedora                458.9 KiB
+ libcamera-ipa                           aarch64 0:0.7.2-5.fc45                    updates                 2.7 MiB
+ libcanberra-backend-alsa                aarch64 0:0.30-52.fc45                    fedora                 67.1 KiB
+ libcanberra-backend-gstreamer           aarch64 0:0.30-52.fc45                    fedora                 67.1 KiB
+ libcanberra-backend-pulse               aarch64 0:0.30-52.fc45                    fedora                 67.2 KiB
+ libcanberra-gtk3                        aarch64 0:0.30-52.fc45                    fedora                202.5 KiB
+ libheif-ffmpeg                          aarch64 0:1.23.7-1.fc45                   updates                68.0 KiB
+ localsearch                             aarch64 0:3.12.0-2.fc45                   fedora                  4.7 MiB
+ mesa-vulkan-drivers                     aarch64 0:26.2.6-1.fc45                   updates               124.8 MiB
+ nodejs22-docs                           noarch  1:22.23.1-4.fc45                  fedora                 49.8 MiB
+ nodejs22-full-i18n                      aarch64 1:22.23.1-4.fc45                  fedora                 31.6 MiB
+ nodejs22-npm                            noarch  2:10.9.8-1.22.23.1.4.fc45         fedora                  8.1 MiB
+ open-sans-fonts                         noarch  0:1.10-26.fc45                    fedora                  2.1 MiB
+ perl-NDBM_File                          aarch64 0:1.18-527.fc45                   fedora                 72.4 KiB
+ pipewire                                aarch64 0:1.6.11-1.fc45                   updates               513.7 KiB
+ pipewire-alsa                           aarch64 0:1.6.11-1.fc45                   updates               205.9 KiB
+ pipewire-jack-audio-connection-kit      aarch64 0:1.6.11-1.fc45                   updates                30.0   B
+ pipewire-plugin-libcamera               aarch64 0:1.6.11-1.fc45                   updates               134.4 KiB
+ pipewire-pulseaudio                     aarch64 0:1.6.11-1.fc45                   updates               488.0 KiB
+ polkit-pkla-compat                      aarch64 0:0.1-33.fc45                     fedora                169.3 KiB
+ python-unversioned-command              noarch  0:3.15.2-1.fc45                   updates                23.0   B
+ python3-html2text                       noarch  0:2025.4.15-8.fc45                fedora                290.6 KiB
+ systemd-networkd                        aarch64 0:262.1-1.fc45                    updates                 2.4 MiB
+ systemd-pam                             aarch64 0:262.1-1.fc45                    updates                 1.4 MiB
+ systemd-resolved                        aarch64 0:262.1-1.fc45                    updates               652.3 KiB
+ tinysparql                              aarch64 0:3.12.0-2.fc45                   fedora                  2.6 MiB
+ unzip                                   aarch64 0:6.0-71.fc45                     fedora                469.9 KiB
+ upower                                  aarch64 0:1.91.5-1.fc45                   fedora                364.4 KiB
+ usbmuxd                                 aarch64 0:1.1.1^20251205git3ded00c-2.fc45 fedora                193.1 KiB
+ xdg-desktop-portal-gtk                  aarch64 0:1.15.3-6.fc45                   fedora                513.1 KiB
+
+Transaction Summary:
+ Installing:       463 packages
+
+Total size of inbound packages is 358 MiB. Need to download 349 MiB.
+After this operation, 1 GiB extra will be used (install 1 GiB, remove 0 B).
+[  1/462] dbus-x11-1:1.16.2-6.fc45.aarc 100% | 221.7 KiB/s |  24.8 KiB |  00m00s
+[  2/462] nodejs-1:22.23.1-4.fc45.aarch 100% | 206.3 KiB/s |  30.5 KiB |  00m00s
+[  3/462] procps-ng-0:4.0.6-2.fc45.aarc 100% |   1.8 MiB/s | 394.7 KiB |  00m00s
+[  4/462] dbus-libs-1:1.16.2-6.fc45.aar 100% |   2.6 MiB/s | 146.2 KiB |  00m00s
+[  5/462] dbus-daemon-1:1.16.2-6.fc45.a 100% | 998.4 KiB/s | 175.7 KiB |  00m00s
+[  6/462] libX11-0:1.8.13-3.fc45.aarch6 100% |   6.3 MiB/s | 649.6 KiB |  00m00s
+[  7/462] nodejs22-1:22.23.1-4.fc45.aar 100% | 979.8 KiB/s |  71.5 KiB |  00m00s
+[  8/462] desktop-file-utils-0:0.28-8.f 100% |   1.1 MiB/s |  69.7 KiB |  00m00s
+[  9/462] openssl-1:4.0.3-1.fc45.aarch6 100% |   3.7 MiB/s |   1.3 MiB |  00m00s
+[ 10/462] libayatana-appindicator-gtk3- 100% |   1.2 MiB/s |  54.1 KiB |  00m00s
+[ 11/462] dbus-common-1:1.16.2-6.fc45.n 100% | 339.0 KiB/s |  14.6 KiB |  00m00s
+[ 12/462] dbus-tools-1:1.16.2-6.fc45.aa 100% | 520.2 KiB/s |  44.2 KiB |  00m00s
+[ 13/462] libX11-common-0:1.8.13-3.fc45 100% |   2.8 MiB/s | 175.3 KiB |  00m00s
+[ 14/462] libxcb-0:1.17.0-8.fc45.aarch6 100% |   4.3 MiB/s | 242.8 KiB |  00m00s
+[ 15/462] gtk3-0:3.24.52-6.fc45.aarch64 100% |  23.1 MiB/s |   5.9 MiB |  00m00s
+[ 16/462] emacs-filesystem-1:30.2-3.fc4 100% | 187.4 KiB/s |   8.1 KiB |  00m00s
+[ 17/462] adwaita-icon-theme-0:51.0-1.f 100% |   8.5 MiB/s | 400.0 KiB |  00m00s
+[ 18/462] cairo-0:1.18.6-1.fc45.aarch64 100% |  12.2 MiB/s | 702.4 KiB |  00m00s
+[ 19/462] cairo-gobject-0:1.18.6-1.fc45 100% | 392.9 KiB/s |  16.9 KiB |  00m00s
+[ 20/462] colord-libs-0:1.4.8-5.fc45.aa 100% |   4.9 MiB/s | 219.7 KiB |  00m00s
+[ 21/462] cups-libs-1:2.4.19-4.fc45.aar 100% |   5.6 MiB/s | 259.3 KiB |  00m00s
+[ 22/462] fontconfig-0:2.18.3-2.fc45.aa 100% |   7.1 MiB/s | 378.3 KiB |  00m00s
+[ 23/462] gdk-pixbuf2-0:2.44.8-3.fc45.a 100% |   7.4 MiB/s | 504.6 KiB |  00m00s
+[ 24/462] gtk-update-icon-cache-0:3.24. 100% | 791.3 KiB/s |  34.0 KiB |  00m00s
+[ 25/462] hicolor-icon-theme-0:0.18-6.f 100% |   1.5 MiB/s |  65.8 KiB |  00m00s
+[ 26/462] libXcomposite-0:0.4.6-8.fc45. 100% | 562.1 KiB/s |  24.2 KiB |  00m00s
+[ 27/462] libXcursor-0:1.2.3-5.fc45.aar 100% | 724.3 KiB/s |  31.1 KiB |  00m00s
+[ 28/462] nodejs22-libs-1:22.23.1-4.fc4 100% |  42.8 MiB/s |  19.3 MiB |  00m00s
+[ 29/462] libXdamage-0:1.1.6-8.fc45.aar 100% | 192.4 KiB/s |  23.3 KiB |  00m00s
+[ 30/462] libXext-0:1.3.6-6.fc45.aarch6 100% | 468.0 KiB/s |  38.4 KiB |  00m00s
+[ 31/462] libXfixes-0:6.0.1-8.fc45.aarc 100% | 445.4 KiB/s |  19.2 KiB |  00m00s
+[ 32/462] libXrandr-0:1.5.4-8.fc45.aarc 100% | 627.1 KiB/s |  27.0 KiB |  00m00s
+[ 33/462] libXinerama-0:1.1.5-11.fc45.a 100% | 329.3 KiB/s |  14.2 KiB |  00m00s
+[ 34/462] libcloudproviders-0:0.4.1-1.f 100% |   1.0 MiB/s |  44.9 KiB |  00m00s
+[ 35/462] libtinysparql-0:3.12.0-2.fc45 100% |   5.7 MiB/s | 339.1 KiB |  00m00s
+[ 36/462] libepoxy-0:1.5.10-13.fc45.aar 100% |   3.9 MiB/s | 240.6 KiB |  00m00s
+[ 37/462] libwayland-client-0:1.26.0-3. 100% | 786.3 KiB/s |  33.8 KiB |  00m00s
+[ 38/462] libwayland-cursor-0:1.26.0-3. 100% | 442.0 KiB/s |  19.0 KiB |  00m00s
+[ 39/462] libwayland-egl-0:1.26.0-3.fc4 100% | 292.9 KiB/s |  12.6 KiB |  00m00s
+[ 40/462] libxkbcommon-0:1.13.1-4.fc45. 100% |   3.9 MiB/s | 177.1 KiB |  00m00s
+[ 41/462] libayatana-indicator-gtk3-0:0 100% |   1.1 MiB/s |  50.4 KiB |  00m00s
+[ 42/462] pango-0:1.58.2-1.fc45.aarch64 100% |   7.0 MiB/s | 357.5 KiB |  00m00s
+[ 43/462] libdbusmenu-gtk3-0:16.04.0-32 100% | 845.3 KiB/s |  36.3 KiB |  00m00s
+[ 44/462] libXau-0:1.0.12-5.fc45.aarch6 100% | 780.9 KiB/s |  33.6 KiB |  00m00s
+[ 45/462] libdbusmenu-0:16.04.0-32.fc45 100% |   1.7 MiB/s | 130.7 KiB |  00m00s
+[ 46/462] adwaita-cursor-theme-0:51.0-1 100% |   8.3 MiB/s | 380.2 KiB |  00m00s
+[ 47/462] libuv-1:1.52.1-2.fc45.aarch64 100% |   4.8 MiB/s | 265.0 KiB |  00m00s
+[ 48/462] adwaita-icon-theme-legacy-0:4 100% |  41.3 MiB/s |   2.5 MiB |  00m00s
+[ 49/462] libXrender-0:0.9.12-5.fc45.aa 100% | 621.2 KiB/s |  26.7 KiB |  00m00s
+[ 50/462] lzo-0:2.10-17.fc45.aarch64    100% |   1.5 MiB/s |  65.9 KiB |  00m00s
+[ 51/462] pixman-0:0.46.2-4.fc45.aarch6 100% |   3.8 MiB/s | 212.4 KiB |  00m00s
+[ 52/462] libgusb-0:0.4.9-6.fc45.aarch6 100% |   1.4 MiB/s |  60.7 KiB |  00m00s
+[ 53/462] lcms2-0:2.16-8.fc45.aarch64   100% |   3.5 MiB/s | 180.5 KiB |  00m00s
+[ 54/462] avahi-libs-0:0.9~rc2-9.fc45.a 100% |   1.5 MiB/s |  65.5 KiB |  00m00s
+[ 55/462] cups-filesystem-1:2.4.19-4.fc 100% | 283.4 KiB/s |  12.2 KiB |  00m00s
+[ 56/462] default-fonts-core-sans-0:4.3 100% | 677.0 KiB/s |  29.1 KiB |  00m00s
+[ 57/462] fonts-filesystem-1:5.0.0-4.fc 100% | 201.6 KiB/s |   8.7 KiB |  00m00s
+[ 58/462] xml-common-0:0.6.3-70.fc45.no 100% | 722.1 KiB/s |  31.0 KiB |  00m00s
+[ 59/462] shared-mime-info-0:2.5.1-3.fc 100% |   8.0 MiB/s | 474.1 KiB |  00m00s
+[ 60/462] avahi-glib-0:0.9~rc2-9.fc45.a 100% | 347.1 KiB/s |  14.9 KiB |  00m00s
+[ 61/462] json-glib-0:1.10.8-11.fc45.aa 100% |   3.0 MiB/s | 170.4 KiB |  00m00s
+[ 62/462] libstemmer-0:3.1.1-2.fc45.aar 100% |   3.2 MiB/s | 154.9 KiB |  00m00s
+[ 63/462] xkeyboard-config-0:2.48-4.fc4 100% |  19.3 MiB/s |   1.0 MiB |  00m00s
+[ 64/462] libXft-0:2.3.8-11.fc45.aarch6 100% |   1.6 MiB/s |  70.7 KiB |  00m00s
+[ 65/462] libthai-0:0.1.30-3.fc45.aarch 100% |   4.8 MiB/s | 214.8 KiB |  00m00s
+[ 66/462] libayatana-ido-gtk3-0:0.10.4- 100% |   1.9 MiB/s |  85.0 KiB |  00m00s
+[ 67/462] abattis-cantarell-vf-fonts-0: 100% |   2.7 MiB/s | 120.3 KiB |  00m00s
+[ 68/462] google-noto-sans-vf-fonts-0:2 100% |  13.0 MiB/s | 613.8 KiB |  00m00s
+[ 69/462] libdatrie-0:0.2.14-3.fc45.aar 100% | 745.4 KiB/s |  32.1 KiB |  00m00s
+[ 70/462] google-noto-fonts-common-0:20 100% | 389.1 KiB/s |  16.7 KiB |  00m00s
+[ 71/462] libXdmcp-0:1.1.5-6.fc45.aarch 100% | 460.9 KiB/s |  36.9 KiB |  00m00s
+[ 72/462] xorg-x11-server-common-0:21.1 100% | 707.3 KiB/s |  35.4 KiB |  00m00s
+[ 73/462] libXfont2-0:2.0.9-1.fc45.aarc 100% |   2.1 MiB/s | 132.6 KiB |  00m00s
+[ 74/462] libglvnd-glx-1:1.7.0-10.fc45. 100% |   1.9 MiB/s | 128.8 KiB |  00m00s
+[ 75/462] libunwind-0:1.8.3-4.fc45.aarc 100% | 997.6 KiB/s |  81.8 KiB |  00m00s
+[ 76/462] xorg-x11-server-Xvfb-0:21.1.2 100% |   4.8 MiB/s | 811.5 KiB |  00m00s
+[ 77/462] util-linux-0:2.42.4-1.fc45.aa 100% |  23.5 MiB/s |   1.2 MiB |  00m00s
+[ 78/462] xorg-x11-xauth-1:1.1.5-6.fc45 100% | 540.4 KiB/s |  34.6 KiB |  00m00s
+[ 79/462] xkbcomp-0:1.5.0-3.fc45.aarch6 100% |   1.1 MiB/s |  97.3 KiB |  00m00s
+[ 80/462] libfontenc-0:1.1.8-6.fc45.aar 100% | 361.9 KiB/s |  32.2 KiB |  00m00s
+[ 81/462] libglvnd-1:1.7.0-10.fc45.aarc 100% |   2.5 MiB/s | 108.5 KiB |  00m00s
+[ 82/462] libfdisk-0:2.42.4-1.fc45.aarc 100% |   3.5 MiB/s | 156.1 KiB |  00m00s
+[ 83/462] liblastlog2-0:2.42.4-1.fc45.a 100% | 578.9 KiB/s |  24.9 KiB |  00m00s
+[ 84/462] libXmu-0:1.2.1-6.fc45.aarch64 100% |   1.1 MiB/s |  77.2 KiB |  00m00s
+[ 85/462] libxkbfile-0:1.1.3-6.fc45.aar 100% |   2.0 MiB/s |  89.4 KiB |  00m00s
+[ 86/462] libXt-0:1.3.1-5.fc45.aarch64  100% |   3.5 MiB/s | 173.6 KiB |  00m00s
+[ 87/462] libICE-0:1.1.2-5.fc45.aarch64 100% |   1.8 MiB/s |  77.1 KiB |  00m00s
+[ 88/462] libSM-0:1.2.5-5.fc45.aarch64  100% |   1.0 MiB/s |  44.2 KiB |  00m00s
+[ 89/462] ImageMagick-1:7.1.2.35-1.fc45 100% | 524.4 KiB/s |  74.5 KiB |  00m00s
+[ 90/462] fftw-libs-double-0:3.3.10-18. 100% |   5.2 MiB/s | 667.9 KiB |  00m00s
+[ 91/462] jbigkit-libs-0:2.1-34.fc45.aa 100% |   1.2 MiB/s |  53.2 KiB |  00m00s
+[ 92/462] imath-0:3.1.12-9.fc45.aarch64 100% |   1.3 MiB/s |  94.7 KiB |  00m00s
+[ 93/462] ImageMagick-libs-1:7.1.2.35-1 100% |  11.3 MiB/s |   2.5 MiB |  00m00s
+[ 94/462] libjpeg-turbo-0:3.1.4.1-2.fc4 100% |   4.9 MiB/s | 251.9 KiB |  00m00s
+[ 95/462] libjxl-1:0.11.2-2.fc45.aarch6 100% |  14.3 MiB/s | 851.6 KiB |  00m00s
+[ 96/462] libraqm-0:0.10.1-5.fc45.aarch 100% | 284.0 KiB/s |  22.2 KiB |  00m00s
+[ 97/462] librsvg2-0:2.63.2-2.fc45.aarc 100% |  27.1 MiB/s |   1.8 MiB |  00m00s
+[ 98/462] liblqr-1-0:0.4.2-30.fc45.aarc 100% | 456.6 KiB/s |  47.9 KiB |  00m00s
+[ 99/462] libultrahdr-0:1.4.0^20251202g 100% |   2.0 MiB/s | 149.1 KiB |  00m00s
+[100/462] libwebp-0:1.6.0-4.fc45.aarch6 100% |   3.8 MiB/s | 258.4 KiB |  00m00s
+[101/462] openexr-libs-0:3.4.13-2.fc45. 100% |   8.5 MiB/s | 830.3 KiB |  00m00s
+[102/462] highway-0:1.3.0-3.fc45.aarch6 100% |   3.4 MiB/s | 171.6 KiB |  00m00s
+[103/462] libdav1d-0:1.5.4-1.fc45.aarch 100% |   7.0 MiB/s | 378.6 KiB |  00m00s
+[104/462] python3-0:3.15.2-1.fc45.aarch 100% |   2.5 MiB/s |  28.1 KiB |  00m00s
+[105/462] libdeflate-0:1.26-1.fc45.aarc 100% |   1.4 MiB/s |  63.8 KiB |  00m00s
+[106/462] mpdecimal-0:4.0.1-4.fc45.aarc 100% |   2.1 MiB/s |  95.4 KiB |  00m00s
+[107/462] python3-libs-0:3.15.2-1.fc45. 100% | 103.9 MiB/s |  10.9 MiB |  00m00s
+[108/462] git-0:2.56.1-1.fc45.aarch64   100% | 747.9 KiB/s |  41.1 KiB |  00m00s
+[109/462] python-pip-wheel-0:26.1.2-5.f 100% |  14.2 MiB/s |   1.2 MiB |  00m00s
+[110/462] git-core-doc-0:2.56.1-1.fc45. 100% |  94.5 MiB/s |   3.2 MiB |  00m00s
+[111/462] perl-Git-0:2.56.1-1.fc45.noar 100% |   1.8 MiB/s |  37.7 KiB |  00m00s
+[112/462] perl-File-Basename-0:2.86-527 100% | 391.7 KiB/s |  16.8 KiB |  00m00s
+[113/462] perl-Getopt-Long-1:2.58-527.f 100% |   1.4 MiB/s |  63.2 KiB |  00m00s
+[114/462] perl-IPC-Open3-0:1.24-527.fc4 100% | 551.7 KiB/s |  23.7 KiB |  00m00s
+[115/462] perl-PathTools-0:3.95-527.fc4 100% |   2.0 MiB/s |  88.0 KiB |  00m00s
+[116/462] git-core-0:2.56.1-1.fc45.aarc 100% |  30.6 MiB/s |   5.7 MiB |  00m00s
+[117/462] perl-TermReadKey-0:2.38-29.fc 100% | 542.5 KiB/s |  35.3 KiB |  00m00s
+[118/462] perl-interpreter-4:5.44.0-527 100% |   1.6 MiB/s |  72.8 KiB |  00m00s
+[119/462] perl-lib-0:0.65-527.fc45.aarc 100% | 331.4 KiB/s |  14.6 KiB |  00m00s
+[120/462] openssh-clients-0:10.5p1-1.fc 100% |  12.9 MiB/s | 816.0 KiB |  00m00s
+[121/462] perl-Error-1:0.17030-4.fc45.n 100% | 938.9 KiB/s |  40.4 KiB |  00m00s
+[122/462] perl-libs-4:5.44.0-527.fc45.a 100% |  24.8 MiB/s |   2.6 MiB |  00m00s
+[123/462] perl-Exporter-0:5.79-527.fc45 100% | 711.9 KiB/s |  30.6 KiB |  00m00s
+[124/462] perl-constant-0:1.33-528.fc45 100% | 528.5 KiB/s |  22.7 KiB |  00m00s
+[125/462] perl-Carp-0:1.54-527.fc45.noa 100% | 664.1 KiB/s |  28.6 KiB |  00m00s
+[126/462] perl-Pod-Usage-4:2.05-527.fc4 100% | 939.2 KiB/s |  40.4 KiB |  00m00s
+[127/462] perl-Text-ParseWords-0:3.31-5 100% | 376.5 KiB/s |  16.2 KiB |  00m00s
+[128/462] perl-base-0:2.27-527.fc45.noa 100% | 369.7 KiB/s |  15.9 KiB |  00m00s
+[129/462] perl-overload-0:1.40-527.fc45 100% |   1.0 MiB/s |  45.2 KiB |  00m00s
+[130/462] perl-Fcntl-0:1.20-527.fc45.aa 100% | 686.4 KiB/s |  29.5 KiB |  00m00s
+[131/462] perl-IO-0:1.56-527.fc45.aarch 100% |   1.9 MiB/s |  83.0 KiB |  00m00s
+[132/462] perl-POSIX-0:2.26-527.fc45.aa 100% |   2.2 MiB/s |  96.5 KiB |  00m00s
+[133/462] perl-Symbol-0:1.09-527.fc45.n 100% | 323.0 KiB/s |  13.9 KiB |  00m00s
+[134/462] perl-Errno-0:1.39-527.fc45.aa 100% | 339.5 KiB/s |  14.6 KiB |  00m00s
+[135/462] perl-Scalar-List-Utils-5:1.70 100% |   1.7 MiB/s |  73.7 KiB |  00m00s
+[136/462] perl-DynaLoader-0:1.57-527.fc 100% | 596.4 KiB/s |  25.6 KiB |  00m00s
+[137/462] perl-vars-0:1.05-527.fc45.noa 100% | 294.6 KiB/s |  12.7 KiB |  00m00s
+[138/462] perl-Encode-4:3.24-527.fc45.a 100% |  17.1 MiB/s |   1.0 MiB |  00m00s
+[139/462] libedit-0:3.1-60.20260512cvs. 100% |   2.4 MiB/s | 106.4 KiB |  00m00s
+[140/462] openssh-0:10.5p1-1.fc45.aarch 100% |   5.6 MiB/s | 371.6 KiB |  00m00s
+[141/462] perl-Pod-Perldoc-0:3.28.01-52 100% |   1.8 MiB/s |  84.7 KiB |  00m00s
+[142/462] perl-podlators-1:6.1.1-1.fc45 100% |   2.4 MiB/s | 132.4 KiB |  00m00s
+[143/462] perl-mro-0:1.30-527.fc45.aarc 100% | 673.0 KiB/s |  28.9 KiB |  00m00s
+[144/462] perl-overloading-0:0.03-527.f 100% | 291.5 KiB/s |  12.5 KiB |  00m00s
+[145/462] perl-File-stat-0:1.15-527.fc4 100% | 399.7 KiB/s |  17.2 KiB |  00m00s
+[146/462] perl-SelectSaver-0:1.03-527.f 100% | 263.8 KiB/s |  11.3 KiB |  00m00s
+[147/462] perl-Socket-4:2.043-1.fc45.aa 100% |   1.3 MiB/s |  55.4 KiB |  00m00s
+[148/462] perl-locale-0:1.13-527.fc45.n 100% | 306.6 KiB/s |  13.2 KiB |  00m00s
+[149/462] perl-Getopt-Std-0:1.15-527.fc 100% | 357.1 KiB/s |  15.4 KiB |  00m00s
+[150/462] perl-MIME-Base64-0:3.16-527.f 100% | 693.0 KiB/s |  29.8 KiB |  00m00s
+[151/462] perl-Storable-1:3.41-527.fc45 100% |   2.1 MiB/s |  95.7 KiB |  00m00s
+[152/462] perl-parent-1:0.244-527.fc45. 100% | 342.6 KiB/s |  14.7 KiB |  00m00s
+[153/462] perl-File-Temp-1:0.231.200-52 100% |   1.3 MiB/s |  59.3 KiB |  00m00s
+[154/462] groff-base-0:1.24.1-2.fc45.aa 100% |  17.1 MiB/s |   1.2 MiB |  00m00s
+[155/462] perl-HTTP-Tiny-0:0.096-528.fc 100% |   1.3 MiB/s |  58.4 KiB |  00m00s
+[156/462] perl-Pod-Simple-1:3.48-527.fc 100% |   4.9 MiB/s | 222.0 KiB |  00m00s
+[157/462] perl-Term-ANSIColor-0:5.01-52 100% |   1.1 MiB/s |  47.3 KiB |  00m00s
+[158/462] perl-Term-Cap-0:1.18-527.fc45 100% | 505.1 KiB/s |  21.7 KiB |  00m00s
+[159/462] perl-Class-Struct-0:0.68-527. 100% | 506.0 KiB/s |  21.8 KiB |  00m00s
+[160/462] perl-File-Path-0:2.18-527.fc4 100% | 810.1 KiB/s |  34.8 KiB |  00m00s
+[161/462] perl-IO-Socket-SSL-0:2.099-2. 100% |   5.2 MiB/s | 236.2 KiB |  00m00s
+[162/462] perl-Time-HiRes-4:1.9780-527. 100% |   1.3 MiB/s |  57.2 KiB |  00m00s
+[163/462] perl-Net-SSLeay-0:1.96-5.fc45 100% |   6.3 MiB/s | 378.8 KiB |  00m00s
+[164/462] perl-Time-Local-2:1.350-527.f 100% | 795.9 KiB/s |  34.2 KiB |  00m00s
+[165/462] perl-Pod-Escapes-1:1.07-527.f 100% | 454.8 KiB/s |  19.6 KiB |  00m00s
+[166/462] perl-Text-Tabs+Wrap-0:2024.00 100% | 501.1 KiB/s |  21.5 KiB |  00m00s
+[167/462] perl-if-0:0.61.000-527.fc45.n 100% | 318.2 KiB/s |  13.7 KiB |  00m00s
+[168/462] perl-IO-Socket-IP-0:0.44-527. 100% | 977.4 KiB/s |  42.0 KiB |  00m00s
+[169/462] ncurses-0:6.6-3.fc45.aarch64  100% |   7.3 MiB/s | 428.8 KiB |  00m00s
+[170/462] perl-AutoLoader-0:5.74-527.fc 100% | 486.8 KiB/s |  20.9 KiB |  00m00s
+[171/462] enchant2-0:2.8.21-1.fc45.aarc 100% |   2.1 MiB/s |  93.0 KiB |  00m00s
+[172/462] flite-0:2.2-14.fc45.aarch64   100% |  50.0 MiB/s |  12.4 MiB |  00m00s
+[173/462] libavif-0:1.3.0-7.fc45.aarch6 100% |   2.5 MiB/s | 114.8 KiB |  00m00s
+[174/462] libdrm-0:2.4.134-2.fc45.aarch 100% |   3.8 MiB/s | 192.2 KiB |  00m00s
+[175/462] libglvnd-gles-1:1.7.0-10.fc45 100% | 700.5 KiB/s |  30.1 KiB |  00m00s
+[176/462] libmanette-0:0.2.13-9.fc45.aa 100% |   1.5 MiB/s |  65.5 KiB |  00m00s
+[177/462] libseccomp-0:2.6.1-3.fc45.aar 100% |   1.7 MiB/s |  75.5 KiB |  00m00s
+[178/462] libsecret-0:0.21.8.2-2.fc45.a 100% |   3.9 MiB/s | 174.9 KiB |  00m00s
+[179/462] libwayland-server-0:1.26.0-3. 100% | 990.3 KiB/s |  42.6 KiB |  00m00s
+[180/462] libxslt-0:1.1.43-10.fc45.aarc 100% |   3.6 MiB/s | 182.0 KiB |  00m00s
+[181/462] xdg-dbus-proxy-0:0.1.9-1.fc45 100% |   1.0 MiB/s |  46.1 KiB |  00m00s
+[182/462] webkit2gtk4.1-0:2.54.2-1.fc45 100% |  32.2 MiB/s |  28.0 MiB |  00m01s
+[183/462] pulseaudio-libs-0:17.0-11.fc4 100% |   4.1 MiB/s | 668.1 KiB |  00m00s
+[184/462] libyuv-0:0-0.63.20260213git60 100% |   3.2 MiB/s | 172.5 KiB |  00m00s
+[185/462] rav1e-libs-0:0.8.1-4.fc45.aar 100% |  12.4 MiB/s | 811.9 KiB |  00m00s
+[186/462] libpciaccess-0:0.16-18.fc45.a 100% | 616.0 KiB/s |  26.5 KiB |  00m00s
+[187/462] svt-av1-libs-0:3.1.2-3.fc45.a 100% |  13.9 MiB/s |   1.3 MiB |  00m00s
+[188/462] hidapi-0:0.15.0-4.fc45.aarch6 100% |   1.0 MiB/s |  47.1 KiB |  00m00s
+[189/462] libevdev-0:1.13.7-1.fc45.aarc 100% | 879.4 KiB/s |  37.8 KiB |  00m00s
+[190/462] libgudev-0:238-10.fc45.aarch6 100% | 787.0 KiB/s |  33.8 KiB |  00m00s
+[191/462] dbus-1:1.16.2-6.fc45.aarch64  100% | 182.2 KiB/s |   7.8 KiB |  00m00s
+[192/462] libasyncns-0:0.8-35.fc45.aarc 100% | 687.4 KiB/s |  29.6 KiB |  00m00s
+[193/462] libsndfile-0:1.2.2-12.fc45.aa 100% |   4.3 MiB/s | 214.7 KiB |  00m00s
+[194/462] flac-libs-0:1.5.0-9.fc45.aarc 100% |   3.3 MiB/s | 191.4 KiB |  00m00s
+[195/462] gsm-0:1.0.24-3.fc45.aarch64   100% | 823.0 KiB/s |  35.4 KiB |  00m00s
+[196/462] lame-libs-0:4.0-1.fc45.aarch6 100% |   4.8 MiB/s | 272.7 KiB |  00m00s
+[197/462] libogg-2:1.3.6-4.fc45.aarch64 100% | 778.1 KiB/s |  33.5 KiB |  00m00s
+[198/462] libvorbis-1:1.3.7-21.fc45.aar 100% |   2.9 MiB/s | 184.3 KiB |  00m00s
+[199/462] mpg123-libs-0:1.33.6-3.fc45.a 100% |   6.7 MiB/s | 361.3 KiB |  00m00s
+[200/462] perl-URI-0:5.40-1.fc45.noarch 100% |  12.4 MiB/s | 151.9 KiB |  00m00s
+[201/462] opus-0:1.6-3.fc45.aarch64     100% |   4.7 MiB/s | 250.0 KiB |  00m00s
+[202/462] perl-Data-Dumper-0:2.192-528. 100% |   1.2 MiB/s |  55.0 KiB |  00m00s
+[203/462] perl-MIME-Base32-0:1.303-26.f 100% | 475.6 KiB/s |  20.4 KiB |  00m00s
+[204/462] perl-Unicode-Normalize-0:1.32 100% |   1.6 MiB/s |  72.1 KiB |  00m00s
+[205/462] freetype-0:2.14.3-3.fc45.aarc 100% |  10.7 MiB/s | 415.4 KiB |  00m00s
+[206/462] perl-B-0:1.92-527.fc45.aarch6 100% |   3.3 MiB/s | 182.1 KiB |  00m00s
+[207/462] fribidi-0:1.0.18-1.fc45.aarch 100% |   4.4 MiB/s | 104.6 KiB |  00m00s
+[208/462] graphite2-0:1.3.14-22.fc45.aa 100% |   2.0 MiB/s |  90.2 KiB |  00m00s
+[209/462] harfbuzz-icu-0:15.0.0-2.fc45. 100% | 538.4 KiB/s |  17.8 KiB |  00m00s
+[210/462] harfbuzz-0:15.0.0-2.fc45.aarc 100% |  10.7 MiB/s |   1.3 MiB |  00m00s
+[211/462] libicu-0:78.3-9.fc45.aarch64  100% |  59.3 MiB/s |  10.9 MiB |  00m00s
+[212/462] libsoup3-0:3.8.1-1.fc45.aarch 100% |   6.1 MiB/s | 408.5 KiB |  00m00s
+[213/462] hwdata-0:0.413-1.fc45.noarch  100% |   5.3 MiB/s |   1.7 MiB |  00m00s
+[214/462] mesa-libGL-0:26.2.6-1.fc45.aa 100% |   2.7 MiB/s | 132.2 KiB |  00m00s
+[215/462] mesa-dri-drivers-0:26.2.6-1.f 100% |  61.5 MiB/s |  10.3 MiB |  00m00s
+[216/462] libX11-xcb-0:1.8.13-3.fc45.aa 100% | 256.0 KiB/s |  11.0 KiB |  00m00s
+[217/462] libXxf86vm-0:1.1.6-5.fc45.aar 100% | 406.9 KiB/s |  17.5 KiB |  00m00s
+[218/462] mesa-filesystem-0:26.2.6-1.fc 100% |   1.5 MiB/s |  14.9 KiB |  00m00s
+[219/462] mesa-libgbm-0:26.2.6-1.fc45.a 100% |   2.1 MiB/s |  21.4 KiB |  00m00s
+[220/462] libxshmfence-0:1.3.2-9.fc45.a 100% | 311.2 KiB/s |  13.4 KiB |  00m00s
+[221/462] lm_sensors-libs-0:3.6.0-25.fc 100% | 944.1 KiB/s |  40.6 KiB |  00m00s
+[222/462] spirv-tools-libs-0:2026.2-3.f 100% |  15.4 MiB/s |   1.6 MiB |  00m00s
+[223/462] mesa-libEGL-0:26.2.6-1.fc45.a 100% |   2.4 MiB/s | 133.2 KiB |  00m00s
+[224/462] libglvnd-egl-1:1.7.0-10.fc45. 100% | 838.5 KiB/s |  36.1 KiB |  00m00s
+[225/462] atk-0:2.62.1-1.fc45.aarch64   100% |   1.1 MiB/s |  81.7 KiB |  00m00s
+[226/462] at-spi2-core-0:2.62.1-1.fc45. 100% |   9.2 MiB/s | 396.4 KiB |  00m00s
+[227/462] libXtst-0:1.2.5-5.fc45.aarch6 100% | 479.3 KiB/s |  20.6 KiB |  00m00s
+[228/462] xprop-0:1.2.8-6.fc45.aarch64  100% | 814.2 KiB/s |  35.0 KiB |  00m00s
+[229/462] openssl3-libs-1:3.5.9-1.fc45. 100% |   1.5 MiB/s |   2.5 MiB |  00m02s
+[230/462] libaom-0:3.15.3-1.fc45.aarch6 100% |  76.1 MiB/s |   1.7 MiB |  00m00s
+[231/462] at-spi2-atk-0:2.62.1-1.fc45.a 100% | 166.1 KiB/s |  87.0 KiB |  00m01s
+[232/462] glycin-libs-0:2.2.6-1.fc45.aa 100% |  46.4 MiB/s |   1.7 MiB |  00m00s
+[233/462] glycin-loaders-0:2.2.6-1.fc45 100% |  92.3 MiB/s |   3.2 MiB |  00m00s
+[234/462] hunspell-0:1.7.6-1.fc45.aarch 100% |   6.7 MiB/s | 456.0 KiB |  00m00s
+[235/462] hunspell-filesystem-0:1.7.6-1 100% | 201.0 KiB/s |   7.8 KiB |  00m00s
+[236/462] libXi-0:1.8.4-1.fc45.aarch64  100% |  90.3 KiB/s |  40.7 KiB |  00m00s
+[237/462] hunspell-en-US-0:0.20260225-3 100% |   3.8 MiB/s | 171.2 KiB |  00m00s
+[238/462] expat-0:2.9.0-1.fc45.aarch64  100% |   9.8 MiB/s | 130.9 KiB |  00m00s
+[239/462] libpng-2:1.6.59-1.fc45.aarch6 100% |  10.5 MiB/s | 117.9 KiB |  00m00s
+[240/462] bubblewrap-0:0.13.1-1.fc45.aa 100% |   5.9 MiB/s |  66.5 KiB |  00m00s
+[241/462] gstreamer1-0:1.28.9-1.fc45.aa 100% |  29.8 MiB/s |   1.6 MiB |  00m00s
+[242/462] gstreamer1-plugins-base-0:1.2 100% |  34.5 MiB/s |   2.2 MiB |  00m00s
+[243/462] alsa-lib-0:1.2.16.1-2.fc45.aa 100% |   4.8 MiB/s | 521.7 KiB |  00m00s
+[244/462] cdparanoia-libs-0:10.2-51.fc4 100% | 420.7 KiB/s |  53.4 KiB |  00m00s
+[245/462] graphene-0:1.10.8-6.fc45.aarc 100% |   1.4 MiB/s |  62.1 KiB |  00m00s
+[246/462] libXv-0:1.0.13-5.fc45.aarch64 100% | 423.0 KiB/s |  18.6 KiB |  00m00s
+[247/462] libtheora-1:1.1.1-42.fc45.aar 100% |   2.8 MiB/s | 155.5 KiB |  00m00s
+[248/462] libvisual-1:0.4.2-4.fc44.aarc 100% |   2.9 MiB/s | 145.7 KiB |  00m00s
+[249/462] orc-0:0.4.41-4.fc45.aarch64   100% |   3.9 MiB/s | 219.9 KiB |  00m00s
+[250/462] hyphen-0:2.8.10-1.fc45.aarch6 100% |   1.1 MiB/s |  30.8 KiB |  00m00s
+[251/462] perl-libnet-0:3.16-1.fc45.noa 100% |  11.5 MiB/s | 129.7 KiB |  00m00s
+[252/462] iso-codes-0:4.20.1-4.fc45.noa 100% |  14.0 MiB/s |   4.0 MiB |  00m00s
+[253/462] perl-Digest-MD5-0:2.59-527.fc 100% | 825.3 KiB/s |  35.5 KiB |  00m00s
+[254/462] perl-FileHandle-0:2.05-527.fc 100% | 353.2 KiB/s |  15.2 KiB |  00m00s
+[255/462] perl-Digest-0:1.20-527.fc45.n 100% | 576.0 KiB/s |  24.8 KiB |  00m00s
+[256/462] llvm-filesystem-0:23.1.5-2.fc 100% | 670.3 KiB/s |   7.4 KiB |  00m00s
+[257/462] glib-networking-0:2.90.1-1.fc 100% |  11.0 MiB/s | 213.8 KiB |  00m00s
+[258/462] llvm-libs-0:23.1.5-2.fc45.aar 100% | 130.3 MiB/s |  34.8 MiB |  00m00s
+[259/462] gsettings-desktop-schemas-0:5 100% |   4.1 MiB/s | 938.6 KiB |  00m00s
+[260/462] libproxy-0:0.5.12-3.fc45.aarc 100% |   1.0 MiB/s |  43.8 KiB |  00m00s
+[261/462] duktape-0:2.7.0-12.fc45.aarch 100% |   2.2 MiB/s | 170.2 KiB |  00m00s
+[262/462] libheif-0:1.23.7-1.fc45.aarch 100% |  15.2 MiB/s | 776.9 KiB |  00m00s
+[263/462] less-0:710-2.fc45.aarch64     100% |  18.4 MiB/s | 226.2 KiB |  00m00s
+[264/462] libopenjph-0:0.31.0-1.fc45.aa 100% |   2.7 MiB/s | 119.5 KiB |  00m00s
+[265/462] graphviz-libs-0:15.1.1-2.fc45 100% |  13.4 MiB/s | 451.6 KiB |  00m00s
+[266/462] LibRaw-0:0.22.3-1.fc45.aarch6 100% |   8.4 MiB/s | 462.3 KiB |  00m00s
+[267/462] libgs-0:10.07.1-3.fc45.aarch6 100% |  46.1 MiB/s |   3.7 MiB |  00m00s
+[268/462] adobe-mappings-cmap-0:2023111 100% |  23.1 MiB/s |   2.2 MiB |  00m00s
+[269/462] adobe-mappings-cmap-deprecate 100% |   2.3 MiB/s | 102.6 KiB |  00m00s
+[270/462] adobe-mappings-pdf-0:20190401 100% |  12.6 MiB/s | 619.9 KiB |  00m00s
+[271/462] google-droid-sans-fonts-0:202 100% |  20.2 MiB/s |   2.7 MiB |  00m00s
+[272/462] jbig2dec-libs-0:0.20-9.fc45.a 100% | 638.2 KiB/s |  71.5 KiB |  00m00s
+[273/462] libpaper-1:2.1.1-11.fc45.aarc 100% | 259.9 KiB/s |  26.2 KiB |  00m00s
+[274/462] libijs-0:0.35-27.fc45.aarch64 100% | 265.2 KiB/s |  28.9 KiB |  00m00s
+[275/462] urw-base35-fonts-0:20200910-2 100% |  85.7 KiB/s |   9.8 KiB |  00m00s
+[276/462] urw-base35-bookman-fonts-0:20 100% |   7.2 MiB/s | 845.0 KiB |  00m00s
+[277/462] urw-base35-d050000l-fonts-0:2 100% |   1.7 MiB/s |  75.1 KiB |  00m00s
+[278/462] urw-base35-fonts-common-0:202 100% | 477.4 KiB/s |  20.5 KiB |  00m00s
+[279/462] urw-base35-c059-fonts-0:20200 100% |   6.6 MiB/s | 872.7 KiB |  00m00s
+[280/462] urw-base35-gothic-fonts-0:202 100% |  10.4 MiB/s | 640.7 KiB |  00m00s
+[281/462] urw-base35-nimbus-mono-ps-fon 100% |  15.8 MiB/s | 793.7 KiB |  00m00s
+[282/462] urw-base35-nimbus-roman-fonts 100% |  13.2 MiB/s | 852.9 KiB |  00m00s
+[283/462] urw-base35-nimbus-sans-fonts- 100% |  24.5 MiB/s |   1.3 MiB |  00m00s
+[284/462] urw-base35-p052-fonts-0:20200 100% |  18.6 MiB/s | 972.1 KiB |  00m00s
+[285/462] urw-base35-standard-symbols-p 100% |   1.3 MiB/s |  57.6 KiB |  00m00s
+[286/462] urw-base35-z003-fonts-0:20200 100% |   6.0 MiB/s | 274.8 KiB |  00m00s
+[287/462] libwmf-lite-0:0.2.17-1.fc45.a 100% |   1.9 MiB/s |  74.7 KiB |  00m00s
+[288/462] libzip-0:1.12.1-1.fc45.aarch6 100% |   1.9 MiB/s |  72.8 KiB |  00m00s
+[289/462] openjpeg-0:2.5.4-5.fc45.aarch 100% |   2.0 MiB/s | 183.7 KiB |  00m00s
+[290/462] liblerc-0:4.3.0-1.fc45.aarch6 100% |   3.2 MiB/s | 197.2 KiB |  00m00s
+[291/462] openh264-0:2.6.0-3.fc45.aarch 100% |   1.1 MiB/s | 381.5 KiB |  00m00s
+[292/462] hunspell-en-0:0.20260225-3.fc 100% | 329.6 KiB/s |  14.2 KiB |  00m00s
+[293/462] hunspell-en-AU-0:0.20260225-3 100% |   3.7 MiB/s | 168.8 KiB |  00m00s
+[294/462] hunspell-en-CA-0:0.20260225-3 100% |   1.4 MiB/s | 168.1 KiB |  00m00s
+[295/462] hunspell-en-GB-0:0.20260225-3 100% |   3.6 MiB/s | 225.2 KiB |  00m00s
+[296/462] xdg-desktop-portal-gtk-0:1.15 100% |   2.0 MiB/s | 139.6 KiB |  00m00s
+[297/462] xdg-desktop-portal-0:1.22.1-2 100% |   4.4 MiB/s | 496.5 KiB |  00m00s
+[298/462] fuse3-0:3.18.3-1.fc45.aarch64 100% |   1.1 MiB/s |  62.8 KiB |  00m00s
+[299/462] fuse3-libs-0:3.18.3-1.fc45.aa 100% |   1.6 MiB/s |  96.8 KiB |  00m00s
+[300/462] geoclue2-0:2.8.2-2.fc45.aarch 100% |   2.4 MiB/s | 143.5 KiB |  00m00s
+[301/462] fuse-common-0:3.18.3-1.fc45.a 100% | 186.6 KiB/s |   8.0 KiB |  00m00s
+[302/462] ModemManager-glib-0:1.24.2-5. 100% |   5.7 MiB/s | 329.3 KiB |  00m00s
+[303/462] nodejs22-npm-2:10.9.8-1.22.23 100% |  18.0 MiB/s |   2.2 MiB |  00m00s
+[304/462] nodejs-npm-2:10.9.8-1.22.23.1 100% | 323.3 KiB/s |  26.2 KiB |  00m00s
+[305/462] pipewire-libs-0:1.6.11-1.fc45 100% |  23.5 MiB/s |   2.5 MiB |  00m00s
+[306/462] fdk-aac-free-0:2.0.3-3.fc45.a 100% |   1.8 MiB/s | 326.4 KiB |  00m00s
+[307/462] fftw-libs-single-0:3.3.10-18. 100% |   5.8 MiB/s | 691.0 KiB |  00m00s
+[308/462] libebur128-0:1.2.6-16.fc45.aa 100% | 566.9 KiB/s |  24.4 KiB |  00m00s
+[309/462] liblc3-0:1.1.3-9.fc45.aarch64 100% |   2.3 MiB/s | 101.0 KiB |  00m00s
+[310/462] libldac-0:2.0.2.6-1.fc45.aarc 100% | 961.1 KiB/s |  41.3 KiB |  00m00s
+[311/462] spandsp-0:0.0.6-23.fc45.aarch 100% |   5.1 MiB/s | 332.1 KiB |  00m00s
+[312/462] webrtc-audio-processing-0:2.1 100% |   6.8 MiB/s | 389.2 KiB |  00m00s
+[313/462] libtiff-0:4.7.2-3.fc45.aarch6 100% |  85.0 KiB/s | 214.5 KiB |  00m03s
+[314/462] abseil-cpp-0:20260526.0-3.fc4 100% |  11.2 MiB/s | 777.3 KiB |  00m00s
+[315/462] bluez-libs-0:5.88-1.fc45.aarc 100% |   2.1 MiB/s |  90.1 KiB |  00m00s
+[316/462] libsbc-0:2.2-1.fc45.aarch64   100% |   1.7 MiB/s |  45.0 KiB |  00m00s
+[317/462] libnotify-0:0.8.9-1.fc45.aarc 100% | 363.1 KiB/s |  56.3 KiB |  00m00s
+[318/462] nodejs22-docs-1:22.23.1-4.fc4 100% |  38.9 MiB/s |   4.7 MiB |  00m00s
+[319/462] dconf-0:51.0-1.fc45.aarch64   100% |   2.5 MiB/s | 112.9 KiB |  00m00s
+[320/462] libcanberra-gtk3-0:0.30-52.fc 100% | 713.4 KiB/s |  30.7 KiB |  00m00s
+[321/462] libcanberra-0:0.30-52.fc45.aa 100% |   1.4 MiB/s |  61.7 KiB |  00m00s
+[322/462] libtdb-0:1.4.15-4.fc45.aarch6 100% |   1.3 MiB/s |  56.1 KiB |  00m00s
+[323/462] sound-theme-freedesktop-0:0.8 100% |   8.1 MiB/s | 382.6 KiB |  00m00s
+[324/462] localsearch-0:3.12.0-2.fc45.a 100% |  12.4 MiB/s | 852.9 KiB |  00m00s
+[325/462] exempi-0:2.6.4-10.fc45.aarch6 100% |   9.0 MiB/s | 534.3 KiB |  00m00s
+[326/462] giflib-0:6.1.3-3.fc45.aarch64 100% |   1.2 MiB/s |  54.3 KiB |  00m00s
+[327/462] nodejs22-full-i18n-1:22.23.1- 100% |  15.6 MiB/s |   8.8 MiB |  00m01s
+[328/462] libcue-0:2.3.0-15.fc45.aarch6 100% | 450.0 KiB/s |  33.7 KiB |  00m00s
+[329/462] libgexiv2-0:0.16.2-1.fc45.aar 100% |   2.0 MiB/s |  91.4 KiB |  00m00s
+[330/462] libgxps-0:0.3.2-13.fc45.aarch 100% |   1.7 MiB/s |  76.6 KiB |  00m00s
+[331/462] libosinfo-0:1.12.0-12.fc45.aa 100% |   6.1 MiB/s | 317.4 KiB |  00m00s
+[332/462] libmediainfo-0:26.05-2.fc45.a 100% |  46.6 MiB/s |   3.2 MiB |  00m00s
+[333/462] totem-pl-parser-0:3.26.7-4.fc 100% |   2.5 MiB/s | 145.3 KiB |  00m00s
+[334/462] upower-libs-0:1.91.5-1.fc45.a 100% |   1.3 MiB/s |  58.8 KiB |  00m00s
+[335/462] libzen-0:0.4.41-11.fc45.aarch 100% |   2.4 MiB/s | 110.3 KiB |  00m00s
+[336/462] exiv2-libs-0:0.28.9-1.fc45.aa 100% |  15.5 MiB/s | 855.2 KiB |  00m00s
+[337/462] tinyxml2-0:11.0.0-6.fc45.aarc 100% |   1.0 MiB/s |  44.9 KiB |  00m00s
+[338/462] gobject-introspection-0:1.86. 100% |   2.7 MiB/s | 119.1 KiB |  00m00s
+[339/462] osinfo-db-tools-0:1.12.0-10.f 100% |   1.7 MiB/s |  73.2 KiB |  00m00s
+[340/462] osinfo-db-0:20251212-2.fc45.n 100% |   9.4 MiB/s | 491.9 KiB |  00m00s
+[341/462] uchardet-0:0.0.8-11.fc45.aarc 100% |   2.4 MiB/s | 106.3 KiB |  00m00s
+[342/462] inih-cpp-0:62-3.fc45.aarch64  100% | 514.7 KiB/s |  22.1 KiB |  00m00s
+[343/462] javascriptcoregtk4.1-0:2.54.2 100% | 956.3 KiB/s |   8.5 MiB |  00m09s
+[344/462] inih-0:62-3.fc45.aarch64      100% | 348.8 KiB/s |  18.1 KiB |  00m00s
+[345/462] tinysparql-0:3.12.0-2.fc45.aa 100% |  15.9 MiB/s |   1.0 MiB |  00m00s
+[346/462] python-unversioned-command-0: 100% | 907.7 KiB/s |  10.0 KiB |  00m00s
+[347/462] perl-NDBM_File-0:1.18-527.fc4 100% | 507.9 KiB/s |  21.8 KiB |  00m00s
+[348/462] open-sans-fonts-0:1.10-26.fc4 100% |   6.1 MiB/s | 471.6 KiB |  00m00s
+[349/462] gstreamer1-plugins-good-0:1.2 100% |  22.2 MiB/s |   2.3 MiB |  00m00s
+[350/462] libshout-0:2.4.6-12.fc45.aarc 100% |   1.1 MiB/s |  75.3 KiB |  00m00s
+[351/462] libv4l-0:1.32.0-4.fc45.aarch6 100% |   1.9 MiB/s | 138.4 KiB |  00m00s
+[352/462] libvpx-0:1.17.0-1.fc45.aarch6 100% |  18.5 MiB/s |   1.3 MiB |  00m00s
+[353/462] speex-0:1.2.0-22.fc45.aarch64 100% |   1.5 MiB/s |  65.2 KiB |  00m00s
+[354/462] twolame-libs-0:0.4.0-10.fc45. 100% |   1.6 MiB/s |  68.6 KiB |  00m00s
+[355/462] taglib-0:2.3-4.fc45.aarch64   100% |   4.3 MiB/s | 455.0 KiB |  00m00s
+[356/462] opencore-amr-0:0.1.6-11.fc45. 100% | 954.7 KiB/s | 174.7 KiB |  00m00s
+[357/462] wavpack-0:5.9.0-3.fc45.aarch6 100% |   1.4 MiB/s | 227.5 KiB |  00m00s
+[358/462] libdvdnav-0:7.0.0-2.fc45.aarc 100% | 606.6 KiB/s |  55.2 KiB |  00m00s
+[359/462] libdvdread-0:7.1.1-1.fc45.aar 100% |   1.4 MiB/s |  86.6 KiB |  00m00s
+[360/462] libsrtp-0:2.8.0-3.fc45.aarch6 100% | 709.3 KiB/s |  61.0 KiB |  00m00s
+[361/462] libva-0:2.24.1-2.fc45.aarch64 100% |   2.7 MiB/s | 119.6 KiB |  00m00s
+[362/462] openal-soft-0:1.24.2-10.fc45. 100% |   4.8 MiB/s | 605.9 KiB |  00m00s
+[363/462] gstreamer1-plugins-bad-free-0 100% |   5.2 MiB/s |   3.0 MiB |  00m01s
+[364/462] soundtouch-0:2.4.0-4.fc45.aar 100% | 986.3 KiB/s |  85.8 KiB |  00m00s
+[365/462] vulkan-loader-0:1.4.350.0-2.f 100% |   2.9 MiB/s | 175.9 KiB |  00m00s
+[366/462] libnice-0:0.1.23-3.fc45.aarch 100% |   2.7 MiB/s | 193.5 KiB |  00m00s
+[367/462] gupnp-igd-0:1.6.0-15.fc45.aar 100% | 642.7 KiB/s |  33.4 KiB |  00m00s
+[368/462] gstreamer1-plugins-bad-free-l 100% |   1.6 MiB/s |   1.1 MiB |  00m01s
+[369/462] icu-tzdata-0:2026f-1.fc45.noa 100% |  16.1 MiB/s | 198.2 KiB |  00m00s
+[370/462] gssdp-0:1.6.6-3.fc45.aarch64  100% |   1.0 MiB/s |  59.1 KiB |  00m00s
+[371/462] gupnp-0:1.6.10-4.fc45.aarch64 100% |   1.3 MiB/s | 105.3 KiB |  00m00s
+[372/462] adwaita-sans-fonts-0:51.0-1.f 100% |  15.3 MiB/s | 765.3 KiB |  00m00s
+[373/462] libheif-ffmpeg-0:1.23.7-1.fc4 100% |   2.4 MiB/s |  26.8 KiB |  00m00s
+[374/462] 7zip-0:26.04-1.fc45.aarch64   100% |  42.5 MiB/s |   1.2 MiB |  00m00s
+[375/462] unzip-0:6.0-71.fc45.aarch64   100% |   3.7 MiB/s | 199.1 KiB |  00m00s
+[376/462] less-color-0:710-2.fc45.aarch 100% | 987.0 KiB/s |  10.9 KiB |  00m00s
+[377/462] python3-html2text-0:2025.4.15 100% |   1.4 MiB/s |  81.2 KiB |  00m00s
+[378/462] systemd-0:262.1-1.fc45.aarch6 100% |  92.4 MiB/s |   4.4 MiB |  00m00s
+[379/462] rtkit-0:0.14-2.fc45.aarch64   100% |   1.3 MiB/s |  56.7 KiB |  00m00s
+[380/462] pipewire-0:1.6.11-1.fc45.aarc 100% |   1.1 MiB/s | 142.1 KiB |  00m00s
+[381/462] systemd-shared-0:262.1-1.fc45 100% |  63.9 MiB/s |   2.0 MiB |  00m00s
+[382/462] dbus-broker-0:37-9.fc45.aarch 100% |   3.4 MiB/s | 167.2 KiB |  00m00s
+[383/462] adwaita-mono-fonts-0:51.0-1.f 100% |   5.0 MiB/s |   1.4 MiB |  00m00s
+[384/462] polkit-libs-0:127-5.fc45.aarc 100% |   1.6 MiB/s |  70.3 KiB |  00m00s
+[385/462] polkit-0:127-5.fc45.aarch64   100% |   2.8 MiB/s | 169.2 KiB |  00m00s
+[386/462] poppler-glib-0:26.08.0-2.fc45 100% |   5.6 MiB/s | 201.6 KiB |  00m00s
+[387/462] gpgmepp-1:2.0.0-2.fc45.aarch6 100% |   3.2 MiB/s | 170.5 KiB |  00m00s
+[388/462] poppler-0:26.08.0-2.fc45.aarc 100% |  15.8 MiB/s |   1.3 MiB |  00m00s
+[389/462] poppler-data-0:0.4.11-12.fc45 100% |  33.9 MiB/s |   2.0 MiB |  00m00s
+[390/462] gpgme-0:2.0.1-6.fc45.aarch64  100% |   4.1 MiB/s | 222.5 KiB |  00m00s
+[391/462] nspr-0:4.39.0-10.fc45.aarch64 100% |  12.1 MiB/s | 136.3 KiB |  00m00s
+[392/462] nss-0:3.133.0-1.fc45.aarch64  100% |  46.1 MiB/s | 708.0 KiB |  00m00s
+[393/462] nss-softokn-0:3.133.0-1.fc45. 100% |  32.7 MiB/s | 435.2 KiB |  00m00s
+[394/462] nss-softokn-freebl-0:3.133.0- 100% |  29.8 MiB/s | 365.9 KiB |  00m00s
+[395/462] libgsf-0:1.14.60-1.fc45.aarch 100% |   1.1 MiB/s | 266.4 KiB |  00m00s
+[396/462] nss-sysinit-0:3.133.0-1.fc45. 100% |   1.8 MiB/s |  20.6 KiB |  00m00s
+[397/462] nss-util-0:3.133.0-1.fc45.aar 100% |   2.3 MiB/s |  87.7 KiB |  00m00s
+[398/462] libavutil-free-0:9.0.2-3.fc45 100% |   6.9 MiB/s | 347.9 KiB |  00m00s
+[399/462] libswresample-free-0:9.0.2-3. 100% | 752.5 KiB/s |  62.5 KiB |  00m00s
+[400/462] aribb24-0:1.0.3^20160216git5e 100% | 941.0 KiB/s |  40.5 KiB |  00m00s
+[401/462] ilbc-0:3.0.4-21.fc45.aarch64  100% |   1.2 MiB/s |  54.6 KiB |  00m00s
+[402/462] codec2-0:1.2.0-10.fc45.aarch6 100% |  10.2 MiB/s | 637.9 KiB |  00m00s
+[403/462] libaribcaption-0:1.1.1-5.fc45 100% |   2.4 MiB/s | 107.7 KiB |  00m00s
+[404/462] openapv-libs-0:0.3.0.0-1.fc45 100% |   1.5 MiB/s |  64.4 KiB |  00m00s
+[405/462] snappy-0:1.2.2-6.fc45.aarch64 100% | 972.6 KiB/s |  41.8 KiB |  00m00s
+[406/462] vo-amrwbenc-0:0.1.3-25.fc45.a 100% |   1.8 MiB/s |  80.0 KiB |  00m00s
+[407/462] xevd-libs-0:0.7.0-2.fc45.aarc 100% |   2.1 MiB/s | 140.3 KiB |  00m00s
+[408/462] xeve-libs-0:0.7.0-2.fc45.aarc 100% |   4.7 MiB/s | 273.9 KiB |  00m00s
+[409/462] libvdpau-0:1.5-12.fc45.aarch6 100% | 382.0 KiB/s |  16.4 KiB |  00m00s
+[410/462] xvidcore-0:1.3.7-20.fc45.aarc 100% |   3.7 MiB/s | 218.3 KiB |  00m00s
+[411/462] libavcodec-free-0:9.0.2-3.fc4 100% |  12.7 MiB/s |   4.9 MiB |  00m00s
+[412/462] soxr-0:0.1.3-22.fc45.aarch64  100% |   1.5 MiB/s |  69.3 KiB |  00m00s
+[413/462] zvbi-0:0.2.46-1.fc45.aarch64  100% |  32.0 MiB/s | 426.5 KiB |  00m00s
+[414/462] faad2-libs-1:2.11.4-1.fc45.aa 100% |   4.5 MiB/s | 219.8 KiB |  00m00s
+[415/462] lpcnetfreedv-0:0.5-11.fc45.aa 100% |  52.3 MiB/s |   7.3 MiB |  00m00s
+[416/462] wireplumber-0:0.5.19-1.fc45.a 100% |   1.5 MiB/s | 142.2 KiB |  00m00s
+[417/462] wireplumber-libs-0:0.5.19-1.f 100% |   7.4 MiB/s | 446.7 KiB |  00m00s
+[418/462] pipewire-jack-audio-connectio 100% | 542.5 KiB/s |  11.9 KiB |  00m00s
+[419/462] pipewire-jack-audio-connectio 100% |   6.4 MiB/s | 138.0 KiB |  00m00s
+[420/462] pipewire-alsa-0:1.6.11-1.fc45 100% |   2.2 MiB/s |  62.8 KiB |  00m00s
+[421/462] libcanberra-backend-alsa-0:0. 100% | 368.7 KiB/s |  15.9 KiB |  00m00s
+[422/462] pipewire-pulseaudio-0:1.6.11- 100% |   4.5 MiB/s | 213.6 KiB |  00m00s
+[423/462] libcanberra-backend-gstreamer 100% | 394.4 KiB/s |  16.6 KiB |  00m00s
+[424/462] systemd-udev-0:262.1-1.fc45.a 100% |  95.8 MiB/s |   2.9 MiB |  00m00s
+[425/462] libcanberra-backend-pulse-0:0 100% | 472.4 KiB/s |  20.3 KiB |  00m00s
+[426/462] upower-0:1.91.5-1.fc45.aarch6 100% |   2.5 MiB/s | 130.7 KiB |  00m00s
+[427/462] libimobiledevice-0:1.4.0-7.fc 100% |   2.8 MiB/s | 139.4 KiB |  00m00s
+[428/462] libplist-0:2.7.0-4.fc45.aarch 100% |   2.1 MiB/s |  93.7 KiB |  00m00s
+[429/462] kmod-0:34.2-6.fc45.aarch64    100% |   3.0 MiB/s | 132.5 KiB |  00m00s
+[430/462] kmod-libs-0:34.2-6.fc45.aarch 100% |   1.5 MiB/s |  66.9 KiB |  00m00s
+[431/462] cryptsetup-libs-0:2.8.8-1.fc4 100% |   6.6 MiB/s | 603.6 KiB |  00m00s
+[432/462] libimobiledevice-glue-0:1.3.2 100% |   1.2 MiB/s |  52.7 KiB |  00m00s
+[433/462] libusbmuxd-0:2.1.1-2.fc45.aar 100% | 851.1 KiB/s |  36.6 KiB |  00m00s
+[434/462] device-mapper-libs-0:1.02.217 100% |   4.2 MiB/s | 188.3 KiB |  00m00s
+[435/462] pkgconf-pkg-config-0:2.5.1-2. 100% | 220.7 KiB/s |   9.5 KiB |  00m00s
+[436/462] device-mapper-0:1.02.217-2.fc 100% |   3.2 MiB/s | 146.0 KiB |  00m00s
+[437/462] pkgconf-0:2.5.1-2.fc45.aarch6 100% |   1.1 MiB/s |  48.4 KiB |  00m00s
+[438/462] pkgconf-m4-0:2.5.1-2.fc45.noa 100% | 321.1 KiB/s |  13.8 KiB |  00m00s
+[439/462] libpkgconf-0:2.5.1-2.fc45.aar 100% | 946.5 KiB/s |  40.7 KiB |  00m00s
+[440/462] libdisplay-info-0:0.3.0-2.fc4 100% |   2.1 MiB/s |  92.2 KiB |  00m00s
+[441/462] exiv2-0:0.28.9-1.fc45.aarch64 100% |  18.7 MiB/s |   2.0 MiB |  00m00s
+[442/462] bat-0:0.26.1-4.fc45.aarch64   100% |  30.8 MiB/s |   2.4 MiB |  00m00s
+[443/462] libgit2_1.9-0:1.9.7-3.fc45.aa 100% |   9.7 MiB/s | 556.1 KiB |  00m00s
+[444/462] oniguruma-0:6.9.10-5.fc45.aar 100% |   3.6 MiB/s | 212.8 KiB |  00m00s
+[445/462] libssh2-0:1.11.1-10.fc45.aarc 100% |   2.4 MiB/s | 139.8 KiB |  00m00s
+[446/462] pipewire-plugin-libcamera-0:1 100% |   2.2 MiB/s |  70.6 KiB |  00m00s
+[447/462] llhttp-0:9.4.2-2.fc45.aarch64 100% | 891.6 KiB/s |  38.3 KiB |  00m00s
+[448/462] diffutils-0:3.12-6.fc45.aarch 100% |   8.5 MiB/s | 392.3 KiB |  00m00s
+[449/462] libbpf-2:1.7.0-2.fc45.aarch64 100% |   4.3 MiB/s | 194.4 KiB |  00m00s
+[450/462] systemd-networkd-0:262.1-1.fc 100% |  31.8 MiB/s | 782.0 KiB |  00m00s
+[451/462] systemd-pam-0:262.1-1.fc45.aa 100% |  13.9 MiB/s | 469.8 KiB |  00m00s
+[452/462] systemd-resolved-0:262.1-1.fc 100% |  19.3 MiB/s | 277.3 KiB |  00m00s
+[453/462] libcamera-0:0.7.2-5.fc45.aarc 100% |  41.3 MiB/s | 761.0 KiB |  00m00s
+[454/462] mesa-vulkan-drivers-0:26.2.6- 100% |  45.4 MiB/s |  19.0 MiB |  00m00s
+[455/462] polkit-pkla-compat-0:0.1-33.f 100% | 413.3 KiB/s |  43.8 KiB |  00m00s
+[456/462] lttng-ust-0:2.15.1-4.fc45.aar 100% |   4.1 MiB/s | 367.5 KiB |  00m00s
+[457/462] numactl-libs-0:2.0.19-5.fc45. 100% | 720.0 KiB/s |  31.0 KiB |  00m00s
+[458/462] kbd-0:2.10.0-3.fc45.aarch64   100% |   9.1 MiB/s | 430.5 KiB |  00m00s
+[459/462] kbd-legacy-0:2.10.0-3.fc45.no 100% |  12.6 MiB/s | 606.5 KiB |  00m00s
+[460/462] usbmuxd-0:1.1.1^20251205git3d 100% |   1.5 MiB/s |  66.8 KiB |  00m00s
+[461/462] kbd-misc-0:2.10.0-3.fc45.noar 100% |  30.0 MiB/s |   1.7 MiB |  00m00s
+[462/462] libcamera-ipa-0:0.7.2-5.fc45. 100% | 307.6 KiB/s | 591.8 KiB |  00m02s
+--------------------------------------------------------------------------------
+[462/462] Total                         100% |  19.9 MiB/s | 349.2 MiB |  00m18s
+Running transaction
+[  1/465] Verify package files          100% | 502.0   B/s | 463.0   B |  00m01s
+[  2/465] Prepare transaction           100% |   2.5 KiB/s | 463.0   B |  00m00s
+[  3/465] Installing libjpeg-turbo-0:3. 100% | 133.4 MiB/s | 683.0 KiB |  00m00s
+[  4/465] Installing expat-0:2.9.0-1.fc 100% |  17.4 MiB/s | 391.6 KiB |  00m00s
+[  5/465] Installing libpng-2:1.6.59-1. 100% | 132.3 MiB/s | 271.0 KiB |  00m00s
+[  6/465] Installing dbus-libs-1:1.16.2 100% | 129.8 MiB/s | 398.7 KiB |  00m00s
+[  7/465] Installing lcms2-0:2.16-8.fc4 100% | 237.5 MiB/s | 486.3 KiB |  00m00s
+[  8/465] Installing libwayland-client- 100% |  69.5 MiB/s |  71.2 KiB |  00m00s
+[  9/465] Installing fonts-filesystem-1 100% | 769.5 KiB/s | 788.0   B |  00m00s
+[ 10/465] Installing urw-base35-fonts-c 100% |  37.5 MiB/s |  38.4 KiB |  00m00s
+[ 11/465] Installing avahi-libs-0:0.9~r 100% | 113.6 MiB/s | 232.7 KiB |  00m00s
+[ 12/465] Installing libwebp-0:1.6.0-4. 100% | 200.5 MiB/s | 821.1 KiB |  00m00s
+[ 13/465] Installing json-glib-0:1.10.8 100% | 153.4 MiB/s | 628.3 KiB |  00m00s
+[ 14/465] Installing nspr-0:4.39.0-10.f 100% | 137.1 MiB/s | 421.1 KiB |  00m00s
+[ 15/465] Installing openjpeg-0:2.5.4-5 100% | 134.9 MiB/s | 414.3 KiB |  00m00s
+[ 16/465] Installing libX11-xcb-0:1.8.1 100% |  66.1 MiB/s |  67.7 KiB |  00m00s
+[ 17/465] Installing libicu-0:78.3-9.fc 100% | 398.4 MiB/s |  37.9 MiB |  00m00s
+[ 18/465] Installing libogg-2:1.3.6-4.f 100% |  77.2 MiB/s |  79.1 KiB |  00m00s
+[ 19/465] Installing libvorbis-1:1.3.7- 100% | 207.0 MiB/s | 847.9 KiB |  00m00s
+[ 20/465] Installing libgudev-0:238-10. 100% |  51.4 MiB/s | 105.2 KiB |  00m00s
+[ 21/465] Installing libplist-0:2.7.0-4 100% |  17.3 MiB/s | 371.5 KiB |  00m00s
+[ 22/465] Installing libtdb-0:1.4.15-4. 100% |  69.1 MiB/s | 141.6 KiB |  00m00s
+[ 23/465] Installing hunspell-filesyste 100% | 378.9 KiB/s | 388.0   B |  00m00s
+[ 24/465] Installing opus-0:1.6-3.fc45. 100% | 148.7 MiB/s | 456.9 KiB |  00m00s
+[ 25/465] Installing nss-util-0:3.133.0 100% | 106.3 MiB/s | 217.8 KiB |  00m00s
+[ 26/465] Installing systemd-shared-0:2 100% | 353.1 MiB/s |   6.0 MiB |  00m00s
+[ 27/465] Installing alsa-lib-0:1.2.16. 100% |  55.2 MiB/s |   1.5 MiB |  00m00s
+[ 28/465] Installing libaom-0:3.15.3-1. 100% | 342.8 MiB/s |   4.1 MiB |  00m00s
+[ 29/465] Installing svt-av1-libs-0:3.1 100% | 304.9 MiB/s |   3.4 MiB |  00m00s
+[ 30/465] Installing libseccomp-0:2.6.1 100% | 121.2 MiB/s | 248.1 KiB |  00m00s
+[ 31/465] Installing libdav1d-0:1.5.4-1 100% | 225.1 MiB/s | 922.0 KiB |  00m00s
+[ 32/465] Installing libimobiledevice-g 100% |  82.4 MiB/s | 168.8 KiB |  00m00s
+[ 33/465] Installing libtheora-1:1.1.1- 100% | 153.3 MiB/s | 470.9 KiB |  00m00s
+[ 34/465] Installing avahi-glib-0:0.9~r 100% |  33.3 MiB/s |  68.3 KiB |  00m00s
+[ 35/465] Installing polkit-libs-0:127- 100% | 141.8 MiB/s | 290.4 KiB |  00m00s
+[ 36/465] Installing vulkan-loader-0:1. 100% | 150.5 MiB/s | 616.5 KiB |  00m00s
+[ 37/465] Installing speex-0:1.2.0-22.f 100% |  67.6 MiB/s | 138.4 KiB |  00m00s
+[ 38/465] Installing gobject-introspect 100% | 146.4 MiB/s | 449.7 KiB |  00m00s
+[ 39/465] Installing liblc3-0:1.1.3-9.f 100% | 101.4 MiB/s | 207.8 KiB |  00m00s
+[ 40/465] Installing fdk-aac-free-0:2.0 100% | 193.1 MiB/s | 593.3 KiB |  00m00s
+[ 41/465] Installing orc-0:0.4.41-4.fc4 100% |  38.9 MiB/s | 876.8 KiB |  00m00s
+[ 42/465] Installing mesa-filesystem-0: 100% |   4.2 MiB/s |   4.3 KiB |  00m00s
+[ 43/465] Installing hwdata-0:0.413-1.f 100% | 483.8 MiB/s |  10.2 MiB |  00m00s
+[ 44/465] Installing fribidi-0:1.0.18-1 100% |  22.4 MiB/s | 458.0 KiB |  00m00s
+[ 45/465] Installing mpg123-libs-0:1.33 100% | 148.7 MiB/s | 761.2 KiB |  00m00s
+[ 46/465] Installing lame-libs-0:4.0-1. 100% | 303.4 MiB/s | 932.0 KiB |  00m00s
+[ 47/465] Installing gsm-0:1.0.24-3.fc4 100% |  38.7 MiB/s |  79.3 KiB |  00m00s
+[ 48/465] Installing rav1e-libs-0:0.8.1 100% | 293.9 MiB/s |   2.1 MiB |  00m00s
+[ 49/465] Installing libICE-0:1.1.2-5.f 100% | 109.2 MiB/s | 223.7 KiB |  00m00s
+[ 50/465] Installing libglvnd-1:1.7.0-1 100% | 443.4 MiB/s |   1.3 MiB |  00m00s
+[ 51/465] Installing pixman-0:0.46.2-4. 100% | 213.4 MiB/s | 655.5 KiB |  00m00s
+[ 52/465] Installing libXau-0:1.0.12-5. 100% |  59.8 MiB/s | 122.4 KiB |  00m00s
+[ 53/465] Installing libxcb-0:1.17.0-8. 100% | 216.5 MiB/s |   2.2 MiB |  00m00s
+[ 54/465] Installing libSM-0:1.2.5-5.fc 100% | 127.3 MiB/s | 130.3 KiB |  00m00s
+[ 55/465] Installing upower-libs-0:1.91 100% | 111.3 MiB/s | 228.0 KiB |  00m00s
+[ 56/465] Installing hunspell-en-US-0:0 100% | 247.7 MiB/s | 507.4 KiB |  00m00s
+[ 57/465] Installing flac-libs-0:1.5.0- 100% | 136.2 MiB/s | 557.9 KiB |  00m00s
+[ 58/465] Installing libsndfile-0:1.2.2 100% | 183.4 MiB/s | 563.5 KiB |  00m00s
+[ 59/465] Installing libwayland-cursor- 100% |  80.5 MiB/s |  82.4 KiB |  00m00s
+[ 60/465] Installing libyuv-0:0-0.63.20 100% | 192.9 MiB/s | 592.6 KiB |  00m00s
+[ 61/465] Installing libdvdread-0:7.1.1 100% | 112.3 MiB/s | 229.9 KiB |  00m00s
+[ 62/465] Installing twolame-libs-0:0.4 100% |  77.4 MiB/s | 158.6 KiB |  00m00s
+[ 63/465] Installing opencore-amr-0:0.1 100% | 137.8 MiB/s | 423.5 KiB |  00m00s
+[ 64/465] Installing libvpx-0:1.17.0-1. 100% | 294.9 MiB/s |   2.7 MiB |  00m00s
+[ 65/465] Installing libsbc-0:2.2-1.fc4 100% |  42.1 MiB/s |  86.3 KiB |  00m00s
+[ 66/465] Installing fuse3-libs-0:3.18. 100% | 173.3 MiB/s | 354.9 KiB |  00m00s
+[ 67/465] Installing openh264-0:2.6.0-3 100% | 254.4 MiB/s |   1.0 MiB |  00m00s
+[ 68/465] Installing libzip-0:1.12.1-1. 100% |  98.1 MiB/s | 200.9 KiB |  00m00s
+[ 69/465] Installing adobe-mappings-cma 100% | 337.6 MiB/s |  15.2 MiB |  00m00s
+[ 70/465] Installing less-0:710-2.fc45. 100% |  23.4 MiB/s | 552.0 KiB |  00m00s
+[ 71/465] Installing duktape-0:2.7.0-12 100% | 219.3 MiB/s | 673.7 KiB |  00m00s
+[ 72/465] Installing gsettings-desktop- 100% | 669.9 MiB/s |   6.7 MiB |  00m00s
+[ 73/465] Installing bubblewrap-0:0.13. 100% |   8.7 MiB/s | 186.0 KiB |  00m00s
+[ 74/465] Installing spirv-tools-libs-0 100% | 364.1 MiB/s |   5.8 MiB |  00m00s
+[ 75/465] Installing libxshmfence-0:1.3 100% |  67.9 MiB/s |  69.6 KiB |  00m00s
+[ 76/465] Installing openssl3-libs-1:3. 100% | 340.1 MiB/s |   7.5 MiB |  00m00s
+[ 77/465] Installing libxslt-0:1.1.43-1 100% |  24.5 MiB/s | 551.1 KiB |  00m00s
+[ 78/465] Installing libedit-0:3.1-60.2 100% |  91.8 MiB/s | 282.0 KiB |  00m00s
+[ 79/465] Installing jbigkit-libs-0:2.1 100% |  89.5 MiB/s | 183.3 KiB |  00m00s
+[ 80/465] Installing imath-0:3.1.12-9.f 100% | 126.9 MiB/s | 389.8 KiB |  00m00s
+[ 81/465] Installing libfdisk-0:2.42.4- 100% | 136.7 MiB/s | 419.9 KiB |  00m00s
+[ 82/465] Installing xkeyboard-config-0 100% | 248.9 MiB/s |   6.5 MiB |  00m00s
+[ 83/465] Installing libxkbcommon-0:1.1 100% | 115.5 MiB/s | 473.3 KiB |  00m00s
+[ 84/465] Installing shared-mime-info-0 100% |  86.2 MiB/s |   3.3 MiB |  00m00s
+[ 85/465] Installing xml-common-0:0.6.3 100% |  39.6 MiB/s |  81.1 KiB |  00m00s
+[ 86/465] Installing libdbusmenu-0:16.0 100% | 180.4 MiB/s | 554.3 KiB |  00m00s
+[ 87/465] Installing libwayland-egl-0:1 100% |  67.9 MiB/s |  69.5 KiB |  00m00s
+[ 88/465] Installing libepoxy-0:1.5.10- 100% |  96.2 MiB/s |   1.3 MiB |  00m00s
+>>> Running sysusers scriptlet: dbus-common-1:1.16.2-6.fc45.noarch
+>>> Finished sysusers scriptlet: dbus-common-1:1.16.2-6.fc45.noarch
+>>> Scriptlet output:
+>>> Creating group 'dbus' with GID 81.
+>>> Creating user 'dbus' (System Message Bus) with UID 81 and GID 81.
+>>> 
+[ 89/465] Installing dbus-common-1:1.16 100% |   1.1 MiB/s |  13.6 KiB |  00m00s
+[ 90/465] Installing dbus-broker-0:37-9 100% |  13.8 MiB/s | 424.6 KiB |  00m00s
+[ 91/465] Installing dbus-1:1.16.2-6.fc 100% | 121.1 KiB/s | 124.0   B |  00m00s
+[ 92/465] Installing xdg-dbus-proxy-0:0 100% |   4.3 MiB/s | 101.1 KiB |  00m00s
+[ 93/465] Installing iso-codes-0:4.20.1 100% | 563.3 MiB/s |  22.5 MiB |  00m00s
+[ 94/465] Installing libproxy-0:0.5.12- 100% |  54.8 MiB/s | 168.4 KiB |  00m00s
+[ 95/465] Installing glib-networking-0: 100% | 190.7 MiB/s | 976.5 KiB |  00m00s
+[ 96/465] Installing libsoup3-0:3.8.1-1 100% | 253.5 MiB/s |   1.3 MiB |  00m00s
+[ 97/465] Installing gssdp-0:1.6.6-3.fc 100% |  94.3 MiB/s | 193.1 KiB |  00m00s
+[ 98/465] Installing gupnp-0:1.6.10-4.f 100% | 104.8 MiB/s | 321.9 KiB |  00m00s
+[ 99/465] Installing gupnp-igd-0:1.6.0- 100% |  49.1 MiB/s | 100.6 KiB |  00m00s
+[100/465] Installing libnice-0:0.1.23-3 100% |  26.2 MiB/s | 616.9 KiB |  00m00s
+[101/465] Installing osinfo-db-tools-0: 100% |  16.5 MiB/s | 372.7 KiB |  00m00s
+[102/465] Installing adobe-mappings-cma 100% | 190.5 MiB/s | 585.2 KiB |  00m00s
+[103/465] Installing libdvdnav-0:7.0.0- 100% |  79.3 MiB/s | 162.5 KiB |  00m00s
+[104/465] Installing libavif-0:1.3.0-7. 100% |  92.1 MiB/s | 283.0 KiB |  00m00s
+[105/465] Installing hunspell-0:1.7.6-1 100% |  62.7 MiB/s |   1.4 MiB |  00m00s
+[106/465] Installing enchant2-0:2.8.21- 100% |  16.7 MiB/s | 358.5 KiB |  00m00s
+[107/465] Installing libpciaccess-0:0.1 100% |  36.1 MiB/s |  73.9 KiB |  00m00s
+[108/465] Installing libdrm-0:2.4.134-2 100% | 107.5 MiB/s | 770.8 KiB |  00m00s
+[109/465] Installing osinfo-db-0:202512 100% |  73.3 MiB/s |   4.4 MiB |  00m00s
+[110/465] Installing libosinfo-0:1.12.0 100% |  57.6 MiB/s |   1.4 MiB |  00m00s
+[111/465] Installing libshout-0:2.4.6-1 100% |  10.8 MiB/s | 232.9 KiB |  00m00s
+[112/465] Installing libusbmuxd-0:2.1.1 100% |  51.1 MiB/s | 104.7 KiB |  00m00s
+[113/465] Installing libimobiledevice-0 100% | 176.9 MiB/s | 362.2 KiB |  00m00s
+[114/465] Installing nss-softokn-freebl 100% | 196.1 MiB/s |   1.0 MiB |  00m00s
+[115/465] Installing nss-softokn-0:3.13 100% | 286.5 MiB/s |   2.3 MiB |  00m00s
+[116/465] Installing nss-sysinit-0:3.13 100% |   3.5 MiB/s |  71.1 KiB |  00m00s
+[117/465] Installing nss-0:3.133.0-1.fc 100% | 164.5 MiB/s |   2.0 MiB |  00m00s
+[118/465] Installing hunspell-en-AU-0:0 100% | 163.6 MiB/s | 502.5 KiB |  00m00s
+[119/465] Installing hunspell-en-CA-0:0 100% | 244.2 MiB/s | 500.0 KiB |  00m00s
+[120/465] Installing hunspell-en-GB-0:0 100% | 177.1 MiB/s | 543.9 KiB |  00m00s
+[121/465] Installing javascriptcoregtk4 100% | 427.6 MiB/s |  32.5 MiB |  00m00s
+[122/465] Installing libgusb-0:0.4.9-6. 100% |  89.7 MiB/s | 183.6 KiB |  00m00s
+[123/465] Installing colord-libs-0:1.4. 100% | 190.0 MiB/s | 972.7 KiB |  00m00s
+[124/465] Installing urw-base35-bookman 100% | 273.0 MiB/s |   1.4 MiB |  00m00s
+[125/465] Installing urw-base35-c059-fo 100% | 348.8 MiB/s |   1.4 MiB |  00m00s
+[126/465] Installing urw-base35-d050000 100% |  83.4 MiB/s |  85.4 KiB |  00m00s
+[127/465] Installing urw-base35-gothic- 100% | 290.7 MiB/s |   1.2 MiB |  00m00s
+[128/465] Installing urw-base35-nimbus- 100% | 263.0 MiB/s |   1.1 MiB |  00m00s
+[129/465] Installing urw-base35-nimbus- 100% | 273.2 MiB/s |   1.4 MiB |  00m00s
+[130/465] Installing urw-base35-nimbus- 100% | 342.0 MiB/s |   2.4 MiB |  00m00s
+[131/465] Installing urw-base35-p052-fo 100% |  38.1 MiB/s |   1.5 MiB |  00m00s
+[132/465] Installing urw-base35-standar 100% |  32.2 MiB/s |  66.0 KiB |  00m00s
+[133/465] Installing urw-base35-z003-fo 100% | 191.3 MiB/s | 391.8 KiB |  00m00s
+[134/465] Installing urw-base35-fonts-0 100% |   5.5 MiB/s |   5.6 KiB |  00m00s
+[135/465] Installing abattis-cantarell- 100% |  94.9 MiB/s | 194.4 KiB |  00m00s
+[136/465] Installing google-droid-sans- 100% | 329.4 MiB/s |   6.3 MiB |  00m00s
+[137/465] Installing LibRaw-0:0.22.3-1. 100% | 351.8 MiB/s |   2.5 MiB |  00m00s
+[138/465] Installing dbus-tools-1:1.16. 100% |  10.6 MiB/s | 281.9 KiB |  00m00s
+[139/465] Installing dbus-daemon-1:1.16 100% |  21.7 MiB/s | 666.3 KiB |  00m00s
+[140/465] Installing aribb24-0:1.0.3^20 100% |  45.7 MiB/s | 140.5 KiB |  00m00s
+[141/465] Installing zvbi-0:0.2.46-1.fc 100% |  43.0 MiB/s |   1.3 MiB |  00m00s
+[142/465] Installing graphviz-libs-0:15 100% | 189.9 MiB/s |   1.3 MiB |  00m00s
+[143/465] Installing exempi-0:2.6.4-10. 100% |  51.9 MiB/s |   1.3 MiB |  00m00s
+[144/465] Installing libultrahdr-0:1.4. 100% | 113.7 MiB/s | 349.3 KiB |  00m00s
+[145/465] Installing libv4l-0:1.32.0-4. 100% | 109.7 MiB/s | 673.9 KiB |  00m00s
+[146/465] Installing kbd-misc-0:2.10.0- 100% |  63.9 MiB/s |   2.5 MiB |  00m00s
+[147/465] Installing kbd-legacy-0:2.10. 100% |  37.4 MiB/s | 612.7 KiB |  00m00s
+[148/465] Installing numactl-libs-0:2.0 100% |  34.0 MiB/s |  69.7 KiB |  00m00s
+[149/465] Installing lttng-ust-0:2.15.1 100% | 219.1 MiB/s |   1.8 MiB |  00m00s
+[150/465] Installing libbpf-2:1.7.0-2.f 100% | 149.7 MiB/s | 459.8 KiB |  00m00s
+[151/465] Installing llhttp-0:9.4.2-2.f 100% |  75.5 MiB/s | 154.6 KiB |  00m00s
+[152/465] Installing libssh2-0:1.11.1-1 100% | 114.6 MiB/s | 352.2 KiB |  00m00s
+[153/465] Installing libgit2_1.9-0:1.9. 100% | 268.9 MiB/s |   1.3 MiB |  00m00s
+[154/465] Installing oniguruma-0:6.9.10 100% | 250.3 MiB/s | 768.8 KiB |  00m00s
+[155/465] Installing libdisplay-info-0: 100% | 130.8 MiB/s | 267.9 KiB |  00m00s
+[156/465] Installing libpkgconf-0:2.5.1 100% |  66.0 MiB/s | 135.2 KiB |  00m00s
+[157/465] Installing pkgconf-0:2.5.1-2. 100% |   5.5 MiB/s | 119.3 KiB |  00m00s
+[158/465] Installing pkgconf-m4-0:2.5.1 100% |  14.4 MiB/s |  14.7 KiB |  00m00s
+[159/465] Installing pkgconf-pkg-config 100% |  93.3 KiB/s |   1.8 KiB |  00m00s
+[160/465] Installing kmod-0:34.2-6.fc45 100% |  12.3 MiB/s | 276.9 KiB |  00m00s
+[161/465] Installing kmod-libs-0:34.2-6 100% |  78.2 MiB/s | 160.1 KiB |  00m00s
+[162/465] Installing faad2-libs-1:2.11. 100% |  24.2 MiB/s | 544.5 KiB |  00m00s
+[163/465] Installing lpcnetfreedv-0:0.5 100% | 619.2 MiB/s |  14.9 MiB |  00m00s
+[164/465] Installing codec2-0:1.2.0-10. 100% | 343.3 MiB/s |   1.4 MiB |  00m00s
+[165/465] Installing soxr-0:0.1.3-22.fc 100% | 101.9 MiB/s | 208.8 KiB |  00m00s
+[166/465] Installing xvidcore-0:1.3.7-2 100% | 333.0 MiB/s | 682.0 KiB |  00m00s
+[167/465] Installing xeve-libs-0:0.7.0- 100% | 254.5 MiB/s | 781.8 KiB |  00m00s
+[168/465] Installing xevd-libs-0:0.7.0- 100% | 131.3 MiB/s | 268.8 KiB |  00m00s
+[169/465] Installing vo-amrwbenc-0:0.1. 100% | 175.1 MiB/s | 179.3 KiB |  00m00s
+[170/465] Installing snappy-0:1.2.2-6.f 100% |  83.3 MiB/s |  85.3 KiB |  00m00s
+[171/465] Installing openapv-libs-0:0.3 100% | 147.0 MiB/s | 150.5 KiB |  00m00s
+[172/465] Installing ilbc-0:3.0.4-21.fc 100% |  79.0 MiB/s |  80.9 KiB |  00m00s
+[173/465] Installing gpgme-0:2.0.1-6.fc 100% |  35.5 MiB/s | 764.4 KiB |  00m00s
+[174/465] Installing gpgmepp-1:2.0.0-2. 100% | 206.0 MiB/s | 633.0 KiB |  00m00s
+[175/465] Installing poppler-data-0:0.4 100% | 309.8 MiB/s |  12.4 MiB |  00m00s
+[176/465] Installing soundtouch-0:2.4.0 100% |  13.4 MiB/s | 274.6 KiB |  00m00s
+[177/465] Installing openal-soft-0:1.24 100% |  63.7 MiB/s |   1.5 MiB |  00m00s
+[178/465] Installing libsrtp-0:2.8.0-3. 100% |  83.5 MiB/s | 171.0 KiB |  00m00s
+[179/465] Installing wavpack-0:5.9.0-3. 100% |  32.7 MiB/s | 702.3 KiB |  00m00s
+[180/465] Installing taglib-0:2.3-4.fc4 100% | 319.6 MiB/s |   1.6 MiB |  00m00s
+[181/465] Installing inih-0:62-3.fc45.a 100% |  77.7 MiB/s |  79.6 KiB |  00m00s
+[182/465] Installing inih-cpp-0:62-3.fc 100% |  66.9 MiB/s |  68.5 KiB |  00m00s
+[183/465] Installing exiv2-libs-0:0.28. 100% | 356.8 MiB/s |   2.9 MiB |  00m00s
+[184/465] Installing libgexiv2-0:0.16.2 100% | 123.6 MiB/s | 253.0 KiB |  00m00s
+[185/465] Installing uchardet-0:0.0.8-1 100% |  16.9 MiB/s | 345.5 KiB |  00m00s
+[186/465] Installing totem-pl-parser-0: 100% | 106.2 MiB/s | 434.9 KiB |  00m00s
+[187/465] Installing tinyxml2-0:11.0.0- 100% | 142.5 MiB/s | 145.9 KiB |  00m00s
+[188/465] Installing libzen-0:0.4.41-11 100% | 166.6 MiB/s | 341.3 KiB |  00m00s
+[189/465] Installing libmediainfo-0:26. 100% | 384.2 MiB/s |   9.6 MiB |  00m00s
+[190/465] Installing libcue-0:2.3.0-15. 100% | 108.7 MiB/s | 111.3 KiB |  00m00s
+[191/465] Installing giflib-0:6.1.3-3.f 100% | 136.6 MiB/s | 139.8 KiB |  00m00s
+[192/465] Installing sound-theme-freede 100% |  57.0 MiB/s | 467.2 KiB |  00m00s
+[193/465] Installing libcanberra-0:0.30 100% |  12.6 MiB/s | 336.4 KiB |  00m00s
+[194/465] Installing bluez-libs-0:5.88- 100% |  91.0 MiB/s | 279.5 KiB |  00m00s
+[195/465] Installing abseil-cpp-0:20260 100% | 282.0 MiB/s |   6.8 MiB |  00m00s
+[196/465] Installing webrtc-audio-proce 100% | 239.7 MiB/s | 981.9 KiB |  00m00s
+[197/465] Installing libldac-0:2.0.2.6- 100% | 144.6 MiB/s | 148.1 KiB |  00m00s
+[198/465] Installing libebur128-0:1.2.6 100% |  71.0 MiB/s |  72.7 KiB |  00m00s
+[199/465] Installing fftw-libs-single-0 100% | 309.7 MiB/s |   1.9 MiB |  00m00s
+[200/465] Installing ModemManager-glib- 100% | 404.9 MiB/s |   1.6 MiB |  00m00s
+[201/465] Installing fuse-common-0:3.18 100% |   0.0   B/s | 292.0   B |  00m00s
+[202/465] Installing fuse3-0:3.18.3-1.f 100% |  10.1 MiB/s | 217.6 KiB |  00m00s
+[203/465] Installing liblerc-0:4.3.0-1. 100% | 178.8 MiB/s | 549.2 KiB |  00m00s
+[204/465] Installing libtiff-0:4.7.2-3. 100% | 215.4 MiB/s | 661.7 KiB |  00m00s
+[205/465] Installing spandsp-0:0.0.6-23 100% | 219.4 MiB/s | 898.5 KiB |  00m00s
+[206/465] Installing libwmf-lite-0:0.2. 100% |  83.0 MiB/s | 170.0 KiB |  00m00s
+[207/465] Installing libpaper-1:2.1.1-1 100% |  96.1 MiB/s |  98.4 KiB |  00m00s
+[208/465] Installing libijs-0:0.35-27.f 100% | 100.1 MiB/s | 102.5 KiB |  00m00s
+[209/465] Installing jbig2dec-libs-0:0. 100% |  85.2 MiB/s | 174.4 KiB |  00m00s
+[210/465] Installing adobe-mappings-pdf 100% | 338.2 MiB/s |   4.4 MiB |  00m00s
+[211/465] Installing libopenjph-0:0.31. 100% | 159.7 MiB/s | 327.0 KiB |  00m00s
+[212/465] Installing libheif-0:1.23.7-1 100% | 266.1 MiB/s |   2.7 MiB |  00m00s
+[213/465] Installing llvm-filesystem-0: 100% |   1.0 MiB/s |   1.1 KiB |  00m00s
+[214/465] Installing llvm-libs-0:23.1.5 100% | 447.4 MiB/s | 140.0 MiB |  00m00s
+[215/465] Installing hyphen-0:2.8.10-1. 100% |  93.0 MiB/s |  95.2 KiB |  00m00s
+[216/465] Installing libvisual-1:0.4.2- 100% | 239.7 MiB/s | 491.0 KiB |  00m00s
+[217/465] Installing graphene-0:1.10.8- 100% |  88.0 MiB/s | 180.2 KiB |  00m00s
+[218/465] Installing cdparanoia-libs-0: 100% |  67.8 MiB/s | 138.8 KiB |  00m00s
+[219/465] Installing lm_sensors-libs-0: 100% |  46.3 MiB/s |  94.9 KiB |  00m00s
+[220/465] Installing mesa-dri-drivers-0 100% | 428.7 MiB/s |  39.4 MiB |  00m00s
+[221/465] Installing mesa-libgbm-0:26.2 100% |  66.9 MiB/s |  68.5 KiB |  00m00s
+[222/465] Installing graphite2-0:1.3.14 100% |  11.2 MiB/s | 241.5 KiB |  00m00s
+[223/465] Installing freetype-0:2.14.3- 100% | 214.9 MiB/s | 880.3 KiB |  00m00s
+[224/465] Installing harfbuzz-0:15.0.0- 100% | 291.8 MiB/s |   3.2 MiB |  00m00s
+[225/465] Installing libraqm-0:0.10.1-5 100% |  68.0 MiB/s |  69.6 KiB |  00m00s
+[226/465] Installing harfbuzz-icu-0:15. 100% |  66.6 MiB/s |  68.2 KiB |  00m00s
+[227/465] Installing libasyncns-0:0.8-3 100% |  98.4 MiB/s | 100.7 KiB |  00m00s
+[228/465] Installing pulseaudio-libs-0: 100% | 381.9 MiB/s |   3.4 MiB |  00m00s
+[229/465] Installing pipewire-libs-0:1. 100% | 277.7 MiB/s |  11.4 MiB |  00m00s
+[230/465] Installing wireplumber-libs-0 100% | 233.1 MiB/s |   2.1 MiB |  00m00s
+[231/465] Installing pipewire-jack-audi 100% |  28.1 MiB/s | 603.2 KiB |  00m00s
+[232/465] Installing pipewire-jack-audi 100% | 304.7 KiB/s | 312.0   B |  00m00s
+[233/465] Installing flite-0:2.2-14.fc4 100% | 295.2 MiB/s |  21.6 MiB |  00m00s
+[234/465] Installing libevdev-0:1.13.7- 100% | 131.9 MiB/s | 135.1 KiB |  00m00s
+[235/465] Installing hidapi-0:0.15.0-4. 100% |  90.2 MiB/s | 184.7 KiB |  00m00s
+[236/465] Installing libmanette-0:0.2.1 100% | 209.4 MiB/s | 428.9 KiB |  00m00s
+[237/465] Installing libwayland-server- 100% | 132.6 MiB/s | 135.7 KiB |  00m00s
+[238/465] Installing libsecret-0:0.21.8 100% |  25.9 MiB/s | 582.9 KiB |  00m00s
+[239/465] Installing ncurses-0:6.6-3.fc 100% |  32.6 MiB/s | 902.4 KiB |  00m00s
+[240/465] Installing groff-base-0:1.24. 100% |  91.9 MiB/s |   4.5 MiB |  00m00s
+[241/465] Installing perl-Digest-0:1.20 100% |  36.1 MiB/s |  37.0 KiB |  00m00s
+[242/465] Installing perl-Digest-MD5-0: 100% | 103.0 MiB/s | 105.5 KiB |  00m00s
+[243/465] Installing perl-FileHandle-0: 100% |   9.6 MiB/s |   9.8 KiB |  00m00s
+[244/465] Installing perl-B-0:1.92-527. 100% | 182.6 MiB/s | 560.9 KiB |  00m00s
+[245/465] Installing perl-libnet-0:3.16 100% |  97.0 MiB/s | 297.9 KiB |  00m00s
+[246/465] Installing perl-Data-Dumper-0 100% |  67.1 MiB/s | 137.4 KiB |  00m00s
+[247/465] Installing perl-Unicode-Norma 100% | 257.2 MiB/s | 526.8 KiB |  00m00s
+[248/465] Installing perl-MIME-Base32-0 100% |  31.4 MiB/s |  32.2 KiB |  00m00s
+[249/465] Installing perl-URI-0:5.40-1. 100% |  57.0 MiB/s | 292.0 KiB |  00m00s
+[250/465] Installing perl-AutoLoader-0: 100% |  20.5 MiB/s |  21.0 KiB |  00m00s
+[251/465] Installing perl-IO-Socket-IP- 100% |  99.9 MiB/s | 102.3 KiB |  00m00s
+[252/465] Installing perl-IO-Socket-SSL 100% | 238.0 MiB/s | 731.0 KiB |  00m00s
+[253/465] Installing perl-Net-SSLeay-0: 100% | 206.0 MiB/s |   1.4 MiB |  00m00s
+[254/465] Installing perl-if-0:0.61.000 100% |   6.1 MiB/s |   6.2 KiB |  00m00s
+[255/465] Installing perl-Text-Tabs+Wra 100% |  23.3 MiB/s |  23.9 KiB |  00m00s
+[256/465] Installing perl-Pod-Escapes-1 100% |  25.3 MiB/s |  25.9 KiB |  00m00s
+[257/465] Installing perl-Time-Local-2: 100% |  68.9 MiB/s |  70.6 KiB |  00m00s
+[258/465] Installing perl-Time-HiRes-4: 100% |  75.1 MiB/s | 153.7 KiB |  00m00s
+[259/465] Installing perl-File-Path-0:2 100% |  62.9 MiB/s |  64.4 KiB |  00m00s
+[260/465] Installing perl-locale-0:1.13 100% |   6.4 MiB/s |   6.5 KiB |  00m00s
+[261/465] Installing perl-HTTP-Tiny-0:0 100% |  80.3 MiB/s | 164.5 KiB |  00m00s
+[262/465] Installing perl-Pod-Simple-1: 100% | 187.1 MiB/s | 574.8 KiB |  00m00s
+[263/465] Installing perl-File-Temp-1:0 100% | 161.6 MiB/s | 165.5 KiB |  00m00s
+[264/465] Installing perl-Class-Struct- 100% |  25.3 MiB/s |  25.9 KiB |  00m00s
+[265/465] Installing perl-IPC-Open3-0:1 100% |  27.8 MiB/s |  28.5 KiB |  00m00s
+[266/465] Installing perl-Term-Cap-0:1. 100% |  29.8 MiB/s |  30.6 KiB |  00m00s
+[267/465] Installing perl-Term-ANSIColo 100% |  96.8 MiB/s |  99.1 KiB |  00m00s
+[268/465] Installing perl-POSIX-0:2.26- 100% | 128.3 MiB/s | 262.7 KiB |  00m00s
+[269/465] Installing perl-Pod-Perldoc-0 100% |   7.9 MiB/s | 169.4 KiB |  00m00s
+[270/465] Installing perl-podlators-1:6 100% |  15.4 MiB/s | 331.1 KiB |  00m00s
+[271/465] Installing perl-File-stat-0:1 100% |  13.9 MiB/s |  14.2 KiB |  00m00s
+[272/465] Installing perl-Socket-4:2.04 100% |  72.2 MiB/s | 147.8 KiB |  00m00s
+[273/465] Installing perl-SelectSaver-0 100% |   0.0   B/s |   2.5 KiB |  00m00s
+[274/465] Installing perl-Symbol-0:1.09 100% |   0.0   B/s |   7.3 KiB |  00m00s
+[275/465] Installing perl-Pod-Usage-4:2 100% |   4.5 MiB/s |  87.8 KiB |  00m00s
+[276/465] Installing perl-IO-0:1.56-527 100% |  95.5 MiB/s | 195.6 KiB |  00m00s
+[277/465] Installing perl-overloading-0 100% |   5.4 MiB/s |   5.5 KiB |  00m00s
+[278/465] Installing perl-mro-0:1.30-52 100% |  80.7 MiB/s |  82.6 KiB |  00m00s
+[279/465] Installing perl-Fcntl-0:1.20- 100% |  91.6 MiB/s |  93.8 KiB |  00m00s
+[280/465] Installing perl-base-0:2.27-5 100% |  12.7 MiB/s |  13.0 KiB |  00m00s
+[281/465] Installing perl-Text-ParseWor 100% |  14.2 MiB/s |  14.6 KiB |  00m00s
+[282/465] Installing perl-File-Basename 100% |  14.3 MiB/s |  14.6 KiB |  00m00s
+[283/465] Installing perl-Getopt-Long-1 100% | 143.8 MiB/s | 147.2 KiB |  00m00s
+[284/465] Installing perl-Storable-1:3. 100% | 119.4 MiB/s | 244.5 KiB |  00m00s
+[285/465] Installing perl-parent-1:0.24 100% |  10.7 MiB/s |  11.0 KiB |  00m00s
+[286/465] Installing perl-MIME-Base64-0 100% |  93.9 MiB/s |  96.1 KiB |  00m00s
+[287/465] Installing perl-Getopt-Std-0: 100% |  12.7 MiB/s |  13.0 KiB |  00m00s
+[288/465] Installing perl-overload-0:1. 100% |  70.3 MiB/s |  72.0 KiB |  00m00s
+[289/465] Installing perl-vars-0:1.05-5 100% |   4.2 MiB/s |   4.3 KiB |  00m00s
+[290/465] Installing perl-Scalar-List-U 100% |  76.5 MiB/s | 156.6 KiB |  00m00s
+[291/465] Installing perl-Errno-0:1.39- 100% |   8.6 MiB/s |   8.8 KiB |  00m00s
+[292/465] Installing perl-constant-0:1. 100% |  26.8 MiB/s |  27.4 KiB |  00m00s
+[293/465] Installing perl-Encode-4:3.24 100% | 146.8 MiB/s |   4.8 MiB |  00m00s
+[294/465] Installing perl-DynaLoader-0: 100% |  31.7 MiB/s |  32.5 KiB |  00m00s
+[295/465] Installing perl-PathTools-0:3 100% | 111.6 MiB/s | 228.6 KiB |  00m00s
+[296/465] Installing perl-Carp-0:1.54-5 100% |  46.6 MiB/s |  47.7 KiB |  00m00s
+[297/465] Installing perl-Exporter-0:5. 100% |  27.1 MiB/s |  55.5 KiB |  00m00s
+[298/465] Installing perl-libs-4:5.44.0 100% | 199.4 MiB/s |  12.2 MiB |  00m00s
+[299/465] Installing perl-interpreter-4 100% |   8.7 MiB/s | 177.5 KiB |  00m00s
+[300/465] Installing perl-TermReadKey-0 100% |  53.8 MiB/s | 110.1 KiB |  00m00s
+[301/465] Installing perl-lib-0:0.65-52 100% |   8.7 MiB/s |   8.9 KiB |  00m00s
+[302/465] Installing perl-Error-1:0.170 100% |  78.1 MiB/s |  80.0 KiB |  00m00s
+[303/465] Installing openssh-0:10.5p1-1 100% |  72.1 MiB/s |   1.6 MiB |  00m00s
+[304/465] Installing openssh-clients-0: 100% |  83.0 MiB/s |   2.6 MiB |  00m00s
+[305/465] Installing git-core-0:2.56.1- 100% | 360.3 MiB/s |  27.0 MiB |  00m00s
+[306/465] Installing git-core-doc-0:2.5 100% |   1.0 GiB/s |  19.3 MiB |  00m00s
+[307/465] Installing git-0:2.56.1-1.fc4 100% |  57.6 MiB/s |  59.0 KiB |  00m00s
+[308/465] Installing perl-Git-0:2.56.1- 100% |  63.9 MiB/s |  65.4 KiB |  00m00s
+[309/465] Installing python-pip-wheel-0 100% | 623.2 MiB/s |   1.2 MiB |  00m00s
+[310/465] Installing mpdecimal-0:4.0.1- 100% |  39.4 MiB/s | 282.7 KiB |  00m00s
+[311/465] Installing python3-libs-0:3.1 100% | 200.4 MiB/s |  50.3 MiB |  00m00s
+[312/465] Installing python3-0:3.15.2-1 100% |   4.2 MiB/s |  86.5 KiB |  00m00s
+[313/465] Installing gstreamer1-0:1.28. 100% | 164.5 MiB/s |   5.9 MiB |  00m00s
+[314/465] Installing libdeflate-0:1.26- 100% | 161.5 MiB/s | 165.3 KiB |  00m00s
+[315/465] Installing openexr-libs-0:3.4 100% | 355.8 MiB/s |   3.2 MiB |  00m00s
+[316/465] Installing highway-0:1.3.0-3. 100% | 368.0 MiB/s |   1.5 MiB |  00m00s
+[317/465] Installing libjxl-1:0.11.2-2. 100% | 327.1 MiB/s |   2.6 MiB |  00m00s
+[318/465] Installing liblqr-1-0:0.4.2-3 100% | 107.9 MiB/s | 110.5 KiB |  00m00s
+[319/465] Installing fftw-libs-double-0 100% | 299.3 MiB/s |   1.8 MiB |  00m00s
+[320/465] Installing liblastlog2-0:2.42 100% |  19.5 MiB/s | 139.9 KiB |  00m00s
+[321/465] Installing util-linux-0:2.42. 100% |  79.7 MiB/s |   7.0 MiB |  00m00s
+>>> Running sysusers scriptlet: systemd-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'empower' with GID 999.
+>>> 
+>>> Running sysusers scriptlet: systemd-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'systemd-journal' with GID 190.
+>>> 
+>>> Running sysusers scriptlet: systemd-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'systemd-oom' with GID 998.
+>>> Creating user 'systemd-oom' (systemd Userspace OOM Killer) with UID 998 and GID 998.
+>>> 
+[322/465] Installing systemd-0:262.1-1. 100% |  86.3 MiB/s |  17.3 MiB |  00m00s
+>>> Running sysusers scriptlet: polkit-0:127-5.fc45.aarch64
+>>> Finished sysusers scriptlet: polkit-0:127-5.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'polkitd' with GID 114.
+>>> Creating user 'polkitd' (User for polkitd) with UID 114 and GID 114.
+>>> 
+[323/465] Installing polkit-0:127-5.fc4 100% |  15.6 MiB/s | 733.4 KiB |  00m00s
+>>> Running sysusers scriptlet: rtkit-0:0.14-2.fc45.aarch64
+>>> Finished sysusers scriptlet: rtkit-0:0.14-2.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'rtkit' with GID 997.
+>>> Creating user 'rtkit' (RealtimeKit) with UID 997 and GID 997.
+>>> 
+[324/465] Installing rtkit-0:0.14-2.fc4 100% |   5.9 MiB/s | 205.5 KiB |  00m00s
+>>> Running %post scriptlet: rtkit-0:0.14-2.fc45.aarch64
+>>> Finished %post scriptlet: rtkit-0:0.14-2.fc45.aarch64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/rtkit-daemon.service' → '/usr/lib/systemd/system/rtkit-daemon.service'.
+>>> 
+[325/465] Installing wireplumber-0:0.5. 100% |  21.9 MiB/s | 673.2 KiB |  00m00s
+[326/465] Installing device-mapper-0:1. 100% |  20.8 MiB/s | 447.9 KiB |  00m00s
+[327/465] Installing device-mapper-libs 100% | 166.6 MiB/s | 511.8 KiB |  00m00s
+[328/465] Installing cryptsetup-libs-0: 100% | 104.9 MiB/s |   2.9 MiB |  00m00s
+>>> Running sysusers scriptlet: systemd-udev-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-udev-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'systemd-coredump' with GID 996.
+>>> Creating user 'systemd-coredump' (systemd Core Dumper) with UID 996 and GID 996.
+>>> 
+>>> Running sysusers scriptlet: systemd-udev-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-udev-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'systemd-timesync' with GID 995.
+>>> Creating user 'systemd-timesync' (systemd Time Synchronization) with UID 995 and GID 995.
+>>> 
+[329/465] Installing systemd-udev-0:262 100% |  35.9 MiB/s |  16.2 MiB |  00m00s
+>>> Running %post scriptlet: systemd-udev-0:262.1-1.fc45.aarch64
+>>> Finished %post scriptlet: systemd-udev-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Failed to preset unit: Unit systemd-portabled.service does not exist
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/remote-cryptsetup.target' → '/usr/lib/systemd/system/remote-cryptsetup.target'.
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/remote-veritysetup.target' → '/usr/lib/systemd/system/remote-veritysetup.target'.
+>>> Created symlink '/etc/systemd/system/systemd-homed.service.wants/systemd-homed-activate.service' → '/usr/lib/systemd/system/systemd-homed-activate.service'.
+>>> Created symlink '/etc/systemd/system/dbus-org.freedesktop.home1.service' → '/usr/lib/systemd/system/systemd-homed.service'.
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/systemd-homed.service' → '/usr/lib/systemd/system/systemd-homed.service'.
+>>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-network-generator.service' → '/usr/lib/systemd/system/systemd-network-generator.service'.
+>>> Created symlink '/etc/systemd/system/dbus-org.freedesktop.oom1.service' → '/usr/lib/systemd/system/systemd-oomd.service'.
+>>> Created symlink '/etc/systemd/system/multi-user.target.wants/systemd-oomd.service' → '/usr/lib/systemd/system/systemd-oomd.service'.
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-oomd.socket' → '/usr/lib/systemd/system/systemd-oomd.socket'.
+>>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-pstore.service' → '/usr/lib/systemd/system/systemd-pstore.service'.
+>>> 
+[330/465] Installing libfontenc-0:1.1.8 100% |  52.7 MiB/s | 108.0 KiB |  00m00s
+[331/465] Installing libXfont2-0:2.0.9- 100% | 183.3 MiB/s | 375.5 KiB |  00m00s
+[332/465] Installing libunwind-0:1.8.3- 100% | 115.5 MiB/s | 354.8 KiB |  00m00s
+[333/465] Installing libXdmcp-0:1.1.5-6 100% | 120.8 MiB/s | 123.7 KiB |  00m00s
+[334/465] Installing google-noto-fonts- 100% |  18.1 MiB/s |  18.5 KiB |  00m00s
+[335/465] Installing google-noto-sans-v 100% | 278.3 MiB/s |   1.4 MiB |  00m00s
+[336/465] Installing default-fonts-core 100% |   5.9 MiB/s |  18.2 KiB |  00m00s
+[337/465] Installing fontconfig-0:2.18. 100% |   1.4 MiB/s |   1.6 MiB |  00m01s
+[338/465] Installing poppler-0:26.08.0- 100% | 310.8 MiB/s |   3.7 MiB |  00m00s
+[339/465] Installing libaribcaption-0:1 100% | 133.3 MiB/s | 273.0 KiB |  00m00s
+[340/465] Installing libdatrie-0:0.2.14 100% |  92.7 MiB/s |  94.9 KiB |  00m00s
+[341/465] Installing libthai-0:0.1.30-3 100% | 269.1 MiB/s | 826.7 KiB |  00m00s
+[342/465] Installing libstemmer-0:3.1.1 100% | 257.5 MiB/s | 790.9 KiB |  00m00s
+[343/465] Installing libtinysparql-0:3. 100% | 275.3 MiB/s |   1.1 MiB |  00m00s
+[344/465] Installing cups-filesystem-1: 100% |   1.7 MiB/s |   1.8 KiB |  00m00s
+[345/465] Installing cups-libs-1:2.4.19 100% | 238.4 MiB/s | 732.4 KiB |  00m00s
+[346/465] Installing lzo-0:2.10-17.fc45 100% |  32.1 MiB/s | 164.5 KiB |  00m00s
+[347/465] Installing adwaita-icon-theme 100% |  30.9 MiB/s |   2.4 MiB |  00m00s
+[348/465] Installing adwaita-cursor-the 100% | 601.5 MiB/s |  11.4 MiB |  00m00s
+[349/465] Installing adwaita-icon-theme 100% |  28.8 MiB/s |   1.0 MiB |  00m00s
+[350/465] Installing libuv-1:1.52.1-2.f 100% | 201.6 MiB/s | 619.3 KiB |  00m00s
+[351/465] Installing nodejs22-libs-1:22 100% | 432.4 MiB/s |  73.5 MiB |  00m00s
+[352/465] Installing nodejs-1:22.23.1-4 100% |   7.0 MiB/s | 142.8 KiB |  00m00s
+[353/465] Installing nodejs22-1:22.23.1 100% |  16.1 MiB/s | 347.2 KiB |  00m00s
+[354/465] Installing nodejs-npm-2:10.9. 100% |   1.1 MiB/s |  26.3 KiB |  00m00s
+[355/465] Installing nodejs22-npm-2:10. 100% |  50.2 MiB/s |   8.5 MiB |  00m00s
+[356/465] Installing libcloudproviders- 100% |  77.1 MiB/s | 157.9 KiB |  00m00s
+[357/465] Installing hicolor-icon-theme 100% |   8.0 MiB/s | 179.7 KiB |  00m00s
+[358/465] Installing emacs-filesystem-1 100% | 793.0 KiB/s | 812.0   B |  00m00s
+[359/465] Installing desktop-file-utils 100% |  15.0 MiB/s | 322.1 KiB |  00m00s
+[360/465] Installing libX11-common-0:1. 100% |  74.1 MiB/s |   1.2 MiB |  00m00s
+[361/465] Installing libX11-0:1.8.13-3. 100% | 335.7 MiB/s |   1.3 MiB |  00m00s
+[362/465] Installing libXext-0:1.3.6-6. 100% | 143.6 MiB/s | 147.0 KiB |  00m00s
+[363/465] Installing libXfixes-0:6.0.1- 100% |  69.9 MiB/s |  71.6 KiB |  00m00s
+[364/465] Installing libXrender-0:0.9.1 100% |  69.5 MiB/s |  71.2 KiB |  00m00s
+[365/465] Installing cairo-0:1.18.6-1.f 100% | 297.5 MiB/s |   1.8 MiB |  00m00s
+[366/465] Installing cairo-gobject-0:1. 100% |  66.3 MiB/s |  67.9 KiB |  00m00s
+[367/465] Installing libXi-0:1.8.4-1.fc 100% | 134.4 MiB/s | 137.6 KiB |  00m00s
+[368/465] Installing libXt-0:1.3.1-5.fc 100% | 233.7 MiB/s | 478.6 KiB |  00m00s
+[369/465] Installing libXtst-0:1.2.5-5. 100% |  72.8 MiB/s |  74.5 KiB |  00m00s
+[370/465] Installing libXdamage-0:1.1.6 100% |  94.9 MiB/s |  97.1 KiB |  00m00s
+[371/465] Installing mesa-libEGL-0:26.2 100% | 193.0 MiB/s | 395.4 KiB |  00m00s
+[372/465] Installing libglvnd-egl-1:1.7 100% |  68.7 MiB/s |  70.4 KiB |  00m00s
+[373/465] Installing libglvnd-gles-1:1. 100% | 193.1 MiB/s | 395.5 KiB |  00m00s
+[374/465] Installing libcamera-0:0.7.2- 100% | 297.4 MiB/s |   2.4 MiB |  00m00s
+[375/465] Installing libXmu-0:1.2.1-6.f 100% | 129.5 MiB/s | 265.1 KiB |  00m00s
+[376/465] Installing xorg-x11-xauth-1:1 100% |   3.8 MiB/s |  77.4 KiB |  00m00s
+[377/465] Installing libgs-0:10.07.1-3. 100% | 395.2 MiB/s |  24.1 MiB |  00m00s
+[378/465] Installing libgxps-0:0.3.2-13 100% | 118.2 MiB/s | 242.0 KiB |  00m00s
+[379/465] Installing poppler-glib-0:26. 100% | 219.7 MiB/s | 674.9 KiB |  00m00s
+[380/465] Installing libXcursor-0:1.2.3 100% |  69.4 MiB/s |  71.1 KiB |  00m00s
+[381/465] Installing libXrandr-0:1.5.4- 100% |  71.1 MiB/s |  72.8 KiB |  00m00s
+[382/465] Installing libXft-0:2.3.8-11. 100% | 189.3 MiB/s | 193.8 KiB |  00m00s
+[383/465] Installing pango-0:1.58.2-1.f 100% |  46.7 MiB/s |   1.2 MiB |  00m00s
+[384/465] Installing librsvg2-0:2.63.2- 100% | 356.8 MiB/s |   4.6 MiB |  00m00s
+[385/465] Installing glycin-loaders-0:2 100% | 450.8 MiB/s |  13.5 MiB |  00m00s
+[386/465] Installing glycin-libs-0:2.2. 100% | 341.3 MiB/s |   4.4 MiB |  00m00s
+[387/465] Installing gdk-pixbuf2-0:2.44 100% | 108.0 MiB/s |   2.7 MiB |  00m00s
+[388/465] Installing gtk-update-icon-ca 100% |   4.4 MiB/s |  95.2 KiB |  00m00s
+[389/465] Installing ImageMagick-libs-1 100% | 250.1 MiB/s |  14.3 MiB |  00m00s
+[390/465] Installing libnotify-0:0.8.9- 100% |   2.9 MiB/s | 190.2 KiB |  00m00s
+>>> Running sysusers scriptlet: geoclue2-0:2.8.2-2.fc45.aarch64
+>>> Finished sysusers scriptlet: geoclue2-0:2.8.2-2.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'geoclue' with GID 994.
+>>> Creating user 'geoclue' (n/a) with UID 994 and GID 994.
+>>> 
+[391/465] Installing geoclue2-0:2.8.2-2 100% |  32.1 MiB/s | 493.1 KiB |  00m00s
+[392/465] Installing libgsf-0:1.14.60-1 100% |  40.7 MiB/s |   1.1 MiB |  00m00s
+[393/465] Installing libXinerama-0:1.1. 100% |  70.3 MiB/s |  72.0 KiB |  00m00s
+[394/465] Installing libXxf86vm-0:1.1.6 100% |  68.8 MiB/s |  70.4 KiB |  00m00s
+[395/465] Installing mesa-libGL-0:26.2. 100% | 194.8 MiB/s | 399.0 KiB |  00m00s
+[396/465] Installing libglvnd-glx-1:1.7 100% | 340.6 MiB/s |   1.0 MiB |  00m00s
+[397/465] Installing libva-0:2.24.1-2.f 100% | 183.0 MiB/s | 562.2 KiB |  00m00s
+[398/465] Installing libXv-0:1.0.13-5.f 100% |  69.5 MiB/s |  71.1 KiB |  00m00s
+[399/465] Installing gstreamer1-plugins 100% | 274.2 MiB/s |   8.5 MiB |  00m00s
+[400/465] Installing xdg-desktop-portal 100% |  80.6 MiB/s |   2.1 MiB |  00m00s
+[401/465] Installing gstreamer1-plugins 100% | 243.1 MiB/s |   4.4 MiB |  00m00s
+[402/465] Installing libvdpau-0:1.5-12. 100% |  34.3 MiB/s |  70.3 KiB |  00m00s
+[403/465] Installing libavutil-free-0:9 100% | 212.9 MiB/s | 871.9 KiB |  00m00s
+[404/465] Installing libswresample-free 100% |  76.0 MiB/s | 155.7 KiB |  00m00s
+[405/465] Installing libavcodec-free-0: 100% | 329.2 MiB/s |   9.5 MiB |  00m00s
+[406/465] Installing libXcomposite-0:0. 100% |  95.7 MiB/s |  98.0 KiB |  00m00s
+[407/465] Installing libxkbfile-0:1.1.3 100% | 237.4 MiB/s | 243.1 KiB |  00m00s
+[408/465] Installing xkbcomp-0:1.5.0-3. 100% |   9.3 MiB/s | 210.0 KiB |  00m00s
+[409/465] Installing xorg-x11-server-co 100% | 125.2 MiB/s | 128.2 KiB |  00m00s
+[410/465] Installing xprop-0:1.2.8-6.fc 100% |   3.9 MiB/s |  79.9 KiB |  00m00s
+[411/465] Installing at-spi2-core-0:2.6 100% | 210.4 MiB/s |   1.7 MiB |  00m00s
+[412/465] Installing atk-0:2.62.1-1.fc4 100% | 145.6 MiB/s | 298.2 KiB |  00m00s
+[413/465] Installing at-spi2-atk-0:2.62 100% | 117.8 MiB/s | 361.8 KiB |  00m00s
+[414/465] Installing gtk3-0:3.24.52-6.f 100% | 316.5 MiB/s |  23.1 MiB |  00m00s
+[415/465] Installing libdbusmenu-gtk3-0 100% |  67.2 MiB/s | 137.5 KiB |  00m00s
+[416/465] Installing libayatana-ido-gtk 100% | 148.9 MiB/s | 305.0 KiB |  00m00s
+[417/465] Installing libayatana-indicat 100% |  84.1 MiB/s | 172.2 KiB |  00m00s
+[418/465] Installing libayatana-appindi 100% |  72.8 MiB/s | 149.2 KiB |  00m00s
+[419/465] Installing webkit2gtk4.1-0:2. 100% | 444.0 MiB/s |  96.8 MiB |  00m00s
+[420/465] Installing open-download-mana 100% |   1.3 KiB/s | 100.0   B |  00m00s
+[421/465] Installing xdg-desktop-portal 100% |  39.1 MiB/s | 521.0 KiB |  00m00s
+[422/465] Installing libcanberra-gtk3-0 100% |   3.5 MiB/s | 206.1 KiB |  00m00s
+[423/465] Installing gstreamer1-plugins 100% | 182.5 MiB/s |  12.8 MiB |  00m00s
+[424/465] Installing xorg-x11-server-Xv 100% |  73.6 MiB/s |   1.8 MiB |  00m00s
+[425/465] Installing libheif-ffmpeg-0:1 100% |  33.5 MiB/s |  68.6 KiB |  00m00s
+[426/465] Installing localsearch-0:3.12 100% |  94.1 MiB/s |   4.7 MiB |  00m00s
+[427/465] Installing gstreamer1-plugins 100% | 255.1 MiB/s |   9.2 MiB |  00m00s
+[428/465] Installing ImageMagick-1:7.1. 100% |   6.4 MiB/s | 145.0 KiB |  00m00s
+[429/465] Installing pipewire-plugin-li 100% |  66.0 MiB/s | 135.1 KiB |  00m00s
+[430/465] Installing libcamera-ipa-0:0. 100% | 229.5 MiB/s |   2.8 MiB |  00m00s
+[431/465] Installing dbus-x11-1:1.16.2- 100% |   3.6 MiB/s |  72.8 KiB |  00m00s
+[432/465] Installing nodejs22-full-i18n 100% | 415.8 MiB/s |  31.6 MiB |  00m00s
+[433/465] Installing tinysparql-0:3.12. 100% |  71.4 MiB/s |   2.6 MiB |  00m00s
+[434/465] Installing upower-0:1.91.5-1. 100% |   6.8 MiB/s | 370.0 KiB |  00m00s
+>>> Running %post scriptlet: upower-0:1.91.5-1.fc45.aarch64
+>>> Finished %post scriptlet: upower-0:1.91.5-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/system/graphical.target.wants/upower.service' → '/usr/lib/systemd/system/upower.service'.
+>>> 
+>>> Running sysusers scriptlet: usbmuxd-0:1.1.1^20251205git3ded00c-2.fc45.aarch64
+>>> Finished sysusers scriptlet: usbmuxd-0:1.1.1^20251205git3ded00c-2.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'usbmuxd' with GID 113.
+>>> Creating user 'usbmuxd' (usbmuxd user) with UID 113 and GID 113.
+>>> 
+[435/465] Installing usbmuxd-0:1.1.1^20 100% |   4.2 MiB/s | 195.5 KiB |  00m00s
+>>> Running sysusers scriptlet: pipewire-0:1.6.11-1.fc45.aarch64
+>>> Finished sysusers scriptlet: pipewire-0:1.6.11-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'pipewire' with GID 993.
+>>> Creating user 'pipewire' (PipeWire System Daemon) with UID 993 and GID 993.
+>>> 
+[436/465] Installing pipewire-0:1.6.11- 100% |  13.4 MiB/s | 520.5 KiB |  00m00s
+>>> Running %post scriptlet: pipewire-0:1.6.11-1.fc45.aarch64
+>>> Finished %post scriptlet: pipewire-0:1.6.11-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/user/sockets.target.wants/pipewire.socket' → '/usr/lib/systemd/user/pipewire.socket'.
+>>> 
+[437/465] Installing polkit-pkla-compat 100% |   5.1 MiB/s | 173.9 KiB |  00m00s
+>>> Running sysusers scriptlet: systemd-networkd-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-networkd-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'systemd-network' with GID 192.
+>>> Creating user 'systemd-network' (systemd Network Management) with UID 192 and GID 192.
+>>> 
+[438/465] Installing systemd-networkd-0 100% |  59.6 MiB/s |   2.4 MiB |  00m00s
+[439/465] Installing systemd-pam-0:262. 100% |  85.3 MiB/s |   1.4 MiB |  00m00s
+>>> Running sysusers scriptlet: systemd-resolved-0:262.1-1.fc45.aarch64
+>>> Finished sysusers scriptlet: systemd-resolved-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Creating group 'systemd-resolve' with GID 193.
+>>> Creating user 'systemd-resolve' (systemd Resolver) with UID 193 and GID 193.
+>>> 
+[440/465] Installing systemd-resolved-0 100% |  18.3 MiB/s | 656.8 KiB |  00m00s
+>>> Running %post scriptlet: systemd-resolved-0:262.1-1.fc45.aarch64
+>>> Finished %post scriptlet: systemd-resolved-0:262.1-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/system/dbus-org.freedesktop.resolve1.service' → '/usr/lib/systemd/system/systemd-resolved.service'.
+>>> Created symlink '/etc/systemd/system/sysinit.target.wants/systemd-resolved.service' → '/usr/lib/systemd/system/systemd-resolved.service'.
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-resolved-varlink.socket' → '/usr/lib/systemd/system/systemd-resolved-varlink.socket'.
+>>> Created symlink '/etc/systemd/system/sockets.target.wants/systemd-resolved-monitor.socket' → '/usr/lib/systemd/system/systemd-resolved-monitor.socket'.
+>>> 
+[441/465] Installing libcanberra-backen 100% |  33.1 MiB/s |  67.8 KiB |  00m00s
+[442/465] Installing python-unversioned 100% |  19.7 KiB/s | 424.0   B |  00m00s
+[443/465] Installing python3-html2text- 100% |  12.7 MiB/s | 299.2 KiB |  00m00s
+[444/465] Installing perl-NDBM_File-0:1 100% |  71.7 MiB/s |  73.4 KiB |  00m00s
+[445/465] Installing pipewire-alsa-0:1. 100% |  67.6 MiB/s | 207.6 KiB |  00m00s
+[446/465] Installing pipewire-pulseaudi 100% |  13.8 MiB/s | 496.1 KiB |  00m00s
+>>> Running %post scriptlet: pipewire-pulseaudio-0:1.6.11-1.fc45.aarch64
+>>> Finished %post scriptlet: pipewire-pulseaudio-0:1.6.11-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/user/sockets.target.wants/pipewire-pulse.socket' → '/usr/lib/systemd/user/pipewire-pulse.socket'.
+>>> 
+[447/465] Installing libcanberra-backen 100% |  33.2 MiB/s |  67.9 KiB |  00m00s
+[448/465] Installing mesa-vulkan-driver 100% | 588.6 MiB/s | 124.8 MiB |  00m00s
+[449/465] Installing libcanberra-backen 100% |  66.2 MiB/s |  67.8 KiB |  00m00s
+[450/465] Installing exiv2-0:0.28.9-1.f 100% | 349.1 MiB/s |  12.2 MiB |  00m00s
+[451/465] Installing bat-0:0.26.1-4.fc4 100% | 153.4 MiB/s |   4.9 MiB |  00m00s
+[452/465] Installing kbd-0:2.10.0-3.fc4 100% |  88.5 MiB/s |   2.6 MiB |  00m00s
+[453/465] Installing hunspell-en-0:0.20 100% |   6.5 MiB/s |  13.3 KiB |  00m00s
+[454/465] Installing dconf-0:51.0-1.fc4 100% |  12.2 MiB/s | 376.0 KiB |  00m00s
+[455/465] Installing less-color-0:710-2 100% | 132.6 KiB/s |   2.7 KiB |  00m00s
+[456/465] Installing icu-tzdata-0:2026f 100% | 293.0 MiB/s |   1.2 MiB |  00m00s
+[457/465] Installing open-sans-fonts-0: 100% | 417.4 MiB/s |   2.1 MiB |  00m00s
+[458/465] Installing adwaita-mono-fonts 100% | 428.8 MiB/s |   5.6 MiB |  00m00s
+[459/465] Installing adwaita-sans-fonts 100% | 286.6 MiB/s |   1.7 MiB |  00m00s
+[460/465] Installing diffutils-0:3.12-6 100% |  67.6 MiB/s |   1.6 MiB |  00m00s
+[461/465] Installing unzip-0:6.0-71.fc4 100% |  22.0 MiB/s | 473.4 KiB |  00m00s
+[462/465] Installing 7zip-0:26.04-1.fc4 100% | 110.1 MiB/s |   3.2 MiB |  00m00s
+[463/465] Installing nodejs22-docs-1:22 100% |   1.5 GiB/s |  49.9 MiB |  00m00s
+[464/465] Installing openssl-1:4.0.3-1. 100% |  74.3 MiB/s |   2.0 MiB |  00m00s
+[465/465] Installing procps-ng-0:4.0.6- 100% | 286.4 KiB/s |   1.8 MiB |  00m06s
+>>> Running %posttrans scriptlet: wireplumber-0:0.5.19-1.fc45.aarch64
+>>> Finished %posttrans scriptlet: wireplumber-0:0.5.19-1.fc45.aarch64
+>>> Scriptlet output:
+>>> Created symlink '/etc/systemd/user/pipewire-session-manager.service' → '/usr/lib/systemd/user/wireplumber.service'.
+>>> Created symlink '/etc/systemd/user/pipewire.service.wants/wireplumber.service' → '/usr/lib/systemd/user/wireplumber.service'.
+>>> 
+Warning: skipped OpenPGP checks for 1 package from repository: @commandline
+Complete!
+/usr/sbin/open-download-manager
+{"ok":true}
+e2e ok: /root/Downloads/Programs/odm-ci-648.bin matches the source (17 range requests)
+launch and download ok

@@ -1,0 +1,8 @@
+[2m2026-11-14T19:24:48.968908Z[0m [32m INFO[0m [2modm_core::manager[0m[2m:[0m using the pairing key from ODM_BRIDGE_KEY
+[2m2026-11-14T19:24:48.969318Z[0m [32m INFO[0m [2modm_app::bridge[0m[2m:[0m extension bridge on 127.0.0.1:8901
+
+(open-download-manager:501): libayatana-appindicator-WARNING **: 19:24:48.970: libayatana-appindicator is deprecated. Please use libayatana-appindicator-glib in newly written code.
+[2m2026-11-14T19:24:48.988403Z[0m [31mERROR[0m [2mtauri_plugin_deep_link::error[0m[2m:[0m Failed to run OS command `xdg-mime`: No such file or directory (os error 2)
+MESA-EGL: warning: DRI3 error: Could not get DRI3 device
+MESA-EGL: warning: Ensure your X server supports DRI3 to get accelerated rendering
+WARNING: Glycin running without sandbox. Bubblewrap (bwrap) doesn't work in the environment.

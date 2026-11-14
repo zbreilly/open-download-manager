@@ -1,0 +1,30 @@
+target/release/bundle/deb:
+total 9368
+drwxr-xr-x 4 runner runner    4096 Nov 14 19:23 Open Download Manager_0.2.0_amd64
+-rw-r--r-- 1 runner runner 9587266 Nov 14 19:23 Open Download Manager_0.2.0_amd64.deb
+
+target/release/bundle/rpm:
+total 9368
+drwxr-xr-x 3 runner runner    4096 Nov 14 19:23 Open Download Manager-0.2.0-1.x86_64
+-rw-r--r-- 1 runner runner 9585435 Nov 14 19:23 Open Download Manager-0.2.0-1.x86_64.rpm
+ new Debian package, version 2.0.
+ size 9587266 bytes: control archive=1208 bytes.
+     419 bytes,     9 lines      control              
+    3960 bytes,    41 lines      md5sums              
+ Package: open-download-manager
+ Version: 0.2.0
+ Architecture: amd64
+ Installed-Size: 22450
+ Maintainer: opendm
+ Priority: optional
+ Depends: desktop-file-utils, libayatana-appindicator3-1, libwebkit2gtk-4.1-0, libgtk-3-0
+ Description: Fast, resumable, segmented downloads
+  Open Download Manager accelerates downloads with multiple connections, resumes interrupted transfers, schedules queues and integrates with your browser.
+libayatana-appindicator-gtk3
+desktop-file-utils
+libayatana-appindicator3.so.1()(64bit)
+libwebkit2gtk-4.1.so.0()(64bit)
+libgtk-3.so.0()(64bit)
+rpmlib(CompressedFileNames) = 3.0.4-1
+rpmlib(FileDigests) = 4.6.0-1
+rpmlib(PayloadFilesHavePrefix) = 4.0-1

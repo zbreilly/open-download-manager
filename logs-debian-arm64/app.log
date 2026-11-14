@@ -1,0 +1,5 @@
+[2m2026-11-14T19:24:51.035712Z[0m [32m INFO[0m [2modm_core::manager[0m[2m:[0m using the pairing key from ODM_BRIDGE_KEY
+[2m2026-11-14T19:24:51.036292Z[0m [32m INFO[0m [2modm_app::bridge[0m[2m:[0m extension bridge on 127.0.0.1:8901
+
+(open-download-manager:9374): libayatana-appindicator-WARNING **: 19:24:51.038: libayatana-appindicator is deprecated. Please use libayatana-appindicator-glib in newly written code.
+[2m2026-11-14T19:24:51.057431Z[0m [31mERROR[0m [2mtauri_plugin_deep_link::error[0m[2m:[0m Failed to run OS command `xdg-mime`: No such file or directory (os error 2)

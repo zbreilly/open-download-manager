@@ -1,0 +1,23 @@
+        Info Looking up installed tauri packages to check mismatched versions...
+[1m[33mwarning[0m[1m: unused field `authors` in `workspace.package`[0m
+ [1m[94m--> [0mCargo.toml:9:1
+  [1m[94m|[0m
+[1m[94m9[0m [1m[94m|[0m authors = ["Zach"]
+  [1m[94m|[0m [1m[33m^^^^^^^[0m
+  [1m[94m|[0m
+  [1m[94m= [0m[1mnote[0m: `cargo::unused_workspace_package_fields` is set to `warn` by default
+[1m[96mhelp[0m: consider removing the field `workspace.package.authors`
+[1m[33mwarning[0m: workspace (manifest) generated 1 warning
+[1m[92m    Updating[0m crates.io index
+[1m[92m   Compiling[0m open-download-manager v0.2.0 (/home/runner/work/open-download-manager/open-download-manager/src-tauri)
+[1m[92m   Compiling[0m odm-core v0.2.0 (/home/runner/work/open-download-manager/open-download-manager/crates/odm-core)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 3m 09s
+       Built application at: /home/runner/work/open-download-manager/open-download-manager/target/release/open-download-manager
+        Info Patching /home/runner/work/open-download-manager/open-download-manager/target/release/open-download-manager with bundle type information: deb
+    Bundling Open Download Manager_0.2.0_amd64.deb (/home/runner/work/open-download-manager/open-download-manager/target/release/bundle/deb/Open Download Manager_0.2.0_amd64.deb)
+        Info Patching /home/runner/work/open-download-manager/open-download-manager/target/release/open-download-manager with bundle type information: rpm
+    Bundling Open Download Manager-0.2.0-1.x86_64.rpm (/home/runner/work/open-download-manager/open-download-manager/target/release/bundle/rpm/Open Download Manager-0.2.0-1.x86_64.rpm)
+    Finished 2 bundles at:
+        /home/runner/work/open-download-manager/open-download-manager/target/release/bundle/deb/Open Download Manager_0.2.0_amd64.deb (9.14 MiB)
+        /home/runner/work/open-download-manager/open-download-manager/target/release/bundle/rpm/Open Download Manager-0.2.0-1.x86_64.rpm (9.14 MiB)
+

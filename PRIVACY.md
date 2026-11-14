@@ -24,6 +24,18 @@ The extension stores two things in your browser: the pairing key and the port th
 
 Downloads in private or incognito windows are not taken over automatically.
 
+### In the Chrome Web Store's terms
+
+The Chrome Web Store counts data that an extension passes on as data it handles, even when it never leaves your computer. In those terms the extension handles:
+
+- authentication information: the cookies for a file you download
+- web history: the address of that file and of the page it came from
+- website content: the links on a page when you ask for them, and the addresses of the video and audio a page has loaded
+
+It uses these for one thing, handing your download to the app on your computer. It does not sell them, share them with anyone or use them for advertising, and they never reach the project or its authors.
+
+The extension's use of this information follows the Chrome Web Store User Data Policy, including the Limited Use requirements.
+
 ## The app
 
 The app connects to the servers you download from, through a proxy if you or your system have set one. It makes no other connections.

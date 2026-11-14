@@ -1,8 +1,101 @@
-# Open Download Manager
+<p align="center">
+  <img src="docs/images/banner.jpg" alt="ODM - Open Download Manager" width="100%">
+</p>
+
+<h1 align="center">ODM - Open Download Manager</h1>
+
+<p align="center">
+  A free, open-source download manager for Windows, macOS and Linux.<br>
+  It fetches a file over several connections at once, carries on after a break, and can be restyled from top to bottom.
+</p>
+
+<p align="center">
+  <a href="https://github.com/zbreilly/open-download-manager/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/zbreilly/open-download-manager?label=release&color=5B9DFF"></a>
+  <img alt="Windows, macOS and Linux" src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-A98BFF">
+  <a href="LICENSE"><img alt="License: AGPL-3.0-only" src="https://img.shields.io/badge/license-AGPL--3.0--only-3DD68C"></a>
+</p>
+
+<p align="center">
+  <a href="#download"><b>Download</b></a> ·
+  <a href="#what-it-does">What it does</a> ·
+  <a href="#themes">Themes</a> ·
+  <a href="#install-the-browser-extension">Browser extension</a> ·
+  <a href="#features">All features</a> ·
+  <a href="#build-the-app">Build it</a>
+</p>
+
+<p align="center">
+  <img src="docs/images/main-dark.png" alt="The main window with four downloads running, a paused one and finished ones" width="92%">
+</p>
+
+## What it does
+
+- **Downloads over several connections.** A file is split across up to 32 connections, and a connection that finishes early takes over part of the largest piece that is left.
+- **Picks up where it stopped.** A paused or interrupted download continues from the bytes it already has, also after the app has been closed and opened again.
+- **Takes downloads from your browser.** The extension for Firefox and Chromium browsers hands over the file types you choose, with your cookies, so downloads behind a login still work.
+- **Saves video and audio.** It lists the media a page loads, HLS and DASH streams included, and lets you pick a stream's quality.
+- **Queues and a scheduler.** Run a queue at set times, a few files at once, and shut down or sleep when it finishes.
+- **Looks the way you want.** The Theme studio restyles every window: colors, outlines, fonts, pictures behind the panels and your own button icons.
+
+The full list is under [Features](#features).
+
+## Themes
+
+The app ships with a dark and a light theme and six presets. The Theme studio (More menu, or Settings → Appearance) goes further: it builds color profiles that change every window of the app, and shows each change in all open windows while you edit.
+
+<p align="center">
+  <img src="docs/images/theme-before-after.jpg" alt="The main window with the default dark theme, and the same window with the Synthwave profile" width="100%">
+</p>
+
+A profile sets a color for each window layer, the text, the accent and each status; outlines with an optional neon glow; how see-through the panels are; the fonts; a picture behind any panel; and your own pictures for the toolbar buttons.
+
+<p align="center">
+  <img src="docs/images/theme-studio.jpg" alt="The Theme studio: the color list with the color picker, and the panel art page with a picture behind the window" width="100%">
+</p>
+
+### Ready-made themes
+
+Four profiles are in the [`themes`](themes) folder. Download one, open the Theme studio, press **Import…** and pick the file, then press **Save & use**.
+
+| Theme | | File |
+|---|---|---|
+| **Synthwave** | Purple and magenta with neon outlines, over a sunset and a grid | [synthwave.odmtheme](https://github.com/zbreilly/open-download-manager/raw/main/themes/synthwave.odmtheme) |
+| **Aurora** | Deep teal with green accents, over northern lights | [aurora.odmtheme](https://github.com/zbreilly/open-download-manager/raw/main/themes/aurora.odmtheme) |
+| **Sakura** | A light theme in cream and rose | [sakura.odmtheme](https://github.com/zbreilly/open-download-manager/raw/main/themes/sakura.odmtheme) |
+| **Terminal** | Green on black, square corners, everything in a monospace font | [terminal.odmtheme](https://github.com/zbreilly/open-download-manager/raw/main/themes/terminal.odmtheme) |
+
+<p align="center">
+  <img src="docs/images/theme-gallery.jpg" alt="Eight looks of the main window: default dark, default light, black with neon outlines, high contrast dark, Synthwave, Aurora, Sakura and Terminal" width="100%">
+</p>
+
+The Theme studio is part of the app. The native-toolkit apps have the dark and light themes only.
+
+## More of the app
+
+<p align="center">
+  <img src="docs/images/windows.jpg" alt="The Settings window, the Queues and scheduler window and the Add download window" width="100%">
+</p>
+
+## Download
+
+Installers for every platform are on the [Releases](https://github.com/zbreilly/open-download-manager/releases) page.
+
+| Platform | The app | Native-toolkit app (`-native` in the file name) |
+|---|---|---|
+| Windows 10/11 | setup `.exe` or `.msi` (x64) | setup `.exe` (x64, ARM64) |
+| macOS | universal `.dmg` (macOS 11+) | universal `.dmg` (macOS 13+) |
+| Debian / Ubuntu | `.deb` (amd64, arm64) | `.deb` (amd64, arm64; Debian 13 / Ubuntu 25.04 or later) |
+| Fedora | `.rpm` (x86_64, aarch64) | `.rpm` (x86_64, aarch64) |
+
+The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
+
+After installing, add the [browser extension](#install-the-browser-extension) and pair it with the app.
+
+## How it is built
 
 A cross-platform download manager modeled on Internet Download Manager. One Rust engine drives the app on Windows, macOS and Linux. The app is Tauri 2 with a Svelte 5 interface, and includes the Theme studio (color profiles, fonts, panel art, button skins) and an app-drawn title bar. Native-toolkit apps without theming are also built for each platform.
 
-## Platforms
+### Platforms
 
 The app (`src-tauri`, `ui`):
 
@@ -25,21 +118,6 @@ The native-toolkit apps, written in Rust on each platform's own toolkit. They ha
 All of them use the same Rust engine (`crates/odm-core`). The native-toolkit apps call it through one small interface (`crates/odm-ffi`), and share what no toolkit owns (the download list fed by engine events, filtering and sorting, the Add form's rules, settings merging, formatting) in `crates/odm-ui`. The Plasma app's windows are described in QML, because Kirigami has no Rust API; they only draw what their Rust view-models hand them.
 
 Only one of the two can be installed at a time. They share the app's name, data folder and browser-bridge port, so the download list and settings carry over, and installing one replaces the other: the Linux packages have the same package name (`open-download-manager`), and the native Windows installer removes an installed copy of the app first. In a release, the native-toolkit files have `-native` in their names.
-
-## Download
-
-Installers for every platform are on the [Releases](https://github.com/zbreilly/open-download-manager/releases) page.
-
-| Platform | The app | Native-toolkit app (`-native` in the file name) |
-|---|---|---|
-| Windows 10/11 | setup `.exe` or `.msi` (x64) | setup `.exe` (x64, ARM64) |
-| macOS | universal `.dmg` (macOS 11+) | universal `.dmg` (macOS 13+) |
-| Debian / Ubuntu | `.deb` (amd64, arm64) | `.deb` (amd64, arm64; Debian 13 / Ubuntu 25.04 or later) |
-| Fedora | `.rpm` (x86_64, aarch64) | `.rpm` (x86_64, aarch64) |
-
-The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
-
-After installing, add the [browser extension](#install-the-browser-extension) and pair it with the app.
 
 ## Build the app
 
@@ -267,7 +345,10 @@ crates/odm-ui/       front-end logic shared by the native-toolkit apps: store, f
 crates/odm-linux/    Linux desktop services (single instance, tray, notifications, keep-awake, power, autostart)
                      and the open-download-manager launcher
 packaging/linux/     desktop file, AppStream metadata, build-packages.sh (.deb / .rpm)
-extension/           browser extension source (src/), manifests, build.sh -> extension/dist
+extension/           browser extension source (src/), manifests, build.sh -> extension/dist, store/ (icon and
+                     screenshots for the add-on stores)
+themes/              ready-made color profiles (.odmtheme) to import in the Theme studio
+docs/images/         the pictures on this page
 scripts/             build-macos-tauri.sh (the app), build-macos.sh (native), ci/ (test server and checks used by CI)
 download-manager-ui/ design spec (HANDOFF.md), tokens, reference screens, brand assets
 legacy/              the earlier prototype (std-only engine, Swift shell, v1 extension), kept for reference

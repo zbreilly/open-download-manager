@@ -27,6 +27,12 @@ AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=Open Download Manager
 AppPublisherURL=https://github.com/zbreilly/open-download-manager
+; the setup program's own details (Properties > Details)
+VersionInfoVersion={#AppVersion}
+VersionInfoProductName={#AppName}
+VersionInfoProductVersion={#AppVersion}
+VersionInfoDescription={#AppName} Setup
+VersionInfoCompany=Open Download Manager
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes

@@ -61,6 +61,23 @@ jobs:
           & "C:\Program Files\Git\bin\bash.exe" extension/build.sh
           apps\windows\build.ps1 -Arch ${{ matrix.arch }} -Installer 2>&1 | Tee-Object ci-out/build.log
           if ($LASTEXITCODE -ne 0) { exit 1 }
+      # The program and its installer must carry the product name and the
+      # version: a code signing service checks them before it signs a file.
+      - name: Version details on the program and the installer
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"' | Select-Object -First 1).Matches.Groups[1].Value
+          $files = @(
+            (Get-Item "dist/windows-native/${{ matrix.arch }}/app/OpenDownloadManager.exe"),
+            (Get-ChildItem dist/windows-native/*-Setup.exe | Select-Object -First 1)
+          )
+          foreach ($f in $files) {
+            $v = $f.VersionInfo
+            "$($f.Name): ProductName='$($v.ProductName)' ProductVersion='$($v.ProductVersion)' FileVersion='$($v.FileVersion)'" | Tee-Object -Append ci-out/version-info.log
+            if ($v.ProductName -ne 'Open Download Manager') { Write-Error "$($f.Name) has no product name"; exit 1 }
+            if (-not "$($v.ProductVersion)".Trim().StartsWith($version)) { Write-Error "$($f.Name): product version '$($v.ProductVersion)' is not $version"; exit 1 }
+          }
       - name: Install silently, launch, download
         shell: pwsh
         run: |

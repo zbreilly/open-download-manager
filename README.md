@@ -1,93 +1,203 @@
 # Open Download Manager
 
-A cross-platform download manager modeled on Internet Download Manager. One Rust engine drives a native SwiftUI app on macOS and a Tauri 2 + Svelte 5 app on Windows and Linux.
+A cross-platform download manager modeled on Internet Download Manager. One Rust engine drives the app on Windows, macOS and Linux. The app is Tauri 2 with a Svelte 5 interface, and includes the Theme studio (color profiles, fonts, panel art, button skins) and an app-drawn title bar. Native-toolkit apps without theming are also built for each platform.
 
 ## Platforms
 
+The app (`src-tauri`, `ui`):
+
+| Platform | Build |
+|---|---|
+| Windows 10/11 (x64) | `desktop` workflow (NSIS `.exe` and `.msi`) |
+| macOS 11+ (Apple silicon, Intel) | `scripts/build-macos-tauri.sh --install`, or the `desktop` workflow (universal DMG) |
+| Debian / Ubuntu (x64, ARM64) | `desktop` workflow (`.deb`) |
+| Fedora (x64, ARM64) | `desktop` workflow (`.rpm`) |
+
+The native-toolkit apps, written in Rust on each platform's own toolkit. They have the same downloads, queues, scheduler, grabber and browser integration, but not the Theme studio or the custom title bar; they offer the dark and light themes only:
+
 | Platform | Interface | Build |
 |---|---|---|
-| macOS 13+ (Apple silicon, Intel) | Native SwiftUI/AppKit (`apps/macos`) | `scripts/build-macos.sh --install`, or the `macos-native` workflow (DMG) |
-| Windows 10/11 (x64) | Tauri 2 + Svelte (`src-tauri`, `ui`) | `windows-linux` workflow (NSIS `.exe` and `.msi`) |
-| Debian / Ubuntu (x64, ARM64) | Tauri 2 + Svelte | `windows-linux` workflow (`.deb`) |
-| Fedora (x64, ARM64) | Tauri 2 + Svelte | `windows-linux` workflow (`.rpm`) |
+| macOS 13+ (Apple silicon, Intel) | AppKit through [objc2](https://github.com/madsmtm/objc2) (`apps/macos`) | `scripts/build-macos.sh --install`, or the `macos-native` workflow (DMG) |
+| Windows 10/11 (x64, ARM64) | WinUI 3 through [windows-reactor](https://github.com/microsoft/windows-rs) (`apps/windows`) | `apps\windows\build.ps1 -Installer`, or the `windows-native` workflow (setup `.exe`) |
+| GNOME and other Linux desktops (x64, ARM64) | GTK 4 + libadwaita (`apps/gnome`) | `packaging/linux/build-packages.sh`, or the `linux-native` workflow (`.deb`, `.rpm`) |
+| KDE Plasma 6 (x64, ARM64) | Kirigami / Qt 6, logic in Rust through cxx-qt (`apps/plasma`) | same package as the GNOME interface |
 
-All of them use the same Rust engine (`crates/odm-core`). The macOS app links it as a static library through a small C interface (`crates/odm-ffi`).
+All of them use the same Rust engine (`crates/odm-core`). The native-toolkit apps call it through one small interface (`crates/odm-ffi`), and share what no toolkit owns (the download list fed by engine events, filtering and sorting, the Add form's rules, settings merging, formatting) in `crates/odm-ui`. The Plasma app's windows are described in QML, because Kirigami has no Rust API; they only draw what their Rust view-models hand them.
 
-## Build on macOS
+Only one of the two can be installed at a time. They share the app's name, data folder and browser-bridge port, so the download list and settings carry over, and installing one replaces the other: the Linux packages have the same package name (`open-download-manager`), and the native Windows installer removes an installed copy of the app first. In a release, the native-toolkit files have `-native` in their names.
+
+## Download
+
+Installers for every platform are on the [Releases](https://github.com/zbreilly/open-download-manager/releases) page.
+
+| Platform | The app | Native-toolkit app (`-native` in the file name) |
+|---|---|---|
+| Windows 10/11 | setup `.exe` or `.msi` (x64) | setup `.exe` (x64, ARM64) |
+| macOS | universal `.dmg` (macOS 11+) | universal `.dmg` (macOS 13+) |
+| Debian / Ubuntu | `.deb` (amd64, arm64) | `.deb` (amd64, arm64; Debian 13 / Ubuntu 25.04 or later) |
+| Fedora | `.rpm` (x86_64, aarch64) | `.rpm` (x86_64, aarch64) |
+
+The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
+
+After installing, add the [browser extension](#install-the-browser-extension) and pair it with the app.
+
+## Build the app
+
+On macOS:
 
 ```bash
 git clone https://github.com/zbreilly/open-download-manager
 cd open-download-manager
+scripts/build-macos-tauri.sh --install
+```
+
+This builds **Open Download Manager.app** and a DMG in `dist/macos/`, and installs the app in /Applications. You need the Xcode Command Line Tools and Rust; Node is optional, because the built interface in `ui/dist` is committed. The app is signed with your Developer ID if one is in your keychain, and ad-hoc signed otherwise. `--universal` builds one binary for Apple silicon and Intel, `--no-dmg` skips the DMG.
+
+On Windows and Linux (Linux needs `libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf`, Debian/Ubuntu names):
+
+```bash
+bash extension/build.sh
+npm --prefix ui ci
+npm --prefix ui run build
+cd src-tauri && ../ui/node_modules/.bin/tauri build
+```
+
+Builds from GitHub aren't signed. On macOS, the first time you open one, right-click it and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`).
+
+## Build the native-toolkit apps
+
+### macOS
+
+```bash
 scripts/build-macos.sh --install
 ```
 
-This builds **Open Download Manager.app** and installs it in /Applications. You need Xcode (or the Command Line Tools) and Rust. The app is signed with your Developer ID if one is in your keychain, and ad-hoc signed otherwise.
+This builds the AppKit app in `dist/macos-native/` and installs it in /Applications, replacing the app above. You need the Xcode Command Line Tools and Rust. `--dmg` also builds a DMG and `--universal` builds one binary for Apple silicon and Intel.
 
-| Option | Effect |
-|---|---|
-| `--install` | copy the app to /Applications and open it |
-| `--dmg` | also build a DMG |
-| `--universal` | one binary for Apple silicon and Intel |
+### Windows
 
-Every push to `main` that touches the macOS app or the engine also builds it on GitHub Actions (`macos-native` workflow). The DMG and a zipped app are attached to each run. Builds from GitHub aren't signed with your Developer ID, so the first time you open one, right-click it and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`).
+```powershell
+apps\windows\build.ps1 -Installer
+```
 
-The Tauri version still builds on macOS with `scripts/build-macos-tauri.sh`.
+You need Rust with the MSVC toolchain, and Inno Setup 6 for `-Installer`. The result is a self-contained folder (`dist\windows-native\<arch>\app`): the executable, the Windows App SDK runtime it needs, icons and the browser extension. Nothing else has to be installed on the target PC. The first build downloads that runtime from NuGet.
+
+The installer sets the app up per user (no administrator prompt) and registers `odm://` links.
+
+`windows-reactor` is a preview library. The version in use is pinned to a commit in `apps/windows/Cargo.toml`.
+
+### Linux
+
+```bash
+# Debian 13 / Ubuntu 25.04 or later
+sudo apt-get install build-essential pkg-config zip libgtk-4-dev libadwaita-1-dev qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools
+# Fedora
+sudo dnf install gcc gcc-c++ zip rpm-build gtk4-devel libadwaita-devel qt6-qtbase-devel qt6-qtdeclarative-devel
+
+packaging/linux/build-packages.sh
+```
+
+This builds one package for your distribution family and CPU in `dist/linux-native/`. Installing it pulls in what the interfaces need at run time (GTK 4 and libadwaita; Qt 6, Kirigami and the Plasma desktop style). It holds both interfaces and a launcher, `open-download-manager`, that starts the Kirigami one on Plasma and the GTK one everywhere else. `--ui=gnome|plasma` or `ODM_UI=gnome|plasma` overrides the choice.
+
+The tray icon is a StatusNotifierItem: built into Plasma; on GNOME it needs the AppIndicator extension (Ubuntu ships it). Without a tray, closing the window quits the app instead of hiding it.
 
 ## Install the browser extension
 
-The extensions are built into `extension/dist/`. In the app, **Settings → Browser integration → Show extension folder** opens it.
+`bash extension/build.sh` builds the extensions into `extension/dist/`, and the installers and packages ship a copy. In the app, **Settings → Browser integration → Show extension folder** opens it (**Settings → Browser** in the native-toolkit apps).
 
 - **Chrome / Edge / Brave / Opera / Vivaldi**: open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and pick `extension/dist/chromium`.
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. A permanent install needs the add-on to be signed through addons.mozilla.org.
 
-Then pair the extension with the app, once per browser: in the app open **Settings → Browser integration** and press **Copy key**; click the extension's toolbar button, open **Connection**, paste the key under **Pairing key** and save.
+The build also packs each extension into one file in `extension/dist/`:
+
+- `odm-chromium.crx`: a signed package. With *Developer mode* on, drag it onto `chrome://extensions`. Chrome on Windows and macOS turns off extensions that don't come from the Chrome Web Store, so use *Load unpacked* there.
+- `odm-chromium.zip`: the same files unsigned, the form the Chrome Web Store and Edge Add-ons take as an upload.
+- `odm-firefox.xpi`: unsigned until Mozilla has signed this version (below). Unsigned, Firefox Developer Edition, Nightly and ESR install it from `about:addons` → *Install Add-on From File* once `xpinstall.signatures.required` is off in `about:config`. Signed, every Firefox installs it the same way, or by opening the file.
+
+The `.crx` is signed with `extension/key.pem` (or the file `ODM_CRX_KEY` names), which the first build creates and git ignores. The extension's ID comes from that key, so keep it: a `.crx` signed with another key installs as a separate extension instead of updating the old one. CI builds make no `.crx` unless they are given the key.
+
+To have Mozilla sign the Firefox extension, create API credentials in your addons.mozilla.org account (`https://addons.mozilla.org/developers/addon/api/key/`) and run:
+
+```bash
+export WEB_EXT_API_KEY=<JWT issuer>
+export WEB_EXT_API_SECRET=<JWT secret>
+bash extension/sign-firefox.sh
+```
+
+It builds the extension, submits it with Mozilla's `web-ext` on the unlisted channel (signed for you to hand out, with no public listing) and keeps the signed copy as `extension/signed/odm-firefox-<version>.xpi`. Later builds put that copy in `extension/dist/odm-firefox.xpi`. Mozilla signs each version number once, so raise the version before signing a changed extension. The Firefox manifest declares what the extension passes to the app (`data_collection_permissions`: the cookies that go with a download, as authentication information); Firefox 140 and later show that when the extension is installed.
+
+Then pair the extension with the app, once per browser: in the app open **Settings → Browser integration** (**Settings → Browser** in the native-toolkit apps) and press **Copy key**; click the extension's toolbar button, open **Connection**, paste the key under **Pairing key** and save.
 
 The extension talks to the app on `127.0.0.1:8901`. Everything it sends (links and the cookies that go with them) is encrypted with the pairing key, and the app's answers are too. Another program that listens on that port learns nothing and is not believed, and nothing that lacks the key — a web page, another extension, a local script — can make the app start a download. **New key** in the same settings page unpairs every browser.
 
 ## Features
 
 **Engine**
-- Downloads with up to 32 connections per file, with IDM-style dynamic segmentation: when a connection finishes its range, it takes over the back half of the largest remaining segment, so every connection stays busy until the end
+- HTTP(S) and FTP downloads with up to 32 connections per file, with IDM-style dynamic segmentation: when a connection finishes its range, it takes over the back half of the largest remaining segment, so every connection stays busy until the end
 - Resume across pauses, crashes and restarts. Progress is checkpointed per segment, and `If-Range` with ETag/Last-Modified detects files that changed on the server
 - Falls back to one connection, and restarts on failure, when a server doesn't support byte ranges
 - Retries with backoff per connection. Clear errors for 403/404/410 and expired links
 - **Refresh link**: point an expired download at a new URL and keep the progress already made
 - Global speed limit (combined) and per-download limits, both adjustable while downloading
+- A limit on how many downloads run at once (4 by default); each queue has its own
+- FTP and FTPS: `ftp://`, `ftpes://` (explicit TLS) and `ftps://` (implicit TLS), passive mode, resume and split downloads through `REST`, size through `SIZE`. A user name and password can be in the link or in the Add dialog's Authentication fields; either way they are stored like the app's other passwords, not in the link. The proxy setting doesn't apply to FTP
+- HLS and DASH streams (`.m3u8`, `.mpd`): the Add dialog lists the qualities and audio tracks a stream offers, with estimated sizes. The segments download over several connections and are joined into one file: MPEG-TS or MP4 for HLS, MP4 or WebM for DASH. A separate MP4 audio track is muxed into the video; any other separate audio track is saved beside the video, and the download says so. HLS AES-128 encryption is supported. Paused and interrupted stream downloads continue from the segments already fetched. DRM-protected streams (Widevine, PlayReady, FairPlay) and live streams can't be downloaded; the Add dialog says so
 - Proxy settings: system, none, HTTP or SOCKS5, with authentication
 - Basic auth, cookies, referrer, custom user agent and custom headers
 - Checksum verification (SHA-256, SHA-1, MD5)
 - Uses the system trust store for TLS (rustls with the platform verifier)
+- A redirect from https to plain http fails unless you allow it in Settings → Advanced. The same rule covers a stream: playlists, segments and decryption keys that an https manifest lists at http addresses are refused
+- Stored cookies, passwords, custom header values, the proxy password and the extension's pairing key are encrypted: with DPAPI on Windows, and on macOS and Linux with a key held by the login Keychain or the Secret Service (GNOME Keyring, KWallet). If the keystore doesn't answer (a declined prompt, a locked keyring), what was encrypted earlier is left untouched until it does; where there is no keystore, the database is readable only by your account. A finished download forgets its cookies, password and custom headers
 
 **App**
-- Main window with a library, categories and queues, a sortable, resizable, reorderable table, multi-select, context menus, keyboard shortcuts, a details panel with the segment map and a 60-second speed graph, and a status bar
-- Add dialog: probes the link (size, resumability, protocol), fills the name in from `Content-Disposition`, picks the category automatically, offers recent-folder chips, a connections selector, checksum, and auth/cookies/headers. Asks to overwrite, rename or resume when the file already exists
+- Main window with a library (all, active, unfinished and finished downloads), categories and queues, a search field that matches names, links and folders, a sortable list with multi-select, context menus and keyboard shortcuts, a details panel with the segment map and a 60-second speed graph, and a status bar
+- Categories (Video, Music, Documents, Compressed, Programs, General) that sort downloads by file type, each into its own folder; their file types and folders can be changed
+- Add dialog: probes the link (size, resumability, protocol), fills the name in from `Content-Disposition`, picks the category automatically, offers recent folders, a connections selector, checksum, and auth/cookies/headers. For an HLS or DASH stream it offers the qualities and audio tracks. Asks to overwrite, rename or resume when the file already exists
+- Redownload a file from the start, and delete finished downloads from the list in one step
 - Batch downloads: several links, or patterns such as `img[001-120].jpg` and `[a-z]`
 - Per-download progress window with a live segment map, a per-connection table, a speed graph, a speed limit for that download and a "when finished" action
 - Queues and scheduler: start and stop times, weekdays, files at a time, retrying failed downloads, a reorderable queue, and sleep, shut down or quit when the queue finishes (after a 60-second countdown you can cancel)
 - Site grabber: lists the files linked from a page, optionally following links one or two levels deep, filtered by type
 - Clipboard monitor, drag links onto the window, import and export link lists, and the `odm://add?url=…` deep link
-- Menu-bar / system-tray icon showing activity state (and speed, if you turn that on), notifications, launch at login, dark and light themes, and a compact list density
+- Menu-bar / system-tray icon showing activity state, with a menu to add a link, start the main queue, pause everything, set the speed limit and open the grabber, scheduler and settings
+- Notifications for finished and failed downloads and finished queues, launch at login (started in the tray), dark and light themes, a compact list density, and toolbar buttons that show their labels always, on hover or never
 
 **Browser extension**
 - Takes over matching downloads (by file type and optional minimum size), passing along cookies, referrer and user agent so links that need a login still work
 - Hold Option/Alt (configurable) while clicking to let the browser handle a download, or pause capture for 10 minutes from the toolbar popup
 - Context menus: download a link, media, an image, the links in a selection, or every link on the page
-- Detects audio and video files a page loads and lists them in the popup, and shows a "Download" button over videos
+- Detects audio and video files and HLS/DASH streams a page loads and lists them in the popup (a stream under the page's title), and shows a "Download" button over videos; for a streamed video it hands the stream to the app, which offers its qualities
+- The toolbar popup also takes a link to send to the app, and shows whether the app is connected
+- Paired with the app by a key: everything between them is encrypted, and nothing without the key can start a download (see [Install the browser extension](#install-the-browser-extension))
 
-If a colour profile from the Theme studio ever makes the windows hard to use, choose **Use the default theme** from the tray menu, or start the app with `--reset-theme`. The profile stays in the Theme studio's list.
+**Theme studio**
+
+The Theme studio (More menu, or Settings → Appearance) builds color profiles that restyle every window of the app. Changes preview live in all open windows while you edit.
+
+- Colors: one for each window layer (window, header and sidebar, panels, cards, fields, menus), for text and secondary text, the accent, and each status color. An HSV picker with a hue ring, a saturation/brightness triangle, and hex and H/S/V fields
+- Outlines: separate color and width for the window, layers and controls, an optional neon glow, and corner roundness
+- Glass: panel and header opacity, background blur, background glows, and a flat mode with no highlights or shadows
+- Fonts: the interface font and the number font, picked from the fonts installed on your computer or from an imported font file, with a size scale
+- Panel art: a `.png` or `.svg` picture behind the window, header, sidebar, download list, details panel, status bar and dialogs. Each can cover, fit, stretch, tile or take a custom size, be dragged into position, and be tinted with the panel's color
+- Buttons: your own pictures for 16 toolbar and menu buttons, and background skins for ordinary and primary buttons
+- Presets to start from: all black, all white, high contrast dark and light, and black or white with neon outlines
+- Profiles export to a single `.odmtheme` file that carries its pictures and fonts, and import from one. An imported profile is checked field by field before it is used, and can't replace status icons or make one action look like another
+- Every picture a profile uses, picked or imported, is decoded and saved again as a plain PNG, so only its pixels are stored and shared (no metadata or hidden data, and an SVG is kept only as the picture it draws)
+- Text and status colors that can't be read against one of the profile's backgrounds are shown in black or white instead, and the studio tells you
+- A title bar drawn by the app, so the profile reaches the window frame too (Settings → Appearance; macOS keeps its own title bar)
+
+If a profile ever makes the windows hard to use, choose **Use the default theme** from the tray menu, or start the app with `--reset-theme`. The profile stays in the Theme studio's list.
+
+The native-toolkit apps have everything under Engine, App and Browser extension except the list density and the toolbar button styles; they don't have the Theme studio or the custom title bar. The Plasma app follows the desktop's color scheme.
 
 ## Not supported yet
 
-- HLS/DASH streaming manifests (`.m3u8`, `.mpd`). Media detection only lists direct media files
-- FTP
+- DRM-protected streams (Widevine, PlayReady, FairPlay) and live streams
+- FTP through a proxy
 
 ## Development
 
-On Linux, install the system libraries first (Debian/Ubuntu names):
-
-```bash
-sudo apt-get install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-```
+Run the app from the source tree (on Linux, install the libraries listed under "Build the app" first):
 
 ```bash
 bash extension/build.sh                 # the app bundles extension/dist
@@ -98,47 +208,78 @@ npm --prefix ui run dev
 cargo run -p open-download-manager
 ```
 
-Tests and lints (the `checks` workflow runs the same on every pull request):
+`ui/dist` is committed so the macOS script works without Node. After changing the UI, run `npm --prefix ui run build` and commit `ui/dist` too; CI fails if it is stale.
+
+Run a native-toolkit app:
 
 ```bash
-cargo test -p odm-core                       # engine, against a local HTTP server that can simulate failures
-cargo test -p odm-ffi --features test-hooks  # C interface
-cargo clippy -p odm-core -p odm-ffi --all-targets -- -D warnings
+cargo run -p odm-gnome                  # GTK/libadwaita
+cargo run -p odm-plasma                 # Kirigami (needs Plasma's QML modules to run)
+cargo run -p odm-windows                # on Windows
+```
+
+Tests and lints (the `checks` workflow runs the first group on every pull request; the Linux apps are linted in the `linux-native` workflow, where their toolkits are installed):
+
+```bash
+cargo test -p odm-core                       # engine, against local HTTP and FTP servers that can simulate failures
+cargo test -p odm-ffi --features test-hooks  # the engine's interface
+cargo test -p odm-ui -p odm-linux            # shared front-end logic, Linux services
+cargo clippy -p odm-core -p odm-ffi -p odm-ui -p odm-linux --all-targets -- -D warnings
+cargo clippy -p odm-gnome -p odm-plasma --all-targets -- -D warnings
+cargo clippy -p odm-macos --all-targets -- -D warnings    # on a Mac
 npm --prefix ui run check
 ```
 
-`ui/dist` is committed so the macOS Tauri script works without Node. After changing the UI, run `npm --prefix ui run build` and commit `ui/dist` too; CI fails if it is stale.
+A debug build of the native macOS app (`cargo run -p odm-macos`) reads a few variables for trying it without touching the installed copy: `ODM_DATA_DIR=<folder>` keeps its list and settings there, `ODM_PORT=<port>` moves the browser bridge off the port the extension uses, `ODM_OPEN=add,batch,web,grabber,scheduler,settings,progress` opens those windows at startup (`ODM_ADD_URL=<link>` sets the link the Add window starts with), and `ODM_SHOTS=<folder>` keeps the app in the background and saves a PNG of each of its windows there every two seconds.
+
+The native Windows app can be type-checked from macOS or Linux without the engine, whose C dependencies don't cross-compile:
+
+```bash
+rustup target add x86_64-pc-windows-msvc
+cargo check -p odm-windows --target x86_64-pc-windows-msvc --no-default-features
+```
 
 ### CI and releases
 
-- **`windows-linux`** (every push to `main`): builds the Windows installers and the Linux `.deb`/`.rpm` packages for x64 and ARM64. Each package is installed (in clean Debian and Fedora containers for Linux), launched, and used for a real download through the browser bridge, which is checked byte for byte. The Tauri CLI version is pinned in `ui/package.json`.
-- **`macos-native`** (pushes that touch the macOS app or the engine): type-checks and builds the native app and DMG, then runs the same download check.
-- **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The workflow builds everything (a universal macOS DMG included) and creates a draft release with all of the installers attached.
+- **`desktop`** (every push to `main` outside the native-toolkit apps): builds the app's Windows installers and Linux `.deb`/`.rpm` packages for x64 and ARM64. Each is installed (in clean Debian and Fedora containers for Linux), launched, and used for a real download through the browser bridge, which is checked byte for byte. For tags and manual runs it also builds the universal macOS DMG and runs the same check. The Tauri CLI version is pinned in `ui/package.json`.
+- **`windows-native`**: builds the native Windows app for x64 and ARM64, packs the installer, installs it silently, launches it, opens an `odm://` link through the running instance, and runs the download check.
+- **`linux-native`**: builds and lints both Linux interfaces in Debian 13 and Fedora containers (x64 and ARM64), then installs each package in a clean container, starts it once as KDE and once as GNOME, opens an `odm://` link, and runs the download check.
+- **`macos-native`**: lints and builds the native macOS app and DMG, launches it, opens an `odm://` link, and runs the download check.
+- **Releases**: push a tag such as `v0.2.0`. The version must match `Cargo.toml`, `tauri.conf.json`, `ui/package.json` and the extension manifests. The `desktop` workflow builds the app for every platform and the native-toolkit apps, and creates a draft release with all of the installers attached.
 
-Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release (`sha256sum -c SHA256SUMS.txt`, or `Get-FileHash` on Windows). Once the repository is public, each release file also carries a build provenance attestation: `gh attestation verify <file> --repo <owner>/<repo>` confirms it was built by this repository's workflow.
+Builds made by CI are unsigned. Windows SmartScreen and macOS Gatekeeper will warn the first time you open one. To check a release download, compare it with `SHA256SUMS.txt` from the same release: `sha256sum -c --ignore-missing SHA256SUMS.txt` in the folder with the download (`shasum -a 256 -c --ignore-missing SHA256SUMS.txt` on macOS), or `Get-FileHash` on Windows. Each release file also carries a build provenance attestation: `gh attestation verify <file> --repo zbreilly/open-download-manager` confirms it was built by this repository's workflow.
 
 ## Layout
 
 ```
-apps/macos/          native macOS app (SwiftUI/AppKit), build.sh, Info.plist
-crates/odm-ffi/      C interface to the engine for native front ends (include/odm.h)
+src-tauri/, ui/      the app (Tauri 2 shell and commands; Svelte 5 interface, Theme studio)
+apps/macos/          native macOS app (Rust, AppKit through objc2), build.sh, Info.plist
+apps/windows/        native Windows app (Rust, WinUI 3 through windows-reactor), build.ps1, installer/
+apps/gnome/          GTK 4 + libadwaita app (Rust)
+apps/plasma/         Kirigami app: Rust backend, list model and view-models (src/), QML views (qml/)
 crates/odm-core/     engine: task.rs (segmented downloader), manager.rs (list, queues, scheduler, limits, events),
-                     client.rs (HTTP, probe), store.rs (SQLite), grabber.rs, util.rs
-src-tauri/           desktop shell: IPC commands, windows, tray, extension bridge (bridge.rs), power actions
-ui/                  Svelte 5 frontend (one bundle, routed per window); ui/dist is the prebuilt copy
+                     client.rs (HTTP, probe), ftp.rs (FTP/FTPS), stream.rs (HLS/DASH downloads; hls.rs and
+                     dash.rs parse manifests, mp4.rs muxes audio into video), store.rs (SQLite), secret.rs (stored
+                     secrets, system keystore), pairing.rs (extension pairing), limiter.rs (speed limits),
+                     grabber.rs, util.rs
+crates/odm-ffi/      the engine's interface: C functions (include/odm.h) and the same contract for Rust (api)
+crates/odm-ui/       front-end logic shared by the native-toolkit apps: store, filtering and sorting, Add form, formatting
+crates/odm-linux/    Linux desktop services (single instance, tray, notifications, keep-awake, power, autostart)
+                     and the open-download-manager launcher
+packaging/linux/     desktop file, AppStream metadata, build-packages.sh (.deb / .rpm)
 extension/           browser extension source (src/), manifests, build.sh -> extension/dist
-scripts/             build-macos.sh (native), build-macos-tauri.sh, ci/ (test server and checks used by CI)
+scripts/             build-macos-tauri.sh (the app), build-macos.sh (native), ci/ (test server and checks used by CI)
 download-manager-ui/ design spec (HANDOFF.md), tokens, reference screens, brand assets
 legacy/              the earlier prototype (std-only engine, Swift shell, v1 extension), kept for reference
 ```
 
-App data (the download list, queues and settings) is stored in SQLite under `~/Library/Application Support/app.opendm.desktop/` on macOS, `%APPDATA%\app.opendm.desktop\` on Windows and `~/.local/share/app.opendm.desktop/` on Linux. While a download is in progress it is written to `name.odmpart` next to the final file, which is renamed when the download finishes.
+App data (the download list, queues and settings) is stored in SQLite under `~/Library/Application Support/app.opendm.desktop/` on macOS, `%APPDATA%\app.opendm.desktop\` on Windows and `~/.local/share/app.opendm.desktop/` on Linux. While a download is in progress it is written to `name.odmpart` next to the final file, which is renamed when the download finishes. A stream download keeps its segments in a `name.odmpart.d` folder beside it until they are joined.
 
 ## License
 
 Open Download Manager is free software under the [GNU Affero General Public License v3.0](LICENSE) (AGPL-3.0-only). You may use, study, modify and share it. Any version you distribute, or run as a network service, must be released under the same license with its complete source code.
 
-Third-party components keep their own licenses: the Rust and npm dependencies (MIT, Apache-2.0, BSD, ISC, MPL-2.0 and similar), and IBM Plex Sans and JetBrains Mono under the SIL Open Font License (`ui/src/assets/fonts/`).
+Third-party components keep their own licenses: the Rust and npm dependencies (MIT, Apache-2.0, BSD, ISC, MPL-2.0 and similar), the toolkits the apps link at run time (GTK and libadwaita, Qt and KDE Frameworks, the Windows App SDK), and IBM Plex Sans and JetBrains Mono under the SIL Open Font License (`ui/src/assets/fonts/`).
 
 ### Name and logo
 

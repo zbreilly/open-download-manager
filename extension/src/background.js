@@ -5,7 +5,8 @@
 //   (with cookies, referrer and user agent so authenticated links work).
 // * Bypass: hold the configured key (Alt by default) while clicking, or
 //   pause capture for 10 minutes from the toolbar popup.
-// * Detects media files loaded by pages and lists them in the popup.
+// * Detects media files and HLS/DASH stream manifests loaded by pages and
+//   lists them in the popup.
 // * Context menus for links, media, selections and "all links on page".
 "use strict";
 
@@ -17,6 +18,9 @@ const DEFAULT_PORT = 8901;
 // Firefox lists it in the manifest
 if (!globalThis.ODMPairing && typeof importScripts === "function") importScripts("pairing.js");
 const Pairing = globalThis.ODMPairing;
+// what a response is (media file, stream manifest, segment): same loading
+if (!globalThis.ODMMedia && typeof importScripts === "function") importScripts("media.js");
+const Media = globalThis.ODMMedia;
 
 // the pairing key is for the extension's own pages only, not content scripts
 try { B.storage.local.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {}); } catch {}
@@ -33,7 +37,7 @@ const state = {
   capture: { enabled: true, paused: false, extensions: [], bypassKey: "alt", minSizeKb: 0 },
   lastCheck: 0,
   bypassUntil: 0,
-  media: new Map(), // tabId -> Map(url -> {url, mime, size, name})
+  media: new Map(), // tabId -> Map(url -> {url, mime, size, name, stream?: "hls" | "dash"})
 };
 
 function browserName() {
@@ -317,8 +321,6 @@ if (!IS_FIREFOX && B.downloads?.onDeterminingFilename) {
 // The list lives in storage.session so it survives the service worker being
 // stopped; Firefox versions without storage.session keep it in memory only.
 
-const MEDIA_MIME = /^(video|audio)\//i;
-const MEDIA_EXT = /\.(mp4|m4v|webm|mkv|mov|avi|flv|wmv|mp3|m4a|aac|flac|wav|ogg|oga|opus)(\?|#|$)/i;
 const SESSION = B.storage?.session;
 let mediaReady = null;
 
@@ -356,19 +358,30 @@ async function mediaFor(tabId) {
   return [...(state.media.get(tabId)?.values() ?? [])];
 }
 
-function noteMedia(tabId, url, mime, size) {
+async function tabTitle(tabId) {
+  try { return (await B.tabs.get(tabId))?.title || ""; } catch { return ""; }
+}
+
+async function noteMedia(tabId, url, mime, size) {
   if (tabId < 0 || !/^https?:/i.test(url)) return;
-  if (/\.(m3u8|mpd)(\?|$)/i.test(url) || /mpegurl|dash\+xml/i.test(mime || "")) return; // streaming manifests
-  if (size > 0 && size < 256 * 1024) return; // thumbnails / previews
-  // strip byte-range query params some players add
-  const clean = url.replace(/([?&])(range|bytes|rn|rbuf)=[^&]*/gi, "$1").replace(/[?&]$/, "");
+  const kind = Media.classify(url, mime);
+  if (!kind) return; // not media, or one segment of a stream
+  const stream = kind === "hls" || kind === "dash" ? kind : null;
+  if (!stream && size > 0 && size < 256 * 1024) return; // thumbnails / previews
+  // strip byte-range query params some players add (a manifest's query is
+  // often its access token: kept)
+  const clean = stream ? url : url.replace(/([?&])(range|bytes|rn|rbuf)=[^&]*/gi, "$1").replace(/[?&]$/, "");
+  const title = stream ? await tabTitle(tabId) : "";
   changeMedia(() => {
     let m = state.media.get(tabId);
     if (!m) state.media.set(tabId, (m = new Map()));
     if (m.has(clean)) return false;
     let name = "";
-    try { name = decodeURIComponent(new URL(clean).pathname.split("/").pop() || ""); } catch {}
-    m.set(clean, { url: clean, mime: mime || "", size: size || 0, name: name || "media" });
+    if (stream) name = Media.streamName(clean, title);
+    else try { name = decodeURIComponent(new URL(clean).pathname.split("/").pop() || ""); } catch {}
+    m.set(clean, stream
+      ? { url: clean, mime: mime || "", size: 0, name, stream }
+      : { url: clean, mime: mime || "", size: size || 0, name: name || "media" });
     if (m.size > 50) m.delete(m.keys().next().value);
     const action = B.action ?? B.browserAction;
     try { action.setBadgeText({ tabId, text: String(m.size) }); } catch {}
@@ -389,7 +402,7 @@ if (B.webRequest?.onHeadersReceived) {
         else if (n === "content-range") range = h.value || "";
       }
       const total = range ? parseInt(range.split("/").pop(), 10) || len : len;
-      if (MEDIA_MIME.test(mime) || MEDIA_EXT.test(d.url)) noteMedia(d.tabId, d.url, mime, total);
+      noteMedia(d.tabId, d.url, mime, total);
     },
     { urls: ["<all_urls>"], types: ["media", "object", "xmlhttprequest", "other"] },
     ["responseHeaders"]
@@ -429,14 +442,21 @@ async function linksFromTab(tabId, selectionOnly) {
   }
 }
 
-/** Offer the media a tab loaded (for streamed blob: players). */
+/**
+ * Offer the media a tab loaded (for streamed blob: players). A stream's
+ * manifest is what such a player plays: the first one is handed over on
+ * its own, so the app can offer its qualities.
+ */
 async function sendTabMedia(tab, referrer) {
   const found = await mediaFor(tab?.id ?? -1);
   if (!found.length) {
     notifyNoMedia();
     return true;
   }
-  return sendToApp({ urls: found.map((m) => m.url), referrer, storeId: await storeIdForTab(tab) });
+  const storeId = await storeIdForTab(tab);
+  const stream = found.find((m) => m.stream);
+  if (stream) return sendToApp({ url: stream.url, referrer, fileName: stream.name, mime: stream.mime, storeId });
+  return sendToApp({ urls: found.map((m) => m.url), referrer, storeId });
 }
 
 B.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -510,6 +530,7 @@ B.runtime.onMessage.addListener((msg, sender, sendResponse) => {
             urls: msg.urls,
             referrer: msg.referrer || sender.tab?.url || "",
             fileName: msg.fileName,
+            mime: msg.mime,
             storeId: await storeIdForTab(tab),
           }),
         });

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT1M">
+  <BaseURL>https://media.example/vod/</BaseURL>
+  <Period>
+    <AdaptationSet mimeType="video/webm" contentType="video">
+      <Representation id="1" bandwidth="900000" width="1280" height="720" codecs="vp9">
+        <BaseURL>video-720.webm</BaseURL>
+        <SegmentBase indexRange="200-900"><Initialization range="0-199"/></SegmentBase>
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet mimeType="audio/webm" contentType="audio">
+      <Representation id="2" bandwidth="128000" codecs="opus">
+        <BaseURL>audio.webm</BaseURL>
+        <SegmentBase indexRange="100-400"><Initialization range="0-99"/></SegmentBase>
+      </Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

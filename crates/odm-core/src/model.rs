@@ -137,6 +137,17 @@ pub struct Download {
     /// `.odmpart` was taken over. Such files are never deleted automatically.
     #[serde(default)]
     pub adopted: Option<String>,
+    /// an HLS/DASH stream: which quality and audio to fetch (`url` is the
+    /// manifest)
+    #[serde(default)]
+    pub stream: Option<StreamChoice>,
+    /// a note shown with the finished download (e.g. the audio of a stream
+    /// that could not be joined with the video was saved beside it)
+    #[serde(default)]
+    pub notice: Option<String>,
+    /// files written beside the main file (same folder), removed with it
+    #[serde(default)]
+    pub extra_files: Vec<String>,
 }
 
 fn default_when_finished() -> String {
@@ -193,6 +204,9 @@ pub struct AddRequest {
     pub resumable: Option<bool>,
     #[serde(default)]
     pub mime: Option<String>,
+    /// the quality to fetch when `url` is an HLS/DASH manifest
+    #[serde(default)]
+    pub stream: Option<StreamChoice>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -207,6 +221,75 @@ pub struct ProbeResult {
     pub category: String,
     pub etag: Option<String>,
     pub last_modified: Option<String>,
+    /// the link is an HLS/DASH manifest: the qualities it offers
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stream: Option<StreamInfo>,
+}
+
+/// What an HLS playlist or DASH manifest offers.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamInfo {
+    /// "hls" | "dash"
+    pub kind: String,
+    /// encrypted with a DRM system (Widevine, PlayReady, FairPlay, ...):
+    /// cannot be downloaded
+    pub protected: bool,
+    /// a live stream (no end yet): cannot be downloaded
+    pub live: bool,
+    /// why the stream can't be downloaded, in words for the user
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocked: Option<String>,
+    pub duration_secs: Option<f64>,
+    /// qualities, best first
+    pub variants: Vec<StreamVariant>,
+    /// separate audio tracks to choose from (empty when the audio is part
+    /// of every quality)
+    pub audio: Vec<StreamAudio>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamVariant {
+    pub id: String,
+    /// e.g. "1080p · 5.2 Mbps"
+    pub label: String,
+    pub width: Option<u32>,
+    pub height: Option<u32>,
+    pub bandwidth: Option<u64>,
+    pub codecs: Option<String>,
+    /// estimated size of the whole download at this quality (with audio)
+    pub est_bytes: Option<u64>,
+    /// the audio comes from a separate track
+    pub separate_audio: bool,
+    /// the file name extension of the result ("mp4", "ts", "m4a", ...)
+    pub ext: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamAudio {
+    pub id: String,
+    /// e.g. "English · AAC 128 kbps"
+    pub label: String,
+    pub language: Option<String>,
+    pub bandwidth: Option<u64>,
+    pub default: bool,
+}
+
+/// The parts of a stream to download (stored with the download).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct StreamChoice {
+    /// "hls" | "dash"
+    #[serde(default)]
+    pub kind: String,
+    /// variant id; None = the best quality
+    #[serde(default)]
+    pub variant: Option<String>,
+    /// audio track id; None = the default track
+    #[serde(default)]
+    pub audio: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

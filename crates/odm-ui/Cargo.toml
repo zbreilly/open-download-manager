@@ -1,0 +1,12 @@
+[package]
+name = "odm-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Front-end logic shared by the native apps: list state from engine events, filtering and sorting, formatting, the Add form, settings merging, links handed to the app"
+
+[dependencies]
+serde_json = "1"
+url = "2"
+chrono = "0.4"
+percent-encoding = "2"

@@ -13,7 +13,7 @@
   import { toast } from '../components/Toast.svelte';
   import { api, errText } from '../lib/ipc';
   import {
-    ART_DEFAULTS, ART_SLOTS, BUILTIN, artBackground, BUTTON_SLOTS, COLOR_GROUPS, MAX_ASSET, applyProfile, isFontName, assetIds, assetUrl, collectAssets, defaultProfile, exportTheme, importTheme, legible,
+    ART_DEFAULTS, ART_SLOTS, BUILTIN, artBackground, BUTTON_SLOTS, COLOR_GROUPS, MAX_IMPORT, applyProfile, isFontName, assetIds, assetUrl, collectAssets, defaultProfile, exportTheme, importTheme, legible,
     newProfileId, previewEverywhere, putAsset, sanitizeProfile, saveThemes, themeState,
     type ArtSlot, type ColorKey, type PanelArt, type ThemeProfile,
   } from '../lib/themes.svelte';
@@ -164,13 +164,14 @@
     if (!file) return null;
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
     if (!accept.includes(ext)) throw new Error(`Choose a ${accept.map((e) => '.' + e).join(' or ')} file`);
-    if (file.size * 1.34 > MAX_ASSET) throw new Error('That file is too large (limit 6 MB)');
+    if (file.size > MAX_IMPORT) throw new Error('That file is too large (limit 6 MB)');
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (ext === 'png' && !(bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47)) throw new Error('That is not a PNG image');
     if (ext === 'svg' && !new TextDecoder().decode(bytes.slice(0, 4096)).includes('<svg')) throw new Error('That is not an SVG image');
     let bin = '';
     for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    return putAsset(`data:${MIME[ext]};base64,${btoa(bin)}`);
+    // an SVG is kept as the picture it draws; every picture is rebuilt before it is stored
+    return putAsset(`data:${MIME[ext]};base64,${btoa(bin)}`, true);
   }
   async function act(fn: () => Promise<unknown>) {
     try { await fn(); } catch (e) { toast(errText(e), 'error'); }

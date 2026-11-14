@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT10.5S" minBufferTime="PT2S" profiles="urn:mpeg:dash:profile:isoff-live:2011">
+  <BaseURL>media/</BaseURL>
+  <Period id="p0">
+    <AdaptationSet contentType="video" mimeType="video/mp4" segmentAlignment="true">
+      <SegmentTemplate timescale="1000" duration="4000" startNumber="1" initialization="$RepresentationID$/init.mp4" media="$RepresentationID$/seg-$Number%03d$.m4s"/>
+      <Representation id="v1080" bandwidth="4800000" width="1920" height="1080" codecs="avc1.640028"/>
+      <Representation id="v480" bandwidth="1200000" width="854" height="480" codecs="avc1.4d401f"/>
+    </AdaptationSet>
+    <AdaptationSet contentType="audio" mimeType="audio/mp4" lang="en">
+      <Label>English</Label>
+      <AudioChannelConfiguration schemeIdUri="urn:mpeg:dash:23003:3:audio_channel_configuration:2011" value="2"/>
+      <SegmentTemplate timescale="48000" duration="192000" initialization="$RepresentationID$/init.mp4" media="$RepresentationID$/seg-$Number%03d$.m4s"/>
+      <Representation id="a-en" bandwidth="128000" codecs="mp4a.40.2"/>
+    </AdaptationSet>
+    <AdaptationSet contentType="audio" mimeType="audio/mp4" lang="fr">
+      <SegmentTemplate timescale="48000" duration="192000" initialization="$RepresentationID$/init.mp4" media="$RepresentationID$/seg-$Number%03d$.m4s"/>
+      <Representation id="a-fr" bandwidth="96000" codecs="mp4a.40.2"/>
+    </AdaptationSet>
+    <AdaptationSet contentType="text" mimeType="text/vtt" lang="en">
+      <Representation id="sub-en" bandwidth="1000"><BaseURL>subs/en.vtt</BaseURL></Representation>
+    </AdaptationSet>
+  </Period>
+</MPD>

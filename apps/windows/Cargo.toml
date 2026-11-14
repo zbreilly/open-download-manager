@@ -1,0 +1,53 @@
+[package]
+name = "odm-windows"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Open Download Manager for Windows (WinUI 3 through windows-reactor)"
+
+[[bin]]
+name = "OpenDownloadManager"
+path = "src/main.rs"
+
+[features]
+default = ["engine"]
+# Links the download engine. Turn it off (--no-default-features) to
+# type-check the interface for Windows from another OS, where the engine's
+# C dependencies can't be cross-compiled.
+engine = ["dep:odm-ffi"]
+
+[dependencies]
+odm-ui = { path = "../../crates/odm-ui" }
+odm-ffi = { path = "../../crates/odm-ffi", optional = true }
+serde_json = "1"
+
+[target.'cfg(windows)'.dependencies]
+# windows-reactor is Microsoft's WinUI 3 library for Rust (microsoft/windows-rs).
+# The app-level state, window and notification-icon declarations used here
+# landed after the 0.100.0 release, so a commit is pinned until the next one.
+windows-reactor = { git = "https://github.com/microsoft/windows-rs", rev = "d5b6a1f68f" }
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
+    "Win32_Security_Authorization",
+    "Win32_Storage_FileSystem",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Pipes",
+    "Win32_System_Power",
+    "Win32_System_Registry",
+    "Win32_System_RemoteDesktop",
+    "Win32_System_Threading",
+    "Win32_System_IO",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+windows-registry = "0.100"
+rfd = { version = "0.17", default-features = false }
+tauri-winrt-notification = "0.8"
+
+[target.'cfg(windows)'.build-dependencies]
+windows-reactor-setup = { git = "https://github.com/microsoft/windows-rs", rev = "d5b6a1f68f" }
+embed-resource = "3"

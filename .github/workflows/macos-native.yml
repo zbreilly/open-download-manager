@@ -19,7 +19,7 @@ on:
         description: "Build a universal (Apple silicon + Intel) binary"
         type: boolean
         default: false
-  # the windows-linux workflow calls this for tagged releases
+  # the desktop workflow calls this for tagged releases
   workflow_call:
     inputs:
       universal:
@@ -49,12 +49,7 @@ jobs:
       - name: Toolchain info
         run: |
           xcodebuild -version
-          swiftc --version
-
-      - name: Type-check Swift
-        run: |
           mkdir -p ci-out
-          apps/macos/build.sh --typecheck 2>&1 | tee ci-out/typecheck.log
 
       - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
         with:
@@ -64,8 +59,11 @@ jobs:
         with:
           shared-key: macos-native
 
-      - name: Engine tests
-        run: cargo test -p odm-core 2>&1 | tee ci-out/test.log
+      - name: Engine and shared front-end tests
+        run: cargo test -p odm-core -p odm-ui 2>&1 | tee ci-out/test.log
+
+      - name: Lint the app
+        run: cargo clippy -p odm-macos --all-targets -- -D warnings 2>&1 | tee ci-out/clippy.log
 
       - name: Build app
         env:
@@ -97,7 +95,7 @@ jobs:
           sleep 2
           screencapture -x ci-out/02b-after-return.png || true
           osascript -e 'tell application "System Events" to key code 53' || true
-          # real download handed over the browser bridge, checked byte for byte
+          # real download through the bridge, checked byte for byte
           bash scripts/ci/e2e-download.sh "$HOME/Downloads" > ci-out/e2e.log 2>&1 &
           E2E=$!
           sleep 6
@@ -126,7 +124,7 @@ jobs:
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: OpenDownloadManager-macOS
+          name: OpenDownloadManager-macOSNative
           path: |
             dist/macos-native/*.dmg
             dist/macos-native/*.zip

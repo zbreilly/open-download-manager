@@ -1,0 +1,165 @@
+name: linux-native
+
+# The native Linux apps: the GTK/libadwaita interface (GNOME and others)
+# and the Kirigami interface (KDE Plasma), both Rust, in one .deb (Debian
+# 13 / Ubuntu 25.04 and later) and one .rpm (Fedora) per CPU. Each package
+# is installed in a clean container, started once as each desktop, and used
+# for a real download through the browser bridge.
+
+on:
+  push:
+    branches: [main, "native-*"]
+    paths:
+      - "apps/gnome/**"
+      - "apps/plasma/**"
+      - "crates/**"
+      - "packaging/linux/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
+      - "extension/**"
+      - "src-tauri/icons/tray/**"
+      - "download-manager-ui/brand/dist/app-icons/linux/**"
+      - "scripts/ci/**"
+      - ".github/workflows/linux-native.yml"
+  workflow_dispatch:
+  # the desktop workflow calls this for tagged releases
+  workflow_call:
+
+concurrency:
+  group: linux-native-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+        distro: [debian, fedora]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    container: ${{ matrix.distro == 'debian' && 'debian:trixie' || 'fedora:latest' }}
+    timeout-minutes: 60
+    env:
+      QMAKE: qmake6
+    steps:
+      - name: Build dependencies
+        run: |
+          if [ "${{ matrix.distro }}" = debian ]; then
+            apt-get update
+            apt-get install -y --no-install-recommends build-essential pkg-config curl ca-certificates git zip file dpkg-dev \
+              libgtk-4-dev libadwaita-1-dev qt6-base-dev qt6-declarative-dev qt6-declarative-dev-tools
+          else
+            dnf install -y gcc gcc-c++ pkgconf-pkg-config curl git zip file which rpm-build \
+              gtk4-devel libadwaita-devel qt6-qtbase-devel qt6-qtdeclarative-devel
+          fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@686976e191b89faba57d3206551f0f330d8cb249 # stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+        with:
+          shared-key: linux-native-${{ matrix.distro }}-${{ matrix.arch }}
+      - name: Tests and lints
+        run: |
+          mkdir -p ci-out
+          {
+            cargo test -p odm-ui -p odm-linux
+            cargo clippy -p odm-ui -p odm-linux -p odm-gnome -p odm-plasma --all-targets -- -D warnings
+          } 2>&1 | tee ci-out/checks.log
+      - name: Build and package
+        run: |
+          bash extension/build.sh
+          packaging/linux/build-packages.sh 2>&1 | tee ci-out/build.log
+          ls -l dist/linux-native | tee -a ci-out/build.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-linux-native-build-${{ matrix.distro }}-${{ matrix.arch }}
+          path: ci-out/
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: OpenDownloadManager-LinuxNative-${{ matrix.distro }}-${{ matrix.arch }}
+          path: dist/linux-native/*
+
+  install-test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+        distro: [debian, fedora]
+        desktop: [KDE, GNOME]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    container: ${{ matrix.distro == 'debian' && 'debian:trixie' || 'fedora:latest' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: OpenDownloadManager-LinuxNative-${{ matrix.distro }}-${{ matrix.arch }}
+          path: pkg
+      - name: Install package
+        run: |
+          mkdir -p ci-out
+          if [ "${{ matrix.distro }}" = debian ]; then
+            apt-get update
+            apt-get install -y ./pkg/*.deb xvfb xauth imagemagick dbus dbus-x11 procps curl python3 git nodejs openssl libgl1-mesa-dri 2>&1 | tee ci-out/install.log
+          else
+            dnf install -y ./pkg/*.rpm xorg-x11-server-Xvfb ImageMagick dbus-daemon dbus-x11 procps-ng curl python3 git nodejs openssl mesa-dri-drivers 2>&1 | tee ci-out/install.log
+          fi
+          command -v open-download-manager | tee -a ci-out/install.log
+      # only the e2e scripts are needed (the container job has no source),
+      # and the extension's sealing code they send requests with
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/ci
+            extension/src
+          path: src
+      - name: Launch as ${{ matrix.desktop }}, open a link, download
+        env:
+          XDG_CURRENT_DESKTOP: ${{ matrix.desktop }}
+          # no GPU in the container
+          GSK_RENDERER: cairo
+          QT_QUICK_BACKEND: software
+          LIBGL_ALWAYS_SOFTWARE: "1"
+        run: |
+          UI=$([ "$XDG_CURRENT_DESKTOP" = KDE ] && echo odm-plasma || echo odm-gnome)
+          Xvfb :99 -screen 0 1440x900x24 &
+          sleep 2
+          export DISPLAY=:99 HOME=/root
+          # pairing key for this run: the app and the test script share it
+          export ODM_BRIDGE_KEY="$(openssl rand -hex 32)"
+          cat > run.sh <<SCRIPT
+          set -e
+          open-download-manager > ci-out/app.log 2>&1 &
+          sleep 15
+          pgrep -x $UI || { echo "app exited early (or the wrong interface started)"; cat ci-out/app.log; exit 1; }
+          import -display :99 -window root ci-out/01-main.png || true
+          # a web deep link reaches the running instance, which opens a
+          # pre-filled Add window; it must not probe or start anything itself
+          open-download-manager "odm://add?url=http://127.0.0.1:9/never-fetched.bin"
+          sleep 5
+          [ "\$(pgrep -x -c $UI)" = 1 ] || { echo "second launch did not hand over and exit"; exit 1; }
+          import -display :99 -window root ci-out/02-add-from-link.png || true
+          bash src/scripts/ci/e2e-download.sh /root/Downloads 2>&1 | tee -a ci-out/install.log
+          import -display :99 -window root ci-out/03-after-download.png || true
+          pkill -x $UI || true
+          SCRIPT
+          dbus-run-session -- bash run.sh
+          cat ci-out/app.log
+          echo "launch and download ok ($UI)" >> ci-out/install.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ !cancelled() }}
+        with:
+          name: logs-linux-native-${{ matrix.distro }}-${{ matrix.arch }}-${{ matrix.desktop }}
+          path: ci-out/

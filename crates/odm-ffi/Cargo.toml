@@ -6,7 +6,8 @@ license.workspace = true
 description = "C interface to the Open Download Manager engine, used by the native macOS, Windows and Linux apps"
 
 [lib]
-# staticlib: macOS app; cdylib: Windows app (odm_ffi.dll); rlib: Linux apps
+# rlib: the native apps (all Rust); staticlib and cdylib: the C interface,
+# for front ends in other languages
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]

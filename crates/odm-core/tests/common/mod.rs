@@ -21,6 +21,9 @@
 //!   `/noctbin` (binary without Content-Type, markup after 4 KiB)
 #![allow(dead_code)]
 
+pub mod ftp;
+pub mod web;
+
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};

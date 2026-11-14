@@ -454,7 +454,7 @@
     if (!t || t.types.includes('application/x-odm-ids')) return;
     e.preventDefault();
     const text = t.getData('text/uri-list') || t.getData('text/plain');
-    const urls = text.split(/\s+/).map((s) => s.trim()).filter((s) => /^https?:\/\//i.test(s));
+    const urls = text.split(/\s+/).map((s) => s.trim()).filter((s) => /^(https?|ftps?|ftpes):\/\//i.test(s));
     if (!urls.length) return;
     if (urls.length === 1) addUrl({ url: urls[0] });
     else act(() => api.openWindow('grabber', null, { links: urls.map((url) => ({ url })) }));
@@ -743,6 +743,7 @@
             <button class="btn tb c-blue" onclick={() => copyLink(d)}><Icon name="copy-link" size={15} />Copy link</button>
           </div>
           {#if d.status === 'error' && d.error}<div class="errbox">{d.error}</div>{/if}
+          {#if d.notice}<div class="noticebox"><Icon name="warning" size={14} />{d.notice}</div>{/if}
           <div class="dbody">
             <dl>
               <dt>Downloaded</dt><dd class="mono">{f.bytes(d.receivedBytes)} of {f.bytes(d.totalBytes)}</dd>
@@ -919,4 +920,6 @@
 
   @media (max-height: 760px) { .details .dbody { display: none; } }
   @media (max-width: 1000px) { .side { width: 180px; } }
+  .noticebox { display: flex; gap: 6px; align-items: flex-start; font-size: var(--fs-sm); color: var(--text-muted); }
+  .noticebox :global(svg) { color: var(--warning); flex: none; margin-top: 2px; }
 </style>

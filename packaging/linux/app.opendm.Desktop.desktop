@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Open Download Manager
+GenericName=Download Manager
+Comment=Fast, resumable, segmented downloads
+Exec=open-download-manager %U
+Icon=app.opendm.Desktop
+Terminal=false
+Categories=Network;FileTransfer;
+Keywords=download;downloader;segmented;resume;queue;
+MimeType=x-scheme-handler/odm;
+StartupNotify=true
+StartupWMClass=app.opendm.Desktop
+SingleMainWindow=true

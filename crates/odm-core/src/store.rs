@@ -67,13 +67,62 @@ fn restrict_to_user(db: &Path) {
 #[cfg(not(unix))]
 fn restrict_to_user(_db: &Path) {}
 
+/// Create the data folder. A folder made here is private to the user
+/// (other accounts cannot even list it); one that already exists is left
+/// as it is, since the caller may have pointed at a folder it shares.
+#[cfg(unix)]
+fn create_private_dir(dir: &Path) {
+    use std::os::unix::fs::DirBuilderExt;
+    if !dir.exists() {
+        let _ = std::fs::DirBuilder::new().recursive(true).mode(0o700).create(dir);
+    }
+}
+
+#[cfg(not(unix))]
+fn create_private_dir(dir: &Path) {
+    let _ = std::fs::create_dir_all(dir);
+}
+
+/// While the keystore does not answer ([`secret::locked`]), the secrets a
+/// download was stored with are sealed and were loaded as empty. Writing
+/// the download back must not wipe them: `new` (the document about to be
+/// stored) takes them over from `old` (the stored one), as long as it is
+/// still the same unfinished download of the same address. A finished
+/// download, or one pointed at another address, has dropped its secrets on
+/// purpose.
+fn keep_unread_secrets(old: &serde_json::Value, new: &mut serde_json::Value) {
+    use serde_json::Value;
+    if new.get("status").and_then(Value::as_str) == Some("complete") || old.get("url") != new.get("url") {
+        return;
+    }
+    let sealed = |v: Option<&Value>| v.and_then(Value::as_str).is_some_and(secret::is_sealed);
+    let empty = |v: Option<&Value>| v.is_none_or(|v| v.is_null() || v.as_str() == Some(""));
+    for field in ["cookies", "password"] {
+        if empty(new.get(field)) && sealed(old.get(field)) {
+            new[field] = old[field].clone();
+        }
+    }
+    // custom headers: [[name, value], …]; the names are stored as they are
+    let pairs = |v: &Value| -> Vec<(String, String)> { serde_json::from_value(v.get("headers").cloned().unwrap_or_default()).unwrap_or_default() };
+    let (was, mut now) = (pairs(old), pairs(new));
+    let same_names = was.len() == now.len() && was.iter().zip(&now).all(|(a, b)| a.0 == b.0);
+    if same_names && was.iter().any(|(_, v)| secret::is_sealed(v)) {
+        for (kept, cur) in was.iter().zip(now.iter_mut()) {
+            if cur.1.is_empty() && secret::is_sealed(&kept.1) {
+                cur.1 = kept.1.clone();
+            }
+        }
+        new["headers"] = serde_json::json!(now);
+    }
+}
+
 const UPSERT_DOWNLOAD: &str = "INSERT INTO downloads (id, added, data) VALUES (?1, ?2, ?3)
      ON CONFLICT(id) DO UPDATE SET data = excluded.data";
 
 impl Store {
     pub fn open(path: &Path) -> rusqlite::Result<Self> {
         if let Some(d) = path.parent() {
-            let _ = std::fs::create_dir_all(d);
+            create_private_dir(d);
         }
         let conn = Connection::open(path)?;
         let store = Self::init(conn)?;
@@ -171,7 +220,17 @@ impl Store {
             match d {
                 Some(d) => {
                     let d = stored(d);
-                    match serde_json::to_string(&d) {
+                    let doc = serde_json::to_value(&d).map(|mut doc| {
+                        if secret::locked() {
+                            let old: Option<String> =
+                                tx.query_row("SELECT data FROM downloads WHERE id = ?1", params![d.id], |r| r.get(0)).ok();
+                            if let Some(old) = old.and_then(|o| serde_json::from_str(&o).ok()) {
+                                keep_unread_secrets(&old, &mut doc);
+                            }
+                        }
+                        doc.to_string()
+                    });
+                    match doc {
                         Ok(json) => {
                             log_err("save download", tx.execute(UPSERT_DOWNLOAD, params![d.id, d.added_at, json]));
                         }
@@ -263,6 +322,18 @@ impl Store {
         self.set_kv(key, &secret::seal(value));
     }
 
+    /// The secret under `key` is stored unprotected although secrets are
+    /// protected now (it was written before they were): store it again.
+    pub fn secret_was_plain(&self, key: &str) -> bool {
+        self.get_kv(key).is_some_and(|v| secret::open(&v).was_plain)
+    }
+
+    /// The secret under `key` is sealed and the keystore did not answer:
+    /// it is there and cannot be read in this run. Do not replace it.
+    pub fn secret_unreadable(&self, key: &str) -> bool {
+        self.get_kv(key).is_some_and(|v| secret::open(&v).unreadable)
+    }
+
     pub fn load_settings(&self) -> Settings {
         let mut s: Settings = self
             .get_kv("settings")
@@ -281,6 +352,18 @@ impl Store {
     pub fn save_settings(&self, s: &Settings) {
         let mut s = s.clone();
         s.proxy_pass = secret::seal(&s.proxy_pass);
+        if s.proxy_pass.is_empty() && secret::locked() {
+            // sealed, and loaded as empty because the keystore did not
+            // answer: keep what is stored
+            let kept = self
+                .get_kv("settings")
+                .and_then(|j| serde_json::from_str::<serde_json::Value>(&j).ok())
+                .and_then(|v| v.get("proxyPass").and_then(|p| p.as_str().map(String::from)))
+                .filter(|p| secret::is_sealed(p));
+            if let Some(kept) = kept {
+                s.proxy_pass = kept;
+            }
+        }
         match serde_json::to_string(&s) {
             Ok(j) => self.set_kv("settings", &j),
             Err(e) => tracing::error!("database: encode settings: {e}"),
@@ -292,5 +375,71 @@ impl Store {
         let c = self.conn.lock();
         let r = c.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |r| r.get::<_, i64>(0));
         log_err("checkpoint", r);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::keep_unread_secrets;
+    use serde_json::json;
+
+    fn stored() -> serde_json::Value {
+        json!({ "url": "https://a.example/f", "status": "paused", "cookies": "odm-key1:AAAA", "password": "odm-key1:BBBB",
+            "headers": [["X-Token", "odm-key1:CCCC"], ["Accept", "odm-key1:DDDD"]] })
+    }
+
+    /// The same download as it is in memory while the keystore is silent.
+    fn unread() -> serde_json::Value {
+        json!({ "url": "https://a.example/f", "status": "paused", "cookies": null, "headers": [["X-Token", ""], ["Accept", ""]] })
+    }
+
+    #[test]
+    fn unread_secrets_are_written_back_as_they_were() {
+        let mut new = unread();
+        keep_unread_secrets(&stored(), &mut new);
+        assert_eq!(new["cookies"], "odm-key1:AAAA");
+        assert_eq!(new["password"], "odm-key1:BBBB");
+        assert_eq!(new["headers"], json!([["X-Token", "odm-key1:CCCC"], ["Accept", "odm-key1:DDDD"]]));
+    }
+
+    #[test]
+    fn what_was_set_in_this_run_wins() {
+        let mut new = unread();
+        new["cookies"] = json!("fresh=1");
+        new["headers"] = json!([["X-Token", "typed now"], ["Accept", ""]]);
+        keep_unread_secrets(&stored(), &mut new);
+        assert_eq!(new["cookies"], "fresh=1");
+        assert_eq!(new["headers"], json!([["X-Token", "typed now"], ["Accept", "odm-key1:DDDD"]]));
+    }
+
+    #[test]
+    fn secrets_dropped_on_purpose_stay_dropped() {
+        // finished: the credentials that fetched the file are not kept
+        let mut done = unread();
+        done["status"] = json!("complete");
+        done["headers"] = json!([]);
+        keep_unread_secrets(&stored(), &mut done);
+        assert!(done["cookies"].is_null() && done.get("password").is_none() && done["headers"] == json!([]));
+        // pointed at another address: the old site's credentials must not follow
+        let mut moved = unread();
+        moved["url"] = json!("https://other.example/f");
+        keep_unread_secrets(&stored(), &mut moved);
+        assert!(moved["cookies"].is_null() && moved.get("password").is_none());
+        assert_eq!(moved["headers"], json!([["X-Token", ""], ["Accept", ""]]));
+        // other headers than were stored: nothing to match them to
+        let mut edited = unread();
+        edited["headers"] = json!([["X-Other", ""]]);
+        keep_unread_secrets(&stored(), &mut edited);
+        assert_eq!(edited["headers"], json!([["X-Other", ""]]));
+    }
+
+    #[test]
+    fn plain_values_are_not_taken_over() {
+        let old = json!({ "url": "https://a.example/f", "status": "paused", "cookies": "plain=1", "headers": [["X-Token", "plain"]] });
+        let mut new = unread();
+        new["headers"] = json!([["X-Token", ""]]);
+        keep_unread_secrets(&old, &mut new);
+        assert!(new["cookies"].is_null());
+        assert_eq!(new["headers"], json!([["X-Token", ""]]));
     }
 }

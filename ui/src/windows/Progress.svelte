@@ -109,6 +109,7 @@
       </div>
 
       {#if d.status === 'error' && d.error}<div class="errbox">{d.error}</div>{/if}
+      {#if d.notice}<div class="noticebox"><Icon name="warning" size={14} />{d.notice}</div>{/if}
       {#if d.checksumOk === true}<div class="okline"><Icon name="verify" size={14} />Checksum verified</div>{/if}
 
       <div>
@@ -214,4 +215,6 @@
   .right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
   .limit { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
   .row { display: flex; gap: 8px; align-items: center; }
+  .noticebox { display: flex; gap: 6px; align-items: flex-start; font-size: var(--fs-sm); color: var(--text-muted); }
+  .noticebox :global(svg) { color: var(--warning); flex: none; margin-top: 2px; }
 </style>

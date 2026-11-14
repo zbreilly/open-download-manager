@@ -356,6 +356,10 @@ Third-party components keep their own licenses: the Rust and npm dependencies (M
 
 The AGPL covers the code, not the brand. "Open Download Manager", "ODM" and the ODM logo identify the official project. Forks are welcome but must use a different name and logo, and must not suggest they are the official release.
 
+## Privacy
+
+The app and the extension collect nothing and send nothing to the project or anyone else. The details are in [PRIVACY.md](PRIVACY.md).
+
 ## Contributing
 
 Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Opening a pull request means you agree to its contributor terms.

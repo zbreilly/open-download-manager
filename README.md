@@ -89,7 +89,7 @@ Installers for every platform are on the [Releases](https://github.com/zbreilly/
 
 The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
 
-After installing, add the [browser extension](#install-the-browser-extension) and pair it with the app.
+After installing, add the browser extension and pair it with the app. For Chrome and other Chromium browsers it is on the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja); for Firefox see [Install the browser extension](#install-the-browser-extension).
 
 ## How it is built
 
@@ -181,7 +181,11 @@ The tray icon is a StatusNotifierItem: built into Plasma; on GNOME it needs the 
 
 ## Install the browser extension
 
-`bash extension/build.sh` builds the extensions into `extension/dist/`, and the installers and packages ship a copy. In the app, **Settings → Browser integration → Show extension folder** opens it (**Settings → Browser** in the native-toolkit apps).
+**Chrome, Edge, Brave, Opera and Vivaldi:** install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja). Edge asks you to allow extensions from other stores first. Then [pair it with the app](#pair-the-extension-with-the-app).
+
+### Load it from a build
+
+For Firefox, or to run your own build in a Chromium browser: `bash extension/build.sh` builds the extensions into `extension/dist/`, and the installers and packages ship a copy. In the app, **Settings → Browser integration → Show extension folder** opens it (**Settings → Browser** in the native-toolkit apps).
 
 - **Chrome / Edge / Brave / Opera / Vivaldi**: open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and pick `extension/dist/chromium`.
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. Firefox removes a temporary add-on when it closes.
@@ -193,6 +197,8 @@ The build also packs each extension into one file in `extension/dist/`:
 - `odm-firefox.xpi`: an unsigned package. Firefox Developer Edition, Nightly and ESR install it from `about:addons` → *Install Add-on From File* once `xpinstall.signatures.required` is off in `about:config`. Release Firefox only installs add-ons that Mozilla has signed.
 
 The Firefox manifest declares what the extension passes to the app (`data_collection_permissions`: the cookies that go with a download, as authentication information); Firefox 140 and later show that when the extension is installed.
+
+### Pair the extension with the app
 
 After installing it, pair the extension with the app, once per browser: in the app open **Settings → Browser integration** (**Settings → Browser** in the native-toolkit apps) and press **Copy key**; click the extension's toolbar button, open **Connection**, paste the key under **Pairing key** and save.
 

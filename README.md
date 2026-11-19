@@ -89,7 +89,7 @@ Installers for every platform are on the [Releases](https://github.com/zbreilly/
 
 The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
 
-After installing, add the browser extension and pair it with the app. For Chrome and other Chromium browsers it is on the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja); for Firefox see [Install the browser extension](#install-the-browser-extension).
+After installing, add the browser extension and pair it with the app. For Chrome and other Chromium browsers it is on the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja); for Firefox it is on [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/odm-open-download-manager/).
 
 ## How it is built
 
@@ -183,9 +183,11 @@ The tray icon is a StatusNotifierItem: built into Plasma; on GNOME it needs the 
 
 **Chrome, Edge, Brave, Opera and Vivaldi:** install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja). Edge asks you to allow extensions from other stores first. Then [pair it with the app](#pair-the-extension-with-the-app).
 
+**Firefox:** install it from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/odm-open-download-manager/). Then [pair it with the app](#pair-the-extension-with-the-app).
+
 ### Load it from a build
 
-For Firefox, or to run your own build in a Chromium browser: `bash extension/build.sh` builds the extensions into `extension/dist/`, and the installers and packages ship a copy. In the app, **Settings → Browser integration → Show extension folder** opens it (**Settings → Browser** in the native-toolkit apps).
+To run your own build: `bash extension/build.sh` builds the extensions into `extension/dist/`, and the installers and packages ship a copy. In the app, **Settings → Browser integration → Show extension folder** opens it (**Settings → Browser** in the native-toolkit apps).
 
 - **Chrome / Edge / Brave / Opera / Vivaldi**: open `chrome://extensions`, turn on *Developer mode*, click *Load unpacked* and pick `extension/dist/chromium`.
 - **Firefox**: open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on* and pick `extension/dist/firefox/manifest.json`. Firefox removes a temporary add-on when it closes.
@@ -194,7 +196,7 @@ The build also packs each extension into one file in `extension/dist/`:
 
 - `odm-chromium.crx`: a packed extension. With *Developer mode* on, drag it onto `chrome://extensions`. Chrome on Windows and macOS turns off extensions that don't come from the Chrome Web Store, so use *Load unpacked* there.
 - `odm-chromium.zip`: the same files unsigned, the form the Chrome Web Store and Edge Add-ons take as an upload.
-- `odm-firefox.xpi`: an unsigned package. Firefox Developer Edition, Nightly and ESR install it from `about:addons` → *Install Add-on From File* once `xpinstall.signatures.required` is off in `about:config`. Release Firefox only installs add-ons that Mozilla has signed.
+- `odm-firefox.xpi`: an unsigned package. Firefox Developer Edition, Nightly and ESR install it from `about:addons` → *Install Add-on From File* once `xpinstall.signatures.required` is off in `about:config`. Release Firefox only installs add-ons that Mozilla has signed, so use the one on [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/odm-open-download-manager/) there.
 
 The Firefox manifest declares what the extension passes to the app (`data_collection_permissions`: the cookies that go with a download, as authentication information); Firefox 140 and later show that when the extension is installed.
 

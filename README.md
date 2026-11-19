@@ -39,6 +39,40 @@
 
 The full list is under [Features](#features).
 
+## Download
+
+Get the installers from the [latest release](https://github.com/zbreilly/open-download-manager/releases/latest). ODM comes in two versions. Both run on the same download engine and have the same downloads, queues, scheduler, media grabber and browser integration; they differ in how their windows are drawn. Install one of them: they share a data folder, so installing one replaces the other, and your download list and settings carry over.
+
+### The Tauri app: themeable
+
+Built with Tauri and Svelte, it looks the same on every platform, and it is the version you can theme and customize: the [Theme studio](#themes) and the [ready-made themes](#ready-made-themes), with your own colors, outlines, fonts, pictures behind the panels and button icons, and an app-drawn title bar.
+
+| Platform | File |
+|---|---|
+| Windows 10/11 | setup `.exe` or `.msi` (x64) |
+| macOS 11 or later | universal `.dmg` (Apple silicon and Intel) |
+| Debian / Ubuntu | `.deb` (amd64, arm64) |
+| Fedora | `.rpm` (x86_64, aarch64) |
+
+### The native app: not themeable
+
+Built on each platform's own toolkit, so it looks and behaves like the other apps on your system: AppKit on macOS, WinUI 3 on Windows, and on Linux GTK 4 with libadwaita, or Kirigami on KDE Plasma (one package holds both and starts the one that fits your desktop). It can't be themed: it has the dark and light themes only, and the system's own title bar. Its files have `-native` in the name.
+
+| Platform | File |
+|---|---|
+| Windows 10/11 | setup `.exe` (x64, ARM64) |
+| macOS 13 or later | universal `.dmg` (Apple silicon and Intel) |
+| Debian 13 / Ubuntu 25.04 or later | `.deb` (amd64, arm64) |
+| Fedora | `.rpm` (x86_64, aarch64) |
+
+On Windows on ARM, the native app is the one built for ARM64.
+
+### After downloading
+
+The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
+
+After installing, add the browser extension and pair it with the app. For Chrome and other Chromium browsers it is on the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja); for Firefox it is on [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/odm-open-download-manager/).
+
 ## Themes
 
 The app ships with a dark and a light theme and six presets. The Theme studio (More menu, or Settings → Appearance) goes further: it builds color profiles that change every window of the app, and shows each change in all open windows while you edit.
@@ -68,28 +102,13 @@ Four profiles are in the [`themes`](themes) folder. Download one, open the Theme
   <img src="docs/images/theme-gallery.jpg" alt="Eight looks of the main window: default dark, default light, black with neon outlines, high contrast dark, Synthwave, Aurora, Sakura and Terminal" width="100%">
 </p>
 
-The Theme studio is part of the app. The native-toolkit apps have the dark and light themes only.
+The Theme studio is in the Tauri app. The [native app](#the-native-app-not-themeable) has the dark and light themes only.
 
 ## More of the app
 
 <p align="center">
   <img src="docs/images/windows.jpg" alt="The Settings window, the Queues and scheduler window and the Add download window" width="100%">
 </p>
-
-## Download
-
-Installers for every platform are on the [Releases](https://github.com/zbreilly/open-download-manager/releases) page.
-
-| Platform | The app | Native-toolkit app (`-native` in the file name) |
-|---|---|---|
-| Windows 10/11 | setup `.exe` or `.msi` (x64) | setup `.exe` (x64, ARM64) |
-| macOS | universal `.dmg` (macOS 11+) | universal `.dmg` (macOS 13+) |
-| Debian / Ubuntu | `.deb` (amd64, arm64) | `.deb` (amd64, arm64; Debian 13 / Ubuntu 25.04 or later) |
-| Fedora | `.rpm` (x86_64, aarch64) | `.rpm` (x86_64, aarch64) |
-
-The installers aren't code-signed, so Windows SmartScreen and macOS Gatekeeper warn the first time you open one. On macOS, right-click the app and choose Open (or run `xattr -dr com.apple.quarantine "Open Download Manager.app"`). Each release has a `SHA256SUMS.txt` and build provenance attestations to check a download against; see [CI and releases](#ci-and-releases).
-
-After installing, add the browser extension and pair it with the app. For Chrome and other Chromium browsers it is on the [Chrome Web Store](https://chromewebstore.google.com/detail/open-download-manager/gljdhgkcfehamjcgnlcgpjhahfglkfja); for Firefox it is on [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/odm-open-download-manager/).
 
 ## How it is built
 
